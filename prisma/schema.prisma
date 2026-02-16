@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  email             String     @unique
+  password          String
+  firstName         String
+  lastName          String
+  role              Role       @default(STAFF)
+  permissions       String[]
+  status            Status     @default(ACTIVE)
+  twoFactorEnabled  Boolean    @default(false)
+  totpSecret        String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  activityLogs      ActivityLog[]
+}
+
+
+
+model OTPVerification {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  email             String
+  otp               String
+  expiresAt         DateTime
+  verified          Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+}
+
+model PasswordReset {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  email             String
+  token             String     @unique
+  expiresAt         DateTime
+  used              Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+}
+
+model PasswordResetOTP {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  email             String
+  otp               String
+  expiresAt         DateTime
+  used              Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+}
+
+
+
+model ActivityLog {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String     @db.ObjectId
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action            String
+  resource          String
+  resourceId        String?
+  changes           String?
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime   @default(now())
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  STAFF
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
