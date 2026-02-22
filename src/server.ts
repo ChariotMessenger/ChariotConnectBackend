@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import http from "http";
-// import { Server } from "socket.io";
+import { Server } from "socket.io";
 import app from "./app";
 import { prisma } from "./lib/prisma";
 // import { initializeSocket } from "./services/socket.service";
