@@ -50,6 +50,32 @@ app.use(morgan("combined"));
 app.use(requestLogger);
 
 // ==================== Documentation ====================
+app.get("/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+
+app.get("/", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Chariot Connect API Documentation</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+      </head>
+      <body style="margin: 0; padding: 0;">
+        <div id="redoc-container"></div>
+        <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
+        <script>
+          Redoc.init('/swagger.json', {}, document.getElementById('redoc-container'))
+        </script>
+      </body>
+    </html>
+  `);
+});
+
 app.use(
   "/api/docs",
   swaggerUi.serve,
