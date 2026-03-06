@@ -1,45 +1,39 @@
-import dotenv from "dotenv";
 import http from "http";
-import { Server } from "socket.io";
 import app from "./app";
-import { prisma } from "./lib/prisma";
-// import { initializeSocket } from "./services/socket.service";
+import { logger } from "./utils/logger";
+import { Server as SocketIOServer } from "socket.io";
+import { initializeSocketIO } from "./config/socket";
 
-dotenv.config();
+const PORT = process.env.PORT || 3000;
 
-const PORT = process.env.SERVER_PORT || 5000;
+const server = http.createServer(app);
 
-const startServer = async () => {
-  try {
-    await prisma.$connect();
-    console.log("Connected to database");
-
-    const server = http.createServer(app);
-    const io = new Server(server, {
-      cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
-        methods: ["GET", "POST"],
-        credentials: true,
-      },
-    });
-
-    // initializeSocket(io);
-
-    server.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
-      console.log(`API Docs available at http://localhost:${PORT}/api-docs`);
-      console.log(`WebSocket server listening for real-time events`);
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
-};
-
-process.on("SIGTERM", async () => {
-  console.log("SIGTERM received, shutting down gracefully");
-  await prisma.$disconnect();
-  process.exit(0);
+// Initialize Socket.IO
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: process.env.SOCKET_IO_CORS_ORIGIN || "http://localhost:3001",
+    credentials: true,
+  },
 });
 
-startServer();
+initializeSocketIO(io);
+
+// Attach io to app for use in routes
+(app as any).io = io;
+
+server.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+});
+
+process.on("unhandledRejection", (reason: Error) => {
+  logger.error("Unhandled Rejection:", reason);
+  process.exit(1);
+});
+
+process.on("uncaughtException", (error: Error) => {
+  logger.error("Uncaught Exception:", error);
+  process.exit(1);
+});
+
+export default server;

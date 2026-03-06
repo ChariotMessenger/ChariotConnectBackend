@@ -1,56 +1,90 @@
+import express, { Express, Request, Response, NextFunction } from "express";
 import "express-async-errors";
-import express, { Express } from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
-import authRoutes from "./routes/auth.routes";
-import userRoutes from "./routes/user.routes";
-import { errorHandler } from "./middleware/errorHandler";
-import { logActivity } from "./middleware/logger";
-import swaggerSpec from "./config/swagger";
+import swaggerJsDoc from "swagger-jsdoc";
+
+// Middleware
+import { errorHandler } from "./middlewares/errorHandler";
+import { requestLogger } from "./middlewares/requestLogger";
+import { authMiddleware } from "./middlewares/auth";
+
+// Routes
+import customerRoutes from "./routes/customer.routes";
+import vendorRoutes from "./routes/vendor.routes";
+import riderRoutes from "./routes/rider.routes";
+import healthRoutes from "./routes/health.routes";
+
+// Config
+import { swaggerOptions } from "./config/swagger";
+import { logger } from "./utils/logger";
 
 const app: Express = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Swagger Setup
+const swaggerSpec = swaggerJsDoc(swaggerOptions);
 
-app.use(logActivity);
+// ==================== Middleware ====================
 
-app.get("/", (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Chariot API Documentation</title>
-        <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-          }
-        </style>
-      </head>
-      <body>
-        <redoc spec-url='/swagger.json'></redoc>
-        <script src="https://cdn.jsdelivr.net/npm/redoc@2.0.0-rc.77/bundles/redoc.standalone.js"> </script>
-      </body>
-    </html>
-  `);
+// Security
+app.use(helmet());
+
+// CORS
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+// Body Parser
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
+// Logging
+app.use(morgan("combined"));
+app.use(requestLogger);
+
+// ==================== Documentation ====================
+app.use(
+  "/api/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayOperationId: true,
+    },
+  }),
+);
+
+// ==================== Health Check ====================
+app.use("/health", healthRoutes);
+
+// ==================== API Routes ====================
+
+const apiVersion = process.env.API_VERSION || "v1";
+const apiPrefix = `/api/${apiVersion}`;
+
+app.use(`${apiPrefix}/customers`, customerRoutes);
+app.use(`${apiPrefix}/vendors`, vendorRoutes);
+app.use(`${apiPrefix}/riders`, riderRoutes);
+
+// ==================== 404 Handler ====================
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const error = new Error(`Not Found - ${req.originalUrl}`);
+  logger.warn(`404: ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+    path: req.originalUrl,
+  });
 });
-app.get("/swagger.json", (req, res) => {
-  res.json(swaggerSpec);
-});
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-app.use("/api/auth", authRoutes);
-
-app.use("/api/users", userRoutes);
-
-app.get("/api/health", (req, res) => {
-  res.json({ status: "OK" });
-});
-
+// ==================== Error Handler (Must be last) ====================
 app.use(errorHandler);
 
 export default app;

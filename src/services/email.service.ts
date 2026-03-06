@@ -1,11 +1,5 @@
 import nodemailer from "nodemailer";
-
-interface EmailOptions {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-}
+import { logger } from "../utils/logger";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -17,93 +11,152 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
-  try {
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-    });
-    return true;
-  } catch (error) {
-    console.error("Email send error:", error);
-    return false;
+export class EmailService {
+  static async sendOTPEmail(
+    email: string,
+    otp: string,
+    userName?: string,
+  ): Promise<boolean> {
+    try {
+      const mailOptions = {
+        from: process.env.SMTP_EMAIL,
+        to: email,
+        subject: "Your Chariot Connect Verification Code",
+        html: `
+          <h2>Verification Code</h2>
+          <p>Hello ${userName || "User"},</p>
+          <p>Your verification code is:</p>
+          <h1 style="color: #007AFF; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
+          <p>This code will expire in 15 minutes.</p>
+          <p>Do not share this code with anyone.</p>
+          <hr />
+          <p>If you did not request this code, please ignore this email.</p>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      logger.info(`OTP email sent to ${email}`);
+      return true;
+    } catch (error) {
+      logger.error("Error sending OTP email:", error);
+      throw error;
+    }
   }
-};
 
-export const sendOTPEmail = async (
-  email: string,
-  otp: string,
-): Promise<boolean> => {
-  return sendEmail({
-    to: email,
-    subject: "Your One-Time Password",
-    html: `
-      <h2>Your OTP</h2>
-      <p>Your one-time password is: <strong>${otp}</strong></p>
-      <p>This code will expire in 5 minutes.</p>
-    `,
-  });
-};
+  static async sendWelcomeEmail(
+    email: string,
+    userName: string,
+    userType: string,
+  ): Promise<boolean> {
+    try {
+      const mailOptions = {
+        from: process.env.SMTP_EMAIL,
+        to: email,
+        subject: "Welcome to Chariot Connect!",
+        html: `
+          <h2>Welcome to Chariot Connect</h2>
+          <p>Hello ${userName},</p>
+          <p>Your account as a <strong>${userType}</strong> has been successfully created.</p>
+          <p>You can now start using Chariot Connect to:</p>
+          <ul>
+            <li>Connect with vendors and riders</li>
+            <li>Browse services and products</li>
+            <li>Send real-time messages</li>
+            <li>Leave and read reviews</li>
+          </ul>
+          <p>Visit our app to get started!</p>
+          <hr />
+          <p>If you have any questions, please contact our support team.</p>
+        `,
+      };
 
-export const sendWelcomeEmail = async (
-  email: string,
-  name: string,
-): Promise<boolean> => {
-  return sendEmail({
-    to: email,
-    subject: "Welcome to Anora Admin",
-    html: `
-      <h2>Welcome, ${name}!</h2>
-      <p>Your account has been successfully created.</p>
-      <p>You can now log in with your credentials.</p>
-    `,
-  });
-};
+      await transporter.sendMail(mailOptions);
+      logger.info(`Welcome email sent to ${email}`);
+      return true;
+    } catch (error) {
+      logger.error("Error sending welcome email:", error);
+      throw error;
+    }
+  }
 
-export const sendResetEmail = async (
-  email: string,
-  resetLink: string,
-): Promise<boolean> => {
-  return sendEmail({
-    to: email,
-    subject: "Password Reset Request",
-    html: `
-      <h2>Password Reset</h2>
-      <p>Click the link below to reset your password:</p>
-      <a href="${resetLink}">Reset Password</a>
-      <p>This link will expire in 1 hour.</p>
-    `,
-  });
-};
+  static async sendVerificationStatusEmail(
+    email: string,
+    userName: string,
+    status: "VERIFIED" | "REJECTED",
+    reason?: string,
+  ): Promise<boolean> {
+    try {
+      const subject =
+        status === "VERIFIED"
+          ? "Your Account Has Been Verified"
+          : "Account Verification Failed";
 
-export const sendPasswordResetEmail = async (
-  email: string,
-  name: string,
-  token: string,
-): Promise<boolean> => {
-  const resetLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${token}`;
-  return sendEmail({
-    to: email,
-    subject: "Reset Your Password - Anora Admin",
-    html: `
-      <h2>Password Reset Request</h2>
-      <p>Hi ${name},</p>
-      <p>We received a request to reset your password. Click the button below to proceed:</p>
-      <a href="${resetLink}" style="
-        display: inline-block;
-        padding: 12px 24px;
-        background-color: #007bff;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        margin: 20px 0;
-      ">Reset Password</a>
-      <p style="color: #666;">Or copy and paste this link in your browser:</p>
-      <p style="word-break: break-all; color: #666;"><code>${resetLink}</code></p>
-      <p style="color: #999; font-size: 12px;">This link will expire in 1 hour. If you didn't request this, please ignore this email.</p>
-    `,
-  });
-};
+      const statusMessage =
+        status === "VERIFIED"
+          ? "Congratulations! Your account has been verified and is now active."
+          : `Your account verification failed. Reason: ${reason || "Document verification failed"}`;
+
+      const mailOptions = {
+        from: process.env.SMTP_EMAIL,
+        to: email,
+        subject,
+        html: `
+          <h2>${subject}</h2>
+          <p>Hello ${userName},</p>
+          <p>${statusMessage}</p>
+          ${status === "REJECTED" ? "<p>Please contact our support team for more information.</p>" : ""}
+          <hr />
+          <p>Chariot Connect Support Team</p>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      logger.info(`Verification status email sent to ${email}`);
+      return true;
+    } catch (error) {
+      logger.error("Error sending verification status email:", error);
+      throw error;
+    }
+  }
+
+  static async sendOrderNotificationEmail(
+    email: string,
+    orderDetails: any,
+  ): Promise<boolean> {
+    try {
+      const mailOptions = {
+        from: process.env.SMTP_EMAIL,
+        to: email,
+        subject: "New Order Notification",
+        html: `
+          <h2>New Order</h2>
+          <p>Order ID: ${orderDetails.orderId}</p>
+          <p>Amount: ${orderDetails.amount}</p>
+          <p>Status: ${orderDetails.status}</p>
+          <hr />
+          <p>Check your app for more details.</p>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      logger.info(`Order notification email sent to ${email}`);
+      return true;
+    } catch (error) {
+      logger.error("Error sending order notification email:", error);
+      throw error;
+    }
+  }
+
+  static async testEmailConnection(): Promise<boolean> {
+    try {
+      await transporter.verify();
+      logger.info("Email connection verified");
+      return true;
+    } catch (error) {
+      logger.error("Email connection failed:", error);
+      throw error;
+    }
+  }
+}
+
+export default EmailService;

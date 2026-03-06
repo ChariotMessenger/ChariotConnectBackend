@@ -7,74 +7,268 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                String     @id @default(auto()) @map("_id") @db.ObjectId
-  email             String     @unique
-  password          String
-  firstName         String
-  lastName          String
-  role              Role       @default(STAFF)
-  permissions       String[]
-  status            Status     @default(ACTIVE)
-  twoFactorEnabled  Boolean    @default(false)
-  totpSecret        String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  activityLogs      ActivityLog[]
+// ==================== ENUMS ====================
+
+enum UserRole {
+  CUSTOMER
+  VENDOR
+  RIDER
+  ADMIN
 }
 
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
 
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum OnlineStatus {
+  ONLINE
+  OFFLINE
+}
+
+// ==================== CUSTOMERS ====================
+
+model Customer {
+  id                     String           @id @default(auto()) @map("_id") @db.ObjectId
+  firstName              String
+  lastName               String
+  email                  String           @unique
+  phone                  String
+  birthday               DateTime
+  gender                 String
+  country                String
+  profilePhotoUrl        String?
+  password               String
+  receiveMarketingEmails Boolean          @default(false)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  otpVerifications      OTPVerification[]
+  favorites             FavoriteVendor[]
+  customerReviews       Review[]          @relation("CustomerReviews")
+  messages              Message[]         @relation("CustomerMessages")
+  messageRooms          MessageRoom[]     @relation("CustomerRooms")
+
+  @@index([country])
+}
+
+// ==================== VENDORS ====================
+
+model Vendor {
+  id                     String             @id @default(auto()) @map("_id") @db.ObjectId
+  firstName              String
+  lastName               String
+  email                  String             @unique
+  phone                  String
+  country                String
+  businessType           String
+  businessName           String
+  businessAddress        String
+  isOwner                Boolean
+  businessOwnerName      String?
+  isBusinessRegistered   Boolean
+  profilePhotoUrl        String?
+  password               String
+  receiveMarketingEmails Boolean            @default(false)
+  verificationStatus     VerificationStatus @default(PENDING)
+  verified               Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  otpVerifications      OTPVerification[]
+  favoritedBy           FavoriteVendor[]
+  catalogItems          CatalogItem[]
+  vendorReviews         Review[]           @relation("VendorReviews")
+  orders                Order[]
+  messages              Message[]          @relation("VendorMessages")
+  messageRooms          MessageRoom[]      @relation("VendorRooms")
+
+  @@index([country])
+  @@index([businessType])
+}
+
+// ==================== RIDERS ====================
+
+model Rider {
+  id                    String             @id @default(auto()) @map("_id") @db.ObjectId
+  firstName             String
+  lastName              String
+  email                 String             @unique
+  phone                 String
+  birthday              DateTime
+  gender                String
+  country               String
+  state                 String
+  areaOfWork            String
+  drivingLicenseUrl     String
+  ninNumber             String
+  idCardUrl             String
+  bikePlateNumber       String
+  profilePhotoUrl       String?
+  guarantorName         String
+  guarantorRelationship String
+  guarantorPhone        String
+  guarantorNin          String
+  guarantorIdCardUrl    String
+  bankName              String
+  accountNumber         String
+  accountName           String
+  verifyIdentityUrl     String
+  onlineStatus          OnlineStatus       @default(OFFLINE)
+  verificationStatus    VerificationStatus @default(PENDING)
+  verified              Boolean            @default(false)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  otpVerifications      OTPVerification[]
+
+  @@index([country])
+  @@index([state])
+  @@index([onlineStatus])
+}
+
+// ==================== AUTHENTICATION ====================
 
 model OTPVerification {
-  id                String     @id @default(auto()) @map("_id") @db.ObjectId
-  email             String
-  otp               String
-  expiresAt         DateTime
-  verified          Boolean    @default(false)
-  createdAt         DateTime   @default(now())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  code         String
+  email        String
+  userType     UserRole
+  userId       String?  @db.ObjectId
+  expiresAt    DateTime
+  verified     Boolean  @default(false)
+  attemptCount Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  customer     Customer? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor       Vendor?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rider        Rider?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([code])
+  @@index([userId])
+}
+// ==================== CATALOG ====================
+
+model CatalogItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId    String   @db.ObjectId
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  available   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
 }
 
-model PasswordReset {
-  id                String     @id @default(auto()) @map("_id") @db.ObjectId
-  email             String
-  token             String     @unique
-  expiresAt         DateTime
-  used              Boolean    @default(false)
-  createdAt         DateTime   @default(now())
+// ==================== ORDERS ====================
+
+model Order {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId    String      @db.ObjectId
+  customerId  String      @db.ObjectId
+  items       String      
+  totalAmount Float
+  status      OrderStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([customerId])
+  @@index([status])
 }
 
-model PasswordResetOTP {
-  id                String     @id @default(auto()) @map("_id") @db.ObjectId
-  email             String
-  otp               String
-  expiresAt         DateTime
-  used              Boolean    @default(false)
-  createdAt         DateTime   @default(now())
+// ==================== REVIEWS & RATINGS ====================
+
+model Review {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId    String   @db.ObjectId
+  customerId  String   @db.ObjectId
+  rating      Int      
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor      Vendor   @relation("VendorReviews", fields: [vendorId], references: [id], onDelete: Cascade)
+  customer    Customer @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, customerId])
+  @@index([vendorId])
+  @@index([customerId])
 }
 
+// ==================== FAVORITES ====================
 
+model FavoriteVendor {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  customerId  String   @db.ObjectId
+  vendorId    String   @db.ObjectId
+  createdAt   DateTime @default(now())
 
-model ActivityLog {
-  id                String     @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String     @db.ObjectId
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action            String
-  resource          String
-  resourceId        String?
-  changes           String?
-  ipAddress         String?
-  userAgent         String?
-  createdAt         DateTime   @default(now())
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, vendorId])
+  @@index([customerId])
+  @@index([vendorId])
 }
 
-enum Role {
-  SUPER_ADMIN
-  ADMIN
-  STAFF
+// ==================== MESSAGING ====================
+
+model MessageRoom {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  customerId  String    @db.ObjectId
+  vendorId    String    @db.ObjectId
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  customer    Customer  @relation("CustomerRooms", fields: [customerId], references: [id], onDelete: Cascade)
+  vendor      Vendor    @relation("VendorRooms", fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, vendorId])
+  @@index([customerId])
+  @@index([vendorId])
 }
 
-enum Status {
-  ACTIVE
-  INACTIVE
-  SUSPENDED
+model Message {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  roomId      String        @db.ObjectId
+  senderId    String        @db.ObjectId
+  senderType  UserRole
+  content     String
+  status      MessageStatus @default(SENT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  room        MessageRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  customer    Customer?     @relation("CustomerMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  vendor      Vendor?       @relation("VendorMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([senderId])
+  @@index([status])
 }

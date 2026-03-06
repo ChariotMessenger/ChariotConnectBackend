@@ -1,18 +1,78 @@
-import crypto from 'crypto';
+import { prisma } from "../config/database";
+import { logger } from "./logger";
+import { UserRole } from "@prisma/client";
 
 export const generateOTP = (): string => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(1000 + Math.random() * 9000).toString();
 };
 
-export const generateOTPExpiry = (): Date => {
-  const expiryMs = parseInt(process.env.OTP_EXPIRE || '300000');
-  return new Date(Date.now() + expiryMs);
+export const createOTPVerification = async (
+  email: string,
+  userType: UserRole,
+  userId?: string,
+) => {
+  try {
+    const code = generateOTP();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    const otp = await prisma.oTPVerification.create({
+      data: {
+        code,
+        email,
+        userType,
+        userId,
+        expiresAt,
+      },
+    });
+
+    logger.info(`OTP created for ${email}`);
+    return otp;
+  } catch (error) {
+    logger.error("Error creating OTP:", error);
+    throw error;
+  }
 };
 
-export const verifyOTPExpiry = (expiresAt: Date): boolean => {
-  return new Date() <= expiresAt;
+export const verifyOTP = async (email: string, code: string) => {
+  try {
+    const otp = await prisma.oTPVerification.findFirst({
+      where: {
+        email,
+        code,
+        verified: false,
+      },
+    });
+
+    if (!otp) {
+      return null;
+    }
+
+    if (new Date() > otp.expiresAt) {
+      return null;
+    }
+
+    // Mark as verified
+    await prisma.oTPVerification.update({
+      where: { id: otp.id },
+      data: { verified: true },
+    });
+
+    logger.info(`OTP verified for ${email}`);
+    return otp;
+  } catch (error) {
+    logger.error("Error verifying OTP:", error);
+    throw error;
+  }
 };
 
-export const generateSecureToken = (length: number = 32): string => {
-  return crypto.randomBytes(length).toString('hex');
+export const invalidateOTP = async (email: string) => {
+  try {
+    await prisma.oTPVerification.deleteMany({
+      where: { email, verified: false },
+    });
+    logger.info(`OTP invalidated for ${email}`);
+  } catch (error) {
+    logger.error("Error invalidating OTP:", error);
+    throw error;
+  }
 };
