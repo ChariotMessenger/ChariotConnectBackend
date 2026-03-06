@@ -13,7 +13,7 @@ export const createOTPVerification = async (
 ) => {
   try {
     const code = generateOTP();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const otp = await prisma.oTPVerification.create({
       data: {

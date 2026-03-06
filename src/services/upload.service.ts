@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import { logger } from "../utils/logger";
+import multer from "multer"; // Add this
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -9,7 +10,7 @@ cloudinary.config({
 
 export class UploadService {
   static async uploadProfilePhoto(
-    file: Express.Multer.File,
+    file: Express.Multer.File, // This will now resolve properly
     userId: string,
     userType: string,
   ): Promise<string> {
