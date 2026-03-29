@@ -7,8 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== ENUMS ====================
-
 enum UserRole {
   CUSTOMER
   VENDOR
@@ -41,33 +39,28 @@ enum OnlineStatus {
   OFFLINE
 }
 
-// ==================== CUSTOMERS ====================
-
 model Customer {
-  id                     String           @id @default(auto()) @map("_id") @db.ObjectId
+  id                     String            @id @default(auto()) @map("_id") @db.ObjectId
   firstName              String
   lastName               String
-  email                  String           @unique
+  email                  String            @unique
   phone                  String
   birthday               DateTime
   gender                 String
   country                String
+  currency               String            @default("NGN")
   profilePhotoUrl        String?
   password               String
-  receiveMarketingEmails Boolean          @default(false)
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
-
-  otpVerifications      OTPVerification[]
-  favorites             FavoriteVendor[]
-  customerReviews       Review[]          @relation("CustomerReviews")
-  messages              Message[]         @relation("CustomerMessages")
-  messageRooms          MessageRoom[]     @relation("CustomerRooms")
-
+  receiveMarketingEmails Boolean           @default(false)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  otpVerifications       OTPVerification[]
+  favorites              FavoriteVendor[]
+  customerReviews        Review[]          @relation("CustomerReviews")
+  messages               Message[]         @relation("CustomerMessages")
+  messageRooms           MessageRoom[]     @relation("CustomerRooms")
   @@index([country])
 }
-
-// ==================== VENDORS ====================
 
 model Vendor {
   id                     String             @id @default(auto()) @map("_id") @db.ObjectId
@@ -76,6 +69,7 @@ model Vendor {
   email                  String             @unique
   phone                  String
   country                String
+  currency               String             @default("NGN")
   businessType           String
   businessName           String
   businessAddress        String
@@ -89,20 +83,16 @@ model Vendor {
   verified               Boolean            @default(false)
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
-
-  otpVerifications      OTPVerification[]
-  favoritedBy           FavoriteVendor[]
-  catalogItems          CatalogItem[]
-  vendorReviews         Review[]           @relation("VendorReviews")
-  orders                Order[]
-  messages              Message[]          @relation("VendorMessages")
-  messageRooms          MessageRoom[]      @relation("VendorRooms")
-
+  otpVerifications       OTPVerification[]
+  favoritedBy            FavoriteVendor[]
+  catalogItems           CatalogItem[]
+  vendorReviews          Review[]           @relation("VendorReviews")
+  orders                 Order[]
+  messages               Message[]          @relation("VendorMessages")
+  messageRooms           MessageRoom[]      @relation("VendorRooms")
   @@index([country])
   @@index([businessType])
 }
-
-// ==================== RIDERS ====================
 
 model Rider {
   id                    String             @id @default(auto()) @map("_id") @db.ObjectId
@@ -113,6 +103,7 @@ model Rider {
   birthday              DateTime
   gender                String
   country               String
+  currency              String             @default("NGN")
   state                 String
   areaOfWork            String
   drivingLicenseUrl     String
@@ -134,36 +125,29 @@ model Rider {
   verified              Boolean            @default(false)
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
-
   otpVerifications      OTPVerification[]
-
   @@index([country])
   @@index([state])
   @@index([onlineStatus])
 }
 
-// ==================== AUTHENTICATION ====================
-
 model OTPVerification {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
   code         String
   email        String
   userType     UserRole
-  userId       String?  @db.ObjectId
+  userId       String?   @db.ObjectId
   expiresAt    DateTime
-  verified     Boolean  @default(false)
-  attemptCount Int      @default(0)
-  createdAt    DateTime @default(now())
-
+  verified     Boolean   @default(false)
+  attemptCount Int       @default(0)
+  createdAt    DateTime  @default(now())
   customer     Customer? @relation(fields: [userId], references: [id], onDelete: Cascade)
   vendor       Vendor?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   rider        Rider?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([email])
   @@index([code])
   @@index([userId])
 }
-// ==================== CATALOG ====================
 
 model CatalogItem {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -175,100 +159,110 @@ model CatalogItem {
   available   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
   vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
   @@index([vendorId])
 }
-
-// ==================== ORDERS ====================
 
 model Order {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   vendorId    String      @db.ObjectId
   customerId  String      @db.ObjectId
-  items       String      
+  items       String
   totalAmount Float
+  currency    String
   status      OrderStatus @default(PENDING)
   notes       String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-
   vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
   @@index([vendorId])
   @@index([customerId])
   @@index([status])
 }
 
-// ==================== REVIEWS & RATINGS ====================
-
 model Review {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  vendorId    String   @db.ObjectId
-  customerId  String   @db.ObjectId
-  rating      Int      
-  comment     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  vendor      Vendor   @relation("VendorReviews", fields: [vendorId], references: [id], onDelete: Cascade)
-  customer    Customer @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
-
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId   String   @db.ObjectId
+  customerId String   @db.ObjectId
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  vendor     Vendor   @relation("VendorReviews", fields: [vendorId], references: [id], onDelete: Cascade)
+  customer   Customer @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
   @@unique([vendorId, customerId])
   @@index([vendorId])
   @@index([customerId])
 }
 
-// ==================== FAVORITES ====================
-
 model FavoriteVendor {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  customerId  String   @db.ObjectId
-  vendorId    String   @db.ObjectId
-  createdAt   DateTime @default(now())
-
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  customerId String   @db.ObjectId
+  vendorId   String   @db.ObjectId
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   @@unique([customerId, vendorId])
   @@index([customerId])
   @@index([vendorId])
 }
 
-// ==================== MESSAGING ====================
-
 model MessageRoom {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  customerId  String    @db.ObjectId
-  vendorId    String    @db.ObjectId
-  messages    Message[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  customer    Customer  @relation("CustomerRooms", fields: [customerId], references: [id], onDelete: Cascade)
-  vendor      Vendor    @relation("VendorRooms", fields: [vendorId], references: [id], onDelete: Cascade)
-
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  customerId String    @db.ObjectId
+  vendorId   String    @db.ObjectId
+  messages   Message[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  customer   Customer  @relation("CustomerRooms", fields: [customerId], references: [id], onDelete: Cascade)
+  vendor     Vendor    @relation("VendorRooms", fields: [vendorId], references: [id], onDelete: Cascade)
   @@unique([customerId, vendorId])
   @@index([customerId])
   @@index([vendorId])
 }
 
 model Message {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  roomId      String        @db.ObjectId
-  senderId    String        @db.ObjectId
-  senderType  UserRole
-  content     String
-  status      MessageStatus @default(SENT)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  room        MessageRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  customer    Customer?     @relation("CustomerMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  vendor      Vendor?       @relation("VendorMessages", fields: [senderId], references: [id], onDelete: Cascade)
-
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  roomId     String        @db.ObjectId
+  senderId   String        @db.ObjectId
+  senderType UserRole
+  content    String
+  status     MessageStatus @default(SENT)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  room       MessageRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  customer   Customer?     @relation("CustomerMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  vendor     Vendor?       @relation("VendorMessages", fields: [senderId], references: [id], onDelete: Cascade)
   @@index([roomId])
   @@index([senderId])
   @@index([status])
+}
+
+enum AdminStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+model Admin {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String      @unique
+  password  String
+  roleId    String      @db.ObjectId
+  status    AdminStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  role      Role        @relation(fields: [roleId], references: [id])
+  @@index([status])
+}
+
+model Role {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String   @unique
+  description String?
+  permissions String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  admins      Admin[]
 }
