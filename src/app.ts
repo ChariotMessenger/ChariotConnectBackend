@@ -16,6 +16,10 @@ import customerRoutes from "./routes/customer.routes";
 import vendorRoutes from "./routes/vendor.routes";
 import riderRoutes from "./routes/rider.routes";
 import healthRoutes from "./routes/health.routes";
+import orderRoutes from "./routes/order.routes";
+
+//Admin
+import adminManagementRoutes from "./routes/admin/adminManagement.routes";
 
 // Config
 import { swaggerOptions } from "./config/swagger";
@@ -98,6 +102,10 @@ const apiPrefix = `/api/${apiVersion}`;
 app.use(`${apiPrefix}/customers`, customerRoutes);
 app.use(`${apiPrefix}/vendors`, vendorRoutes);
 app.use(`${apiPrefix}/riders`, riderRoutes);
+app.use(`${apiPrefix}/orders`, orderRoutes);
+
+//Admin
+app.use(`${apiPrefix}/admin`, adminManagementRoutes);
 
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {
