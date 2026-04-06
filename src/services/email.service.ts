@@ -19,7 +19,8 @@ export class EmailService {
   ): Promise<boolean> {
     try {
       const mailOptions = {
-        from: process.env.SMTP_EMAIL,
+        // from: process.env.SMTP_EMAIL,
+        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
         to: email,
         subject: "Your Chariot Connect Verification Code",
         html: `
@@ -50,7 +51,8 @@ export class EmailService {
   ): Promise<boolean> {
     try {
       const mailOptions = {
-        from: process.env.SMTP_EMAIL,
+        // from: process.env.SMTP_EMAIL,
+        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
         to: email,
         subject: "Welcome to Chariot Connect!",
         html: `
@@ -97,7 +99,8 @@ export class EmailService {
           : `Your account verification failed. Reason: ${reason || "Document verification failed"}`;
 
       const mailOptions = {
-        from: process.env.SMTP_EMAIL,
+        // from: process.env.SMTP_EMAIL,
+        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
         to: email,
         subject,
         html: `
@@ -125,7 +128,8 @@ export class EmailService {
   ): Promise<boolean> {
     try {
       const mailOptions = {
-        from: process.env.SMTP_EMAIL,
+        // from: process.env.SMTP_EMAIL,
+        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
         to: email,
         subject: "New Order Notification",
         html: `
