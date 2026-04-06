@@ -90,3 +90,29 @@ export const optionalAuthMiddleware = (
 
   next();
 };
+
+export const authorize = (requiredPermission: string) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    const user = req.user as any;
+
+    if (user?.userType !== "ADMIN") {
+      return next(
+        new CustomError("Access denied. Admins only.", 403, "FORBIDDEN"),
+      );
+    }
+
+    // decode standard jwt for permissions if not present in request
+    const permissions: string[] = user.permissions || [];
+
+    if (
+      !permissions.includes(requiredPermission) &&
+      !permissions.includes("SUPER_ADMIN")
+    ) {
+      return next(
+        new CustomError("Insufficient permissions", 403, "INSUFFICIENT_PERMS"),
+      );
+    }
+
+    next();
+  };
+};

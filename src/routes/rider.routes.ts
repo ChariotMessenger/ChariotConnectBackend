@@ -173,8 +173,8 @@ router.post(
   },
 );
 
-// Protected routes
-router.use(authMiddleware);
+const protectedRouter = Router();
+protectedRouter.use(authMiddleware as any);
 
 /**
  * @swagger
@@ -189,7 +189,7 @@ router.use(authMiddleware);
  *       200:
  *         description: Rider profile retrieved
  */
-router.get(
+protectedRouter.get(
   "/profile",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -213,7 +213,7 @@ router.get(
  *       200:
  *         description: Profile updated
  */
-router.put(
+protectedRouter.put(
   "/profile",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -237,7 +237,7 @@ router.put(
  *       200:
  *         description: Profile photo updated
  */
-router.post(
+protectedRouter.post(
   "/profile/photo",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -262,7 +262,7 @@ router.post(
  *       200:
  *         description: Rider is now online
  */
-router.post(
+protectedRouter.post(
   "/go-online",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -287,7 +287,7 @@ router.post(
  *       200:
  *         description: Rider is now offline
  */
-router.post(
+protectedRouter.post(
   "/go-offline",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -318,7 +318,7 @@ router.post(
  *       200:
  *         description: Online riders retrieved
  */
-router.get(
+protectedRouter.get(
   "/online",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -328,5 +328,5 @@ router.get(
     }
   },
 );
-
+router.use("/", protectedRouter);
 export default router;

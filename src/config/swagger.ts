@@ -13,13 +13,26 @@ export const swaggerOptions: Options = {
         email: "support@chariotconnect.com",
       },
     },
+    // Explicitly define tags to prevent the "name" reading error
+    tags: [
+      { name: "Admin", description: "Admin dashboard and analytics" },
+      { name: "Admin Auth", description: "Authentication for administrators" },
+      {
+        name: "Admin Management",
+        description: "Roles and Admin user management",
+      },
+      { name: "Orders", description: "Order management and payments" },
+      { name: "Customers", description: "Customer account operations" },
+      { name: "Vendors", description: "Vendor account operations" },
+      { name: "Riders", description: "Rider account operations" },
+    ],
     servers: [
       {
         url: "http://localhost:3000/api/v1",
         description: "Development server",
       },
       {
-        url: "https://chariot-web-api.onrender.com/api/v1",
+        url: "https://chariotconnectbackend.onrender.com/api/v1",
         description: "Production server",
       },
     ],
@@ -36,34 +49,17 @@ export const swaggerOptions: Options = {
         Error: {
           type: "object",
           properties: {
-            success: {
-              type: "boolean",
-              example: false,
-            },
-            message: {
-              type: "string",
-              example: "Error message",
-            },
-            code: {
-              type: "string",
-              example: "ERROR_CODE",
-            },
+            success: { type: "boolean", example: false },
+            message: { type: "string", example: "Error message" },
+            code: { type: "string", example: "ERROR_CODE" },
           },
         },
         Success: {
           type: "object",
           properties: {
-            success: {
-              type: "boolean",
-              example: true,
-            },
-            message: {
-              type: "string",
-              example: "Success message",
-            },
-            data: {
-              type: "object",
-            },
+            success: { type: "boolean", example: true },
+            message: { type: "string", example: "Success message" },
+            data: { type: "object" },
           },
         },
       },
@@ -74,5 +70,6 @@ export const swaggerOptions: Options = {
       },
     ],
   },
-  apis: ["./src/routes/*.ts", "./src/controllers/*.ts"],
+  // Ensure we look deep into subfolders
+  apis: ["./src/routes/**/*.ts", "./src/controllers/**/*.ts"],
 };

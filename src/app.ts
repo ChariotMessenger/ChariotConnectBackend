@@ -9,7 +9,6 @@ import swaggerJsDoc from "swagger-jsdoc";
 // Middleware
 import { errorHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
-import { authMiddleware } from "./middlewares/auth";
 
 // Routes
 import customerRoutes from "./routes/customer.routes";
@@ -20,6 +19,8 @@ import orderRoutes from "./routes/order.routes";
 
 //Admin
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
+import adminAuthRoutes from "./routes/admin/adminAuth.routes";
+import adminAnalyticsRoutes from "./routes/admin/adminAnalytics.routes";
 
 // Config
 import { swaggerOptions } from "./config/swagger";
@@ -105,7 +106,9 @@ app.use(`${apiPrefix}/riders`, riderRoutes);
 app.use(`${apiPrefix}/orders`, orderRoutes);
 
 //Admin
-app.use(`${apiPrefix}/admin`, adminManagementRoutes);
+app.use(`${apiPrefix}/admins`, adminManagementRoutes);
+app.use(`${apiPrefix}/admin/auth`, adminAuthRoutes);
+app.use(`${apiPrefix}/admin`, adminAnalyticsRoutes);
 
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {

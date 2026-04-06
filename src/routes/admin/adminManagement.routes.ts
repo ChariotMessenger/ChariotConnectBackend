@@ -117,42 +117,54 @@ router.get("/", AdminController.handleGetAdmins);
  * - in: path
  * name: id
  * required: true
- * schema: { type: string }
+ * schema:
+ * type: string
  * requestBody:
  * content:
  * application/json:
  * schema:
  * type: object
  * properties:
- * title: { type: string }
- * description: { type: string }
- * permissions: { type: array, items: { type: string } }
+ * title:
+ * type: string
+ * description:
+ * type: string
+ * permissions:
+ * type: array
+ * items:
+ * type: string
  * responses:
  * 200:
  * description: Role updated successfully
  */
+
 router.patch("/roles/:id", AdminController.handleUpdateRole);
 
 /**
  * @swagger
  * /admins/{id}:
  * patch:
- * summary: Update admin details (status, role, name)
+ * summary: Update admin details
  * tags: [Admin Management]
  * parameters:
  * - in: path
  * name: id
  * required: true
- * schema: { type: string }
+ * schema:
+ * type: string
  * requestBody:
  * content:
  * application/json:
  * schema:
  * type: object
  * properties:
- * name: { type: string }
- * roleId: { type: string }
- * status: { type: string, enum: [ACTIVE, SUSPENDED, INACTIVE] }
+ * name:
+ * type: string
+ * roleId:
+ * type: string
+ * status:
+ * type: string
+ * enum: [ACTIVE, SUSPENDED, INACTIVE]
  * responses:
  * 200:
  * description: Admin updated successfully

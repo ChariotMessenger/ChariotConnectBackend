@@ -229,8 +229,8 @@ router.post(
 );
 
 // Protected routes
-router.use(authMiddleware);
-
+const protectedRouter = Router();
+protectedRouter.use(authMiddleware as any);
 /**
  * @swagger
  * /vendors/profile:
@@ -244,7 +244,7 @@ router.use(authMiddleware);
  *       200:
  *         description: Vendor profile retrieved
  */
-router.get(
+protectedRouter.get(
   "/profile",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -268,7 +268,7 @@ router.get(
  *       200:
  *         description: Profile updated
  */
-router.put(
+protectedRouter.put(
   "/profile",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -292,7 +292,7 @@ router.put(
  *       200:
  *         description: Profile photo updated
  */
-router.post(
+protectedRouter.post(
   "/profile/photo",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -334,7 +334,7 @@ router.post(
  *       201:
  *         description: Catalog item created
  */
-router.post(
+protectedRouter.post(
   "/catalog",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -364,7 +364,7 @@ router.post(
  *       200:
  *         description: Catalog item updated
  */
-router.put(
+protectedRouter.put(
   "/catalog/:itemId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -394,7 +394,7 @@ router.put(
  *       200:
  *         description: Catalog item deleted
  */
-router.delete(
+protectedRouter.delete(
   "/catalog/:itemId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -418,7 +418,7 @@ router.delete(
  *       200:
  *         description: Vendor catalog retrieved
  */
-router.get(
+protectedRouter.get(
   "/catalog",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -447,7 +447,7 @@ router.get(
  *       200:
  *         description: Vendor orders retrieved
  */
-router.get(
+protectedRouter.get(
   "/orders",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -477,7 +477,7 @@ router.get(
  *       200:
  *         description: Order accepted
  */
-router.post(
+protectedRouter.post(
   "/orders/:orderId/accept",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -507,7 +507,7 @@ router.post(
  *       200:
  *         description: Order rejected
  */
-router.post(
+protectedRouter.post(
   "/orders/:orderId/reject",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -537,7 +537,7 @@ router.post(
  *       200:
  *         description: Order completed
  */
-router.post(
+protectedRouter.post(
   "/orders/:orderId/complete",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -561,7 +561,7 @@ router.post(
  *       200:
  *         description: Vendor messages retrieved
  */
-router.get(
+protectedRouter.get(
   "/messages",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -591,7 +591,7 @@ router.get(
  *       200:
  *         description: Room messages retrieved
  */
-router.get(
+protectedRouter.get(
   "/messages/:roomId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -615,7 +615,7 @@ router.get(
  *       200:
  *         description: Vendor reviews retrieved
  */
-router.get(
+protectedRouter.get(
   "/reviews",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -625,5 +625,5 @@ router.get(
     }
   },
 );
-
+router.use("/", protectedRouter);
 export default router;
