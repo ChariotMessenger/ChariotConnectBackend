@@ -27,11 +27,13 @@ export class CustomerService {
       if (existingCustomer) {
         throw new CustomError("Email already registered", 400, "EMAIL_EXISTS");
       }
+      console.log(data);
 
       // Create temporary OTP record with email
       const otp = await createOTPVerification(data.email, UserRole.CUSTOMER);
 
       // Send OTP to email
+
       await EmailService.sendOTPEmail(data.email, otp.code, data.firstName);
 
       logger.info(`Customer registration Step 1 initiated for ${data.email}`);

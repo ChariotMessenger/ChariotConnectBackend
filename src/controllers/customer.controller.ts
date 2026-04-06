@@ -14,7 +14,37 @@ import { CustomError } from "../middlewares/errorHandler";
 export class CustomerController {
   static async registerStep1(req: AuthRequest, res: Response) {
     try {
-      const result = await customerService.registerStep1(req.body);
+      const {
+        email,
+        firstName,
+        lastName,
+        phone,
+        birthday,
+        gender,
+        country,
+        receiveMarketingEmails,
+      } = req.body;
+
+      // Check if the essential field is missing
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required",
+          code: "MISSING_EMAIL",
+        });
+      }
+
+      const result = await customerService.registerStep1({
+        email,
+        firstName,
+        lastName,
+        phone,
+        birthday,
+        gender,
+        country,
+        receiveMarketingEmails,
+      });
+
       res.status(200).json(result);
     } catch (error) {
       logger.error("Error in registerStep1:", error);
