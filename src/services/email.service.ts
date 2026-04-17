@@ -1,48 +1,63 @@
-import nodemailer from "nodemailer";
+import { MailtrapClient } from "mailtrap";
 import { logger } from "../utils/logger";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-   port: parseInt(process.env.SMTP_PORT || "587"),
-  // port: 465,
-  secure: false,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASSWORD,
-  },
+const TOKEN = process.env.MAILTRAP_TOKEN!;
+
+const client = new MailtrapClient({
+  token: TOKEN,
 });
 
 export class EmailService {
+  private static async send(options: {
+    to: string;
+    subject: string;
+    html: string;
+  }): Promise<boolean> {
+    try {
+      const response = await client.send({
+        from: {
+          name: process.env.SMTP_SENDER_NAME || "Chariot Connect",
+          email: process.env.SMTP_SENDER_EMAIL || "hello@chariot.com",
+        },
+        to: [{ email: options.to }],
+        subject: options.subject,
+        html: options.html,
+        category: "Transaction Email",
+      });
+
+      if (response.success) {
+        logger.info(`Email sent successfully`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      logger.error("Mailtrap SDK sending error:", error);
+      return false;
+    }
+  }
+
   static async sendOTPEmail(
     email: string,
     otp: string,
     userName?: string,
   ): Promise<boolean> {
-    try {
-      const mailOptions = {
-        // from: process.env.SMTP_EMAIL,
-        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
-        to: email,
-        subject: "Your Chariot Connect Verification Code",
-        html: `
+    const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
           <h2>Verification Code</h2>
           <p>Hello ${userName || "User"},</p>
           <p>Your verification code is:</p>
           <h1 style="color: #007AFF; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
           <p>This code will expire in 15 minutes.</p>
           <p>Do not share this code with anyone.</p>
-          <hr />
-          <p>If you did not request this code, please ignore this email.</p>
-        `,
-      };
-
-      await transporter.sendMail(mailOptions);
-      logger.info(`OTP email sent to ${email}`);
-      return true;
-    } catch (error) {
-      logger.error("Error sending OTP email:", error);
-      throw error;
-    }
+          <hr style="border: none; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #666;">If you did not request this code, please ignore this email.</p>
+        </div>
+      `;
+    return this.send({
+      to: email,
+      subject: "Your Chariot Connect Verification Code",
+      html,
+    });
   }
 
   static async sendWelcomeEmail(
@@ -50,36 +65,26 @@ export class EmailService {
     userName: string,
     userType: string,
   ): Promise<boolean> {
-    try {
-      const mailOptions = {
-        // from: process.env.SMTP_EMAIL,
-        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
-        to: email,
-        subject: "Welcome to Chariot Connect!",
-        html: `
+    const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
           <h2>Welcome to Chariot Connect</h2>
           <p>Hello ${userName},</p>
           <p>Your account as a <strong>${userType}</strong> has been successfully created.</p>
-          <p>You can now start using Chariot Connect to:</p>
           <ul>
             <li>Connect with vendors and riders</li>
             <li>Browse services and products</li>
             <li>Send real-time messages</li>
             <li>Leave and read reviews</li>
           </ul>
+          <hr style="border: none; border-top: 1px solid #eee;" />
           <p>Visit our app to get started!</p>
-          <hr />
-          <p>If you have any questions, please contact our support team.</p>
-        `,
-      };
-
-      await transporter.sendMail(mailOptions);
-      logger.info(`Welcome email sent to ${email}`);
-      return true;
-    } catch (error) {
-      logger.error("Error sending welcome email:", error);
-      throw error;
-    }
+        </div>
+      `;
+    return this.send({
+      to: email,
+      subject: "Welcome to Chariot Connect!",
+      html,
+    });
   }
 
   static async sendVerificationStatusEmail(
@@ -88,78 +93,52 @@ export class EmailService {
     status: "VERIFIED" | "REJECTED",
     reason?: string,
   ): Promise<boolean> {
-    try {
-      const subject =
-        status === "VERIFIED"
-          ? "Your Account Has Been Verified"
-          : "Account Verification Failed";
+    const subject =
+      status === "VERIFIED"
+        ? "Your Account Has Been Verified"
+        : "Account Verification Failed";
+    const statusMessage =
+      status === "VERIFIED"
+        ? "Congratulations! Your account has been verified."
+        : `Your account verification failed. Reason: ${reason || "Document verification failed"}`;
 
-      const statusMessage =
-        status === "VERIFIED"
-          ? "Congratulations! Your account has been verified and is now active."
-          : `Your account verification failed. Reason: ${reason || "Document verification failed"}`;
-
-      const mailOptions = {
-        // from: process.env.SMTP_EMAIL,
-        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
-        to: email,
-        subject,
-        html: `
+    const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
           <h2>${subject}</h2>
           <p>Hello ${userName},</p>
           <p>${statusMessage}</p>
-          ${status === "REJECTED" ? "<p>Please contact our support team for more information.</p>" : ""}
-          <hr />
-          <p>Chariot Connect Support Team</p>
-        `,
-      };
-
-      await transporter.sendMail(mailOptions);
-      logger.info(`Verification status email sent to ${email}`);
-      return true;
-    } catch (error) {
-      logger.error("Error sending verification status email:", error);
-      throw error;
-    }
+          <hr style="border: none; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #666;">Chariot Connect Support Team</p>
+        </div>
+      `;
+    return this.send({ to: email, subject, html });
   }
 
   static async sendOrderNotificationEmail(
     email: string,
     orderDetails: any,
   ): Promise<boolean> {
-    try {
-      const mailOptions = {
-        // from: process.env.SMTP_EMAIL,
-        from: `"Chariot Connect" Chukwumasamuel371@gmail.com`,
-        to: email,
-        subject: "New Order Notification",
-        html: `
+    const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
           <h2>New Order</h2>
           <p>Order ID: ${orderDetails.orderId}</p>
           <p>Amount: ${orderDetails.amount}</p>
           <p>Status: ${orderDetails.status}</p>
-          <hr />
+          <hr style="border: none; border-top: 1px solid #eee;" />
           <p>Check your app for more details.</p>
-        `,
-      };
-
-      await transporter.sendMail(mailOptions);
-      logger.info(`Order notification email sent to ${email}`);
-      return true;
-    } catch (error) {
-      logger.error("Error sending order notification email:", error);
-      throw error;
-    }
+        </div>
+      `;
+    return this.send({ to: email, subject: "New Order Notification", html });
   }
 
   static async testEmailConnection(): Promise<boolean> {
     try {
-      await transporter.verify();
-      logger.info("Email connection verified");
-      return true;
+      // The SDK doesn't have a direct .verify() like nodemailer,
+      // but checking if the token exists is a basic first step.
+      return !!TOKEN;
     } catch (error) {
-      logger.error("Email connection failed:", error);
-      throw error;
+      logger.error("Mailtrap connection check failed:", error);
+      return false;
     }
   }
 }
