@@ -95,18 +95,18 @@ export class CustomerController {
 
   static async loginWithPassword(req: AuthRequest, res: Response) {
     try {
-      const { email, password } = req.body;
+      const { identifier, password } = req.body;
 
-      if (!email || !password) {
+      if (!identifier || !password) {
         return res.status(400).json({
           success: false,
-          message: "Email and password are required",
+          message: "Email/Phone and password are required",
           code: "MISSING_CREDENTIALS",
         });
       }
 
       const result = await customerService.loginWithPassword({
-        email,
+        identifier,
         password,
       });
       res.status(200).json(result);

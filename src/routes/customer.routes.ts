@@ -242,13 +242,12 @@ router.post(
     }
   },
 );
-
 /**
  * @swagger
  * /customers/login:
  *   post:
  *     summary: Login with Password
- *     description: Authenticate customer using email and password
+ *     description: Authenticate customer using email or phone number and password
  *     tags:
  *       - Customer Authentication
  *     requestBody:
@@ -258,17 +257,21 @@ router.post(
  *           schema:
  *             type: object
  *             required:
- *               - email
+ *               - identifier
  *               - password
  *             properties:
- *               email:
+ *               identifier:
  *                 type: string
- *                 format: email
+ *                 description: The customer's registered email address or phone number
+ *                 example: user@example.com or +2348012345678
  *               password:
  *                 type: string
+ *                 format: password
  *     responses:
  *       200:
  *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
  */
 router.post(
   "/login",
@@ -280,7 +283,6 @@ router.post(
     }
   },
 );
-
 /**
  * @swagger
  * /customers/login/step-1:

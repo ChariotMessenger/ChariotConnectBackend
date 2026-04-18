@@ -216,15 +216,20 @@ export class CustomerService {
     }
   }
 
-  static async loginWithPassword(data: { email: string; password: string }) {
+  static async loginWithPassword(data: {
+    identifier: string;
+    password: string;
+  }) {
     try {
-      const customer = await prisma.customer.findUnique({
-        where: { email: data.email },
+      const customer = await prisma.customer.findFirst({
+        where: {
+          OR: [{ email: data.identifier }, { phone: data.identifier }],
+        },
       });
 
       if (!customer) {
         throw new CustomError(
-          "Invalid email or password",
+          "Invalid credentials",
           401,
           "INVALID_CREDENTIALS",
         );
@@ -237,7 +242,7 @@ export class CustomerService {
 
       if (!isPasswordValid) {
         throw new CustomError(
-          "Invalid email or password",
+          "Invalid credentials",
           401,
           "INVALID_CREDENTIALS",
         );
@@ -249,7 +254,7 @@ export class CustomerService {
         userType: UserRole.CUSTOMER,
       });
 
-      logger.info(`Customer logged in with password: ${data.email}`);
+      logger.info(`Customer logged in: ${customer.email}`);
 
       return {
         success: true,
@@ -270,7 +275,6 @@ export class CustomerService {
       throw error;
     }
   }
-
   static async loginStep1(email: string) {
     try {
       const customer = await prisma.customer.findUnique({
