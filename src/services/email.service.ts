@@ -1,10 +1,15 @@
-import { MailtrapClient } from "mailtrap";
+import nodemailer from "nodemailer";
 import { logger } from "../utils/logger";
 
-const TOKEN = process.env.MAILTRAP_TOKEN!;
-
-const client = new MailtrapClient({
-  token: TOKEN,
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    type: "OAuth2",
+    user: process.env.GOOGLE_USER,
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+  },
 });
 
 export class EmailService {
@@ -14,24 +19,17 @@ export class EmailService {
     html: string;
   }): Promise<boolean> {
     try {
-      const response = await client.send({
-        from: {
-          name: process.env.SMTP_SENDER_NAME || "Chariot Connect",
-          email: process.env.SMTP_SENDER_EMAIL || "hello@chariot.com",
-        },
-        to: [{ email: options.to }],
+      const info = await transporter.sendMail({
+        from: `"${process.env.SMTP_SENDER_NAME}" <${process.env.GOOGLE_USER}>`,
+        to: options.to,
         subject: options.subject,
         html: options.html,
-        category: "Transaction Email",
       });
 
-      if (response.success) {
-        logger.info(`Email sent successfully`);
-        return true;
-      }
-      return false;
+      logger.info(`Email sent: ${info.messageId}`);
+      return true;
     } catch (error) {
-      logger.error("Mailtrap SDK sending error:", error);
+      logger.error("Gmail API sending error:", error);
       return false;
     }
   }
@@ -133,11 +131,10 @@ export class EmailService {
 
   static async testEmailConnection(): Promise<boolean> {
     try {
-      // The SDK doesn't have a direct .verify() like nodemailer,
-      // but checking if the token exists is a basic first step.
-      return !!TOKEN;
+      await transporter.verify();
+      return true;
     } catch (error) {
-      logger.error("Mailtrap connection check failed:", error);
+      logger.error("Gmail API connection check failed:", error);
       return false;
     }
   }
