@@ -19,18 +19,18 @@ export class CustomerController {
         firstName,
         lastName,
         phone,
+        password,
         birthday,
         gender,
         country,
         receiveMarketingEmails,
       } = req.body;
 
-      // Check if the essential field is missing
-      if (!email) {
+      if (!email || !password || !firstName || !phone) {
         return res.status(400).json({
           success: false,
-          message: "Email is required",
-          code: "MISSING_EMAIL",
+          message: "Email, password, first name, and phone are required",
+          code: "MISSING_FIELDS",
         });
       }
 
@@ -39,6 +39,7 @@ export class CustomerController {
         firstName,
         lastName,
         phone,
+        password,
         birthday,
         gender,
         country,
@@ -47,21 +48,73 @@ export class CustomerController {
 
       res.status(200).json(result);
     } catch (error) {
-      logger.error("Error in registerStep1:", error);
+      logger.error("Error in registerStep1 controller:", error);
+      throw error;
+    }
+  }
+
+  static async resendOTP(req: AuthRequest, res: Response) {
+    try {
+      const { email, firstName } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required",
+          code: "MISSING_EMAIL",
+        });
+      }
+
+      const result = await customerService.resendOTP(email, firstName);
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in resendOTP controller:", error);
       throw error;
     }
   }
 
   static async registerStep2(req: AuthRequest, res: Response) {
     try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and OTP are required",
+          code: "MISSING_VERIFICATION_DATA",
+        });
+      }
+
       const result = await customerService.registerStep2(req.body);
       res.status(201).json(result);
     } catch (error) {
-      logger.error("Error in registerStep2:", error);
+      logger.error("Error in registerStep2 controller:", error);
       throw error;
     }
   }
 
+  static async loginWithPassword(req: AuthRequest, res: Response) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+          code: "MISSING_CREDENTIALS",
+        });
+      }
+
+      const result = await customerService.loginWithPassword({
+        email,
+        password,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in loginWithPassword controller:", error);
+      throw error;
+    }
+  }
   static async loginStep1(req: AuthRequest, res: Response) {
     try {
       const { email } = req.body;

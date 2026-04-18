@@ -24,6 +24,7 @@ const router = Router();
  *               - email
  *               - phone
  *               - birthday
+ *               - password
  *               - gender
  *               - country
  *             properties:
@@ -39,6 +40,9 @@ const router = Router();
  *               birthday:
  *                 type: string
  *                 format: date
+ *               password:
+ *                type: string
+ *                format: password
  *               gender:
  *                 type: string
  *               country:
@@ -62,10 +66,47 @@ router.post(
 
 /**
  * @swagger
+ * /customers/resend-otp:
+ *   post:
+ *     summary: Resend OTP
+ *     description: Resend verification OTP to the customer email
+ *     tags:
+ *       - Customer Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - firstName
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               firstName:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: New OTP sent successfully
+ */
+router.post(
+  "/resend-otp",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.resendOTP(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+/**
+ * @swagger
  * /customers/register/step-2:
  *   post:
  *     summary: Customer Registration Step 2
- *     description: Complete customer registration with OTP verification and password
+ *     description: Verify OTP and finalize the customer account creation
  *     tags:
  *       - Customer Authentication
  *     requestBody:
@@ -80,6 +121,10 @@ router.post(
  *               - password
  *               - firstName
  *               - lastName
+ *               - phone
+ *               - birthday
+ *               - gender
+ *               - country
  *             properties:
  *               email:
  *                 type: string
@@ -103,13 +148,51 @@ router.post(
  *                 type: boolean
  *     responses:
  *       201:
- *         description: Customer registered successfully, returns JWT token
+ *         description: Customer registered successfully
  */
 router.post(
   "/register/step-2",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await customerController.registerStep2(req as any, res);
+      await customerController.registerStep2(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /customers/login:
+ *   post:
+ *     summary: Login with Password
+ *     description: Authenticate customer using email and password
+ *     tags:
+ *       - Customer Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ */
+router.post(
+  "/login",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.loginWithPassword(req, res);
     } catch (error) {
       next(error);
     }

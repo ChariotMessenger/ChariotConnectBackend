@@ -13,26 +13,37 @@ export class CustomerService {
     lastName: string;
     email: string;
     phone: string;
+    password: string;
     birthday: string;
     gender: string;
     country: string;
     receiveMarketingEmails: boolean;
   }) {
     try {
-      // Check if customer already exists
-      const existingCustomer = await prisma.customer.findUnique({
-        where: { email: data.email },
+      const existingUser = await prisma.customer.findFirst({
+        where: {
+          OR: [{ email: data.email }, { phone: data.phone }],
+        },
       });
 
-      if (existingCustomer) {
-        throw new CustomError("Email already registered", 400, "EMAIL_EXISTS");
+      if (existingUser) {
+        if (existingUser.email === data.email) {
+          throw new CustomError(
+            "Email already registered",
+            400,
+            "EMAIL_EXISTS",
+          );
+        }
+        if (existingUser.phone === data.phone) {
+          throw new CustomError(
+            "Phone number already registered",
+            400,
+            "PHONE_EXISTS",
+          );
+        }
       }
-      console.log(data);
 
-      // Create temporary OTP record with email
       const otp = await createOTPVerification(data.email, UserRole.CUSTOMER);
-
-      // Send OTP to email
 
       await EmailService.sendOTPEmail(data.email, otp.code, data.firstName);
 
@@ -50,6 +61,24 @@ export class CustomerService {
     }
   }
 
+  static async resendOTP(email: string, firstName: string) {
+    try {
+      const otp = await createOTPVerification(email, UserRole.CUSTOMER);
+      await EmailService.sendOTPEmail(email, otp.code, firstName);
+
+      logger.info(`OTP resent to ${email}`);
+
+      return {
+        success: true,
+        message: "A new OTP has been sent to your email.",
+        otpExpiry: otp.expiresAt,
+      };
+    } catch (error) {
+      logger.error("Error resending OTP:", error);
+      throw error;
+    }
+  }
+
   static async registerStep2(data: {
     email: string;
     otp: string;
@@ -63,17 +92,14 @@ export class CustomerService {
     receiveMarketingEmails: boolean;
   }) {
     try {
-      // Verify OTP
       const verifiedOtp = await verifyOTP(data.email, data.otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      // Hash password
       const hashedPassword = await hashPassword(data.password);
 
-      // Create customer
       const customer = await prisma.customer.create({
         data: {
           firstName: data.firstName,
@@ -88,14 +114,12 @@ export class CustomerService {
         },
       });
 
-      // Generate token
       const token = generateToken({
         id: customer.id,
         email: customer.email,
         userType: UserRole.CUSTOMER,
       });
 
-      // Send welcome email
       await EmailService.sendWelcomeEmail(
         customer.email,
         `${customer.firstName} ${customer.lastName}`,
@@ -124,9 +148,63 @@ export class CustomerService {
     }
   }
 
+  static async loginWithPassword(data: { email: string; password: string }) {
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { email: data.email },
+      });
+
+      if (!customer) {
+        throw new CustomError(
+          "Invalid email or password",
+          401,
+          "INVALID_CREDENTIALS",
+        );
+      }
+
+      const isPasswordValid = await comparePassword(
+        data.password,
+        customer.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new CustomError(
+          "Invalid email or password",
+          401,
+          "INVALID_CREDENTIALS",
+        );
+      }
+
+      const token = generateToken({
+        id: customer.id,
+        email: customer.email,
+        userType: UserRole.CUSTOMER,
+      });
+
+      logger.info(`Customer logged in with password: ${data.email}`);
+
+      return {
+        success: true,
+        message: "Login successful",
+        token,
+        customer: {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email,
+          phone: customer.phone,
+          country: customer.country,
+          profilePhotoUrl: customer.profilePhotoUrl,
+        },
+      };
+    } catch (error) {
+      logger.error("Error in loginWithPassword:", error);
+      throw error;
+    }
+  }
+
   static async loginStep1(email: string) {
     try {
-      // Check if customer exists
       const customer = await prisma.customer.findUnique({
         where: { email },
       });
@@ -135,14 +213,12 @@ export class CustomerService {
         throw new CustomError("Email not found", 404, "EMAIL_NOT_FOUND");
       }
 
-      // Create OTP
       const otp = await createOTPVerification(
         email,
         UserRole.CUSTOMER,
         customer.id,
       );
 
-      // Send OTP to email
       await EmailService.sendOTPEmail(email, otp.code, customer.firstName);
 
       logger.info(`Customer login OTP sent to ${email}`);
@@ -161,14 +237,12 @@ export class CustomerService {
 
   static async loginStep2(email: string, otp: string) {
     try {
-      // Verify OTP
       const verifiedOtp = await verifyOTP(email, otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      // Get customer
       const customer = await prisma.customer.findUnique({
         where: { email },
       });
@@ -177,7 +251,6 @@ export class CustomerService {
         throw new CustomError("Customer not found", 404, "CUSTOMER_NOT_FOUND");
       }
 
-      // Generate token
       const token = generateToken({
         id: customer.id,
         email: customer.email,
