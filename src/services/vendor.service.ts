@@ -350,32 +350,45 @@ export class VendorService {
     }
   }
 
-  static async loginWithPassword(email: string, password: string) {
+  static async loginWithPassword(data: {
+    identifier: string;
+    password: string;
+  }) {
     try {
-      // Get vendor
-      const vendor = await prisma.vendor.findUnique({
-        where: { email },
+      const vendor = await prisma.vendor.findFirst({
+        where: {
+          OR: [{ email: data.identifier }, { phone: data.identifier }],
+        },
       });
 
       if (!vendor) {
-        throw new CustomError("Email not found", 404, "EMAIL_NOT_FOUND");
+        throw new CustomError(
+          "Invalid credentials",
+          401,
+          "INVALID_CREDENTIALS",
+        );
       }
 
-      // Compare password
-      const isPasswordValid = await comparePassword(password, vendor.password);
+      const isPasswordValid = await comparePassword(
+        data.password,
+        vendor.password,
+      );
 
       if (!isPasswordValid) {
-        throw new CustomError("Invalid password", 401, "INVALID_PASSWORD");
+        throw new CustomError(
+          "Invalid credentials",
+          401,
+          "INVALID_CREDENTIALS",
+        );
       }
 
-      // Generate token
       const token = generateToken({
         id: vendor.id,
         email: vendor.email,
         userType: UserRole.VENDOR,
       });
 
-      logger.info(`Vendor logged in with password: ${email}`);
+      logger.info(`Vendor logged in: ${vendor.email}`);
 
       return {
         success: true,
@@ -387,17 +400,17 @@ export class VendorService {
           lastName: vendor.lastName,
           businessName: vendor.businessName,
           email: vendor.email,
+          phone: vendor.phone,
           country: vendor.country,
           verificationStatus: vendor.verificationStatus,
           profilePhotoUrl: vendor.profilePhotoUrl,
         },
       };
     } catch (error) {
-      logger.error("Error in vendor login with password:", error);
+      logger.error("Error in vendor login with password service:", error);
       throw error;
     }
   }
-
   static async getProfile(vendorId: string) {
     try {
       const vendor = await prisma.vendor.findUnique({

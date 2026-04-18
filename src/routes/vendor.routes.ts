@@ -310,12 +310,12 @@ router.post(
     }
   },
 );
-
 /**
  * @swagger
  * /vendors/login/with-password:
  *   post:
  *     summary: Vendor Login with Password
+ *     description: Authenticate vendor using email or phone number and password
  *     tags:
  *       - Vendor Authentication
  *     requestBody:
@@ -325,16 +325,21 @@ router.post(
  *           schema:
  *             type: object
  *             required:
- *               - email
+ *               - identifier
  *               - password
  *             properties:
- *               email:
+ *               identifier:
  *                 type: string
+ *                 description: The vendor's registered email address or phone number
+ *                 example: vendor@business.com or +2347000000000
  *               password:
  *                 type: string
+ *                 format: password
  *     responses:
  *       200:
  *         description: Successfully logged in
+ *       401:
+ *         description: Invalid credentials
  */
 router.post(
   "/login/with-password",

@@ -128,11 +128,23 @@ export class VendorController {
 
   static async loginWithPassword(req: AuthRequest, res: Response) {
     try {
-      const { email, password } = req.body;
-      const result = await vendorService.loginWithPassword(email, password);
+      const { identifier, password } = req.body;
+
+      if (!identifier || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email/Phone and password are required",
+          code: "MISSING_CREDENTIALS",
+        });
+      }
+
+      const result = await vendorService.loginWithPassword({
+        identifier,
+        password,
+      });
       res.status(200).json(result);
     } catch (error) {
-      logger.error("Error in loginWithPassword:", error);
+      logger.error("Error in vendor loginWithPassword controller:", error);
       throw error;
     }
   }
