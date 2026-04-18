@@ -85,6 +85,43 @@ router.post(
 
 /**
  * @swagger
+ * /vendors/resend-otp:
+ *   post:
+ *     summary: Resend OTP
+ *     description: Resend verification OTP to the vendor email
+ *     tags:
+ *       - Vendor Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - firstName
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               firstName:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: New OTP sent successfully
+ */
+router.post(
+  "/resend-otp",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.resendOTP(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+/**
+ * @swagger
  * /vendors/register/step-3:
  *   post:
  *     summary: Vendor Registration Step 3

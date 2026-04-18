@@ -51,12 +51,27 @@ export class VendorService {
   }) {
     try {
       // Check if vendor already exists
-      const existingVendor = await prisma.vendor.findUnique({
-        where: { email: data.email },
+      const existingVendor = await prisma.vendor.findFirst({
+        where: {
+          OR: [{ email: data.email }, { phone: data.phone }],
+        },
       });
 
       if (existingVendor) {
-        throw new CustomError("Email already registered", 400, "EMAIL_EXISTS");
+        if (existingVendor.email === data.email) {
+          throw new CustomError(
+            "Email already registered",
+            400,
+            "EMAIL_EXISTS",
+          );
+        }
+        if (existingVendor.phone === data.phone) {
+          throw new CustomError(
+            "Phone number already registered",
+            400,
+            "PHONE_EXISTS",
+          );
+        }
       }
 
       // Create OTP
@@ -78,6 +93,24 @@ export class VendorService {
       };
     } catch (error) {
       logger.error("Error in vendor registration step 2:", error);
+      throw error;
+    }
+  }
+
+  static async resendOTP(email: string, firstName: string) {
+    try {
+      const otp = await createOTPVerification(email, UserRole.VENDOR);
+      await EmailService.sendOTPEmail(email, otp.code, firstName);
+
+      logger.info(`OTP resent to vendor: ${email}`);
+
+      return {
+        success: true,
+        message: "A new OTP has been sent to your email.",
+        otpExpiry: otp.expiresAt,
+      };
+    } catch (error) {
+      logger.error("Error resending vendor OTP:", error);
       throw error;
     }
   }
