@@ -137,6 +137,50 @@ export class CustomerController {
     }
   }
 
+  static async forgotPasswordStep1(req: AuthRequest, res: Response) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required",
+          code: "MISSING_EMAIL",
+        });
+      }
+
+      const result = await customerService.forgotPasswordStep1(email);
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in forgotPasswordStep1 controller:", error);
+      throw error;
+    }
+  }
+
+  static async forgotPasswordStep2(req: AuthRequest, res: Response) {
+    try {
+      const { email, otp, newPassword } = req.body;
+
+      if (!email || !otp || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Email, OTP, and new password are required",
+          code: "MISSING_RESET_DATA",
+        });
+      }
+
+      const result = await customerService.forgotPasswordStep2({
+        email,
+        otp,
+        newPassword,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in forgotPasswordStep2 controller:", error);
+      throw error;
+    }
+  }
+
   static async getProfile(req: AuthRequest, res: Response) {
     try {
       const customer = await customerService.getProfile(req.user!.id);

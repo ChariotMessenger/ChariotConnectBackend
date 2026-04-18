@@ -120,6 +120,88 @@ router.post(
     }
   },
 );
+
+/**
+ * @swagger
+ * /vendors/forgot-password/step-1:
+ *   post:
+ *     summary: Vendor Forgot Password Step 1
+ *     description: Request a password reset OTP by providing the vendor account email
+ *     tags:
+ *       - Vendor Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Reset OTP sent successfully
+ *       404:
+ *         description: Vendor not found
+ */
+router.post(
+  "/forgot-password/step-1",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.forgotPasswordStep1(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /vendors/forgot-password/step-2:
+ *   post:
+ *     summary: Vendor Forgot Password Step 2
+ *     description: Reset vendor password using the OTP received in step 1
+ *     tags:
+ *       - Vendor Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               otp:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid or expired OTP
+ */
+router.post(
+  "/forgot-password/step-2",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.forgotPasswordStep2(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 /**
  * @swagger
  * /vendors/register/step-3:

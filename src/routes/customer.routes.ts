@@ -101,6 +101,88 @@ router.post(
     }
   },
 );
+
+/**
+ * @swagger
+ * /customers/forgot-password/step-1:
+ *   post:
+ *     summary: Forgot Password Step 1
+ *     description: Request a password reset OTP by providing the account email
+ *     tags:
+ *       - Customer Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Reset OTP sent successfully
+ *       404:
+ *         description: Customer not found
+ */
+router.post(
+  "/forgot-password/step-1",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.forgotPasswordStep1(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /customers/forgot-password/step-2:
+ *   post:
+ *     summary: Forgot Password Step 2
+ *     description: Reset password using the OTP received in step 1
+ *     tags:
+ *       - Customer Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               otp:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid or expired OTP
+ */
+router.post(
+  "/forgot-password/step-2",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.forgotPasswordStep2(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 /**
  * @swagger
  * /customers/register/step-2:

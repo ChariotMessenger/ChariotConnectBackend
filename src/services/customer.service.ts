@@ -79,6 +79,74 @@ export class CustomerService {
     }
   }
 
+  static async forgotPasswordStep1(email: string) {
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { email },
+      });
+
+      if (!customer) {
+        throw new CustomError(
+          "Customer with this email does not exist",
+          404,
+          "CUSTOMER_NOT_FOUND",
+        );
+      }
+
+      const otp = await createOTPVerification(
+        email,
+        UserRole.CUSTOMER,
+        customer.id,
+      );
+
+      await EmailService.sendOTPEmail(email, otp.code, customer.firstName);
+
+      logger.info(`Forgot password OTP sent to ${email}`);
+
+      return {
+        success: true,
+        message: "Password reset OTP sent to email",
+        email,
+        otpExpiry: otp.expiresAt,
+      };
+    } catch (error) {
+      logger.error("Error in forgotPasswordStep1:", error);
+      throw error;
+    }
+  }
+
+  static async forgotPasswordStep2(data: {
+    email: string;
+    otp: string;
+    newPassword: string;
+  }) {
+    try {
+      const verifiedOtp = await verifyOTP(data.email, data.otp);
+
+      if (!verifiedOtp) {
+        throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
+      }
+
+      const hashedPassword = await hashPassword(data.newPassword);
+
+      await prisma.customer.update({
+        where: { email: data.email },
+        data: { password: hashedPassword },
+      });
+
+      logger.info(`Password successfully reset for customer: ${data.email}`);
+
+      return {
+        success: true,
+        message:
+          "Password reset successful. You can now login with your new password.",
+      };
+    } catch (error) {
+      logger.error("Error in forgotPasswordStep2:", error);
+      throw error;
+    }
+  }
+
   static async registerStep2(data: {
     email: string;
     otp: string;

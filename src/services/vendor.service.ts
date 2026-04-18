@@ -235,6 +235,73 @@ export class VendorService {
     }
   }
 
+  static async forgotPasswordStep1(email: string) {
+    try {
+      const vendor = await prisma.vendor.findUnique({
+        where: { email },
+      });
+
+      if (!vendor) {
+        throw new CustomError(
+          "Vendor with this email does not exist",
+          404,
+          "VENDOR_NOT_FOUND",
+        );
+      }
+
+      const otp = await createOTPVerification(
+        email,
+        UserRole.VENDOR,
+        vendor.id,
+      );
+
+      await EmailService.sendOTPEmail(email, otp.code, vendor.firstName);
+
+      logger.info(`Vendor forgot password OTP sent to ${email}`);
+
+      return {
+        success: true,
+        message: "Password reset OTP sent to email",
+        email,
+        otpExpiry: otp.expiresAt,
+      };
+    } catch (error) {
+      logger.error("Error in vendor forgotPasswordStep1:", error);
+      throw error;
+    }
+  }
+
+  static async forgotPasswordStep2(data: {
+    email: string;
+    otp: string;
+    newPassword: string;
+  }) {
+    try {
+      const verifiedOtp = await verifyOTP(data.email, data.otp);
+
+      if (!verifiedOtp) {
+        throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
+      }
+
+      const hashedPassword = await hashPassword(data.newPassword);
+
+      await prisma.vendor.update({
+        where: { email: data.email },
+        data: { password: hashedPassword },
+      });
+
+      logger.info(`Password successfully reset for vendor: ${data.email}`);
+
+      return {
+        success: true,
+        message:
+          "Password reset successful. You can now login with your new password.",
+      };
+    } catch (error) {
+      logger.error("Error in vendor forgotPasswordStep2:", error);
+      throw error;
+    }
+  }
   static async verifyLoginOTP(email: string, otp: string) {
     try {
       // Verify OTP
