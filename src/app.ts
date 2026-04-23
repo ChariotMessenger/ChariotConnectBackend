@@ -21,6 +21,7 @@ import orderRoutes from "./routes/order.routes";
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
 import adminAuthRoutes from "./routes/admin/adminAuth.routes";
 import adminAnalyticsRoutes from "./routes/admin/adminAnalytics.routes";
+import accountRoutes from "./routes/admin/admin.temp.routes";
 
 // Config
 import { swaggerOptions } from "./config/swagger";
@@ -109,6 +110,7 @@ app.use(`${apiPrefix}/orders`, orderRoutes);
 app.use(`${apiPrefix}/admins`, adminManagementRoutes);
 app.use(`${apiPrefix}/admin/auth`, adminAuthRoutes);
 app.use(`${apiPrefix}/admin`, adminAnalyticsRoutes);
+app.use(`${apiPrefix}/admin/accounts`, accountRoutes);
 
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {
