@@ -61,10 +61,10 @@ export class CustomerService {
     }
   }
 
-  static async resendOTP(email: string, firstName: string) {
+  static async resendOTP(email: string) {
     try {
       const otp = await createOTPVerification(email, UserRole.CUSTOMER);
-      await EmailService.sendOTPEmail(email, otp.code, firstName);
+      await EmailService.sendOTPEmail(email, otp.code);
 
       logger.info(`OTP resent to ${email}`);
 

@@ -55,7 +55,7 @@ export class CustomerController {
 
   static async resendOTP(req: AuthRequest, res: Response) {
     try {
-      const { email, firstName } = req.body;
+      const { email } = req.body;
 
       if (!email) {
         return res.status(400).json({
@@ -65,7 +65,7 @@ export class CustomerController {
         });
       }
 
-      const result = await customerService.resendOTP(email, firstName);
+      const result = await customerService.resendOTP(email);
       res.status(200).json(result);
     } catch (error) {
       logger.error("Error in resendOTP controller:", error);

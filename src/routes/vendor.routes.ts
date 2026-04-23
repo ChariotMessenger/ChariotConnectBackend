@@ -99,13 +99,10 @@ router.post(
  *             type: object
  *             required:
  *               - email
- *               - firstName
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
- *               firstName:
- *                 type: string
  *     responses:
  *       200:
  *         description: New OTP sent successfully

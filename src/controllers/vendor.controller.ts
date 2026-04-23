@@ -32,7 +32,7 @@ export class VendorController {
 
   static async resendOTP(req: AuthRequest, res: Response) {
     try {
-      const { email, firstName } = req.body;
+      const { email } = req.body;
 
       if (!email) {
         return res.status(400).json({
@@ -42,7 +42,7 @@ export class VendorController {
         });
       }
 
-      const result = await vendorService.resendOTP(email, firstName);
+      const result = await vendorService.resendOTP(email);
       res.status(200).json(result);
     } catch (error) {
       logger.error("Error in resendOTP controller:", error);
