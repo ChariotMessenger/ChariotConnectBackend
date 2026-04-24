@@ -16,6 +16,81 @@ export class RiderController {
     }
   }
 
+  static async verifyEmail(req: AuthRequest, res: Response) {
+    try {
+      const { email, otp } = req.body;
+      const result = await riderService.verifyEmail(email, otp);
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in verifyEmail:", error);
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
+  static async resendOTP(req: AuthRequest, res: Response) {
+    try {
+      const { email } = req.body;
+      const result = await riderService.resendOTP(email);
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in resendOTP:", error);
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
+  static async loginWithPassword(req: AuthRequest, res: Response) {
+    try {
+      const { identifier, password } = req.body;
+      const result = await riderService.loginWithPassword({
+        identifier,
+        password,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in loginWithPassword:", error);
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
+  static async deleteAccount(req: AuthRequest, res: Response) {
+    try {
+      const riderId = req.user!.id;
+      const result = await riderService.deleteAccount(riderId);
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in deleteAccount:", error);
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
   static async loginStep1(req: AuthRequest, res: Response) {
     try {
       const { email } = req.body;

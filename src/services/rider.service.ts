@@ -5,6 +5,7 @@ import { createOTPVerification, verifyOTP } from "../utils/otp";
 import EmailService from "./email.service";
 import { UserRole, VerificationStatus, OnlineStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
+import { hashPassword, comparePassword } from "../utils/password";
 
 export class RiderService {
   static async register(data: {
@@ -18,6 +19,7 @@ export class RiderService {
     state: string;
     areaOfWork: string;
     drivingLicenseUrl: string;
+    password: string;
     ninNumber: string;
     idCardUrl: string;
     bikePlateNumber: string;
@@ -33,13 +35,21 @@ export class RiderService {
   }) {
     try {
       // Check if rider already exists
-      const existingRider = await prisma.rider.findUnique({
-        where: { email: data.email },
+      const existingRider = await prisma.rider.findFirst({
+        where: {
+          OR: [{ email: data.email }, { phone: data.phone }],
+        },
       });
 
       if (existingRider) {
-        throw new CustomError("Email already registered", 400, "EMAIL_EXISTS");
+        throw new CustomError(
+          "Email or phone already registered",
+          400,
+          "RIDER_EXISTS",
+        );
       }
+
+      const hashedPassword = await hashPassword(data.password);
 
       // Create rider
       const rider = await prisma.rider.create({
@@ -48,6 +58,7 @@ export class RiderService {
           lastName: data.lastName,
           email: data.email,
           phone: data.phone,
+          password: hashedPassword,
           birthday: new Date(data.birthday),
           gender: data.gender,
           country: data.country,
@@ -87,6 +98,37 @@ export class RiderService {
       };
     } catch (error) {
       logger.error("Error in rider registration:", error);
+      throw error;
+    }
+  }
+
+  static async resendOTP(email: string) {
+    try {
+      const rider = await prisma.rider.findUnique({
+        where: { email },
+      });
+
+      if (!rider) {
+        throw new CustomError(
+          "Rider with this email does not exist",
+          404,
+          "RIDER_NOT_FOUND",
+        );
+      }
+
+      const otp = await createOTPVerification(email, UserRole.RIDER, rider.id);
+
+      await EmailService.sendOTPEmail(email, otp.code, rider.firstName);
+
+      logger.info(`OTP resent to rider: ${email}`);
+
+      return {
+        success: true,
+        message: "A new OTP has been sent to your email.",
+        otpExpiry: otp.expiresAt,
+      };
+    } catch (error) {
+      logger.error("Error resending OTP for rider:", error);
       throw error;
     }
   }
@@ -180,7 +222,96 @@ export class RiderService {
       throw error;
     }
   }
+  static async loginWithPassword(data: {
+    identifier: string;
+    password: string;
+  }) {
+    try {
+      const rider = await prisma.rider.findFirst({
+        where: {
+          OR: [{ email: data.identifier }, { phone: data.identifier }],
+        },
+      });
 
+      if (!rider) {
+        throw new CustomError(
+          "Invalid credentials",
+          401,
+          "INVALID_CREDENTIALS",
+        );
+      }
+
+      const isPasswordValid = await comparePassword(
+        data.password,
+        rider.password,
+      );
+      if (!isPasswordValid) {
+        throw new CustomError(
+          "Invalid credentials",
+          401,
+          "INVALID_CREDENTIALS",
+        );
+      }
+
+      if (!rider.verified) {
+        throw new CustomError(
+          "Your account is pending verification. Access denied.",
+          403,
+          "ACCOUNT_NOT_VERIFIED",
+        );
+      }
+
+      const token = generateToken({
+        id: rider.id,
+        email: rider.email,
+        userType: UserRole.RIDER,
+      });
+
+      logger.info(`Rider logged in with password: ${rider.email}`);
+
+      return {
+        success: true,
+        message: "Login successful",
+        token,
+        rider: {
+          id: rider.id,
+          firstName: rider.firstName,
+          lastName: rider.lastName,
+          email: rider.email,
+          onlineStatus: rider.onlineStatus,
+        },
+      };
+    } catch (error) {
+      logger.error("Error in rider password login:", error);
+      throw error;
+    }
+  }
+  static async deleteAccount(riderId: string) {
+    try {
+      const rider = await prisma.rider.findUnique({
+        where: { id: riderId },
+      });
+
+      if (!rider) {
+        throw new CustomError("Rider account not found", 404, "NOT_FOUND");
+      }
+
+      await prisma.rider.delete({
+        where: { id: riderId },
+      });
+
+      logger.info(`Rider account deleted: ${riderId}`);
+
+      return {
+        success: true,
+        message:
+          "Your rider account and documents have been permanently deleted.",
+      };
+    } catch (error) {
+      logger.error("Error in rider account deletion:", error);
+      throw error;
+    }
+  }
   static async getProfile(riderId: string) {
     try {
       const rider = await prisma.rider.findUnique({

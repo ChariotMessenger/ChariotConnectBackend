@@ -66,6 +66,36 @@ router.post(
 
 /**
  * @swagger
+ * /customers/me:
+ *   delete:
+ *     summary: Delete Customer Account
+ *     description: Permanently delete the authenticated customer's account and all associated data
+ *     tags:
+ *       - Customer Management
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Account not found
+ */
+router.delete(
+  "/me",
+  authMiddleware,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.deleteAccount(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
  * /customers/resend-otp:
  *   post:
  *     summary: Resend OTP

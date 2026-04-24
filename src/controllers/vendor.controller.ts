@@ -10,6 +10,36 @@ import { logger } from "../utils/logger";
 import { CustomError } from "../middlewares/errorHandler";
 
 export class VendorController {
+  static async deleteAccount(req: AuthRequest, res: Response) {
+    try {
+      const vendorId = req.user?.id;
+
+      if (!vendorId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized: Vendor ID not found in request",
+          code: "UNAUTHORIZED",
+        });
+      }
+
+      const result = await vendorService.deleteAccount(vendorId);
+
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in deleteAccount controller (Vendor):", error);
+
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+
+      throw error;
+    }
+  }
+
   static async registerStep1(req: AuthRequest, res: Response) {
     try {
       const result = await vendorService.registerStep1(req.body);

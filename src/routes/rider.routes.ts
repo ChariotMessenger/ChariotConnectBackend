@@ -32,6 +32,7 @@ const router = Router();
  *               - ninNumber
  *               - idCardUrl
  *               - bikePlateNumber
+ *               - password
  *               - guarantorName
  *               - guarantorRelationship
  *               - guarantorPhone
@@ -69,6 +70,8 @@ const router = Router();
  *                 type: string
  *               bikePlateNumber:
  *                 type: string
+ *               password:
+ *                 type: string
  *               guarantorName:
  *                 type: string
  *               guarantorRelationship:
@@ -102,6 +105,142 @@ router.post(
   },
 );
 
+/**
+ * @swagger
+ * /riders/verify-email:
+ *   post:
+ *     summary: Verify Rider Email
+ *     description: Verify rider's email using the OTP sent during registration
+ *     tags:
+ *       - Rider Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *             properties:
+ *               email:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ */
+router.post(
+  "/verify-email",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await riderController.verifyEmail(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /riders/resend-otp:
+ *   post:
+ *     summary: Resend OTP
+ *     description: Resend a new verification OTP to the rider's email
+ *     tags:
+ *       - Rider Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP resent successfully
+ */
+router.post(
+  "/resend-otp",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await riderController.resendOTP(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /riders/login-password:
+ *   post:
+ *     summary: Rider Password Login
+ *     description: Login using email/phone and password
+ *     tags:
+ *       - Rider Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - identifier
+ *               - password
+ *             properties:
+ *               identifier:
+ *                 type: string
+ *                 description: Email or Phone number
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ */
+router.post(
+  "/login-password",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await riderController.loginWithPassword(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /riders/me:
+ *   delete:
+ *     summary: Delete Rider Account
+ *     description: Permanently delete the authenticated rider's account and documents
+ *     tags:
+ *       - Rider Management
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.delete(
+  "/me",
+  authMiddleware,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await riderController.deleteAccount(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 /**
  * @swagger
  * /riders/login/step-1:

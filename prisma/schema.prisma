@@ -49,6 +49,7 @@ model Customer {
   gender                 String
   country                String
   currency               String            @default("NGN")
+  isEmailVerified        Boolean           @default(false)
   profilePhotoUrl        String?
   password               String
   receiveMarketingEmails Boolean           @default(false)
@@ -73,6 +74,7 @@ model Vendor {
   businessType           String
   businessName           String
   businessAddress        String
+  isEmailVerified        Boolean           @default(false)
   isOwner                Boolean
   businessOwnerName      String?
   isBusinessRegistered   Boolean
@@ -104,12 +106,14 @@ model Rider {
   gender                String
   country               String
   currency              String             @default("NGN")
+  isEmailVerified        Boolean           @default(false)
   state                 String
   areaOfWork            String
   drivingLicenseUrl     String
   ninNumber             String
   idCardUrl             String
   bikePlateNumber       String
+  password              String
   profilePhotoUrl       String?
   guarantorName         String
   guarantorRelationship String

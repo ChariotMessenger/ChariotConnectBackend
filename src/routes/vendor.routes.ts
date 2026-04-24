@@ -57,6 +57,36 @@ router.post(
 
 /**
  * @swagger
+ * /vendors/me:
+ *   delete:
+ *     summary: Delete Vendor Account
+ *     description: Permanently delete the authenticated vendor's account, catalog, and associated data
+ *     tags:
+ *       - Vendor Management
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Vendor not found
+ */
+router.delete(
+  "/me",
+  authMiddleware,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.deleteAccount(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
  * /vendors/register/step-2:
  *   post:
  *     summary: Vendor Registration Step 2

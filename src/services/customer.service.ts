@@ -60,7 +60,32 @@ export class CustomerService {
       throw error;
     }
   }
+  static async deleteAccount(customerId: string) {
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: customerId },
+      });
 
+      if (!customer) {
+        throw new CustomError("Customer account not found", 404, "NOT_FOUND");
+      }
+
+      await prisma.customer.delete({
+        where: { id: customerId },
+      });
+
+      logger.info(`Customer account deleted: ${customerId}`);
+
+      return {
+        success: true,
+        message:
+          "Your account and all associated data have been permanently deleted.",
+      };
+    } catch (error) {
+      logger.error("Error in customer account deletion:", error);
+      throw error;
+    }
+  }
   static async resendOTP(email: string) {
     try {
       const otp = await createOTPVerification(email, UserRole.CUSTOMER);

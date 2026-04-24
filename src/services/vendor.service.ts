@@ -34,6 +34,33 @@ export class VendorService {
     }
   }
 
+  static async deleteAccount(vendorId: string) {
+    try {
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: vendorId },
+      });
+
+      if (!vendor) {
+        throw new CustomError("Vendor account not found", 404, "NOT_FOUND");
+      }
+
+      await prisma.vendor.delete({
+        where: { id: vendorId },
+      });
+
+      logger.info(`Vendor account and associated data deleted: ${vendorId}`);
+
+      return {
+        success: true,
+        message:
+          "Your business account and all associated data have been permanently removed.",
+      };
+    } catch (error) {
+      logger.error("Error in vendor account deletion:", error);
+      throw error;
+    }
+  }
+
   static async registerStep2(data: {
     firstName: string;
     lastName: string;

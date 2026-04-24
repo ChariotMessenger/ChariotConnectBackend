@@ -53,6 +53,34 @@ export class CustomerController {
     }
   }
 
+  static async deleteAccount(req: AuthRequest, res: Response) {
+    try {
+      const customerId = req.user?.id;
+
+      if (!customerId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized: User ID not found in request",
+          code: "UNAUTHORIZED",
+        });
+      }
+
+      const result = await customerService.deleteAccount(customerId);
+
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in deleteAccount controller:", error);
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
   static async resendOTP(req: AuthRequest, res: Response) {
     try {
       const { email } = req.body;
