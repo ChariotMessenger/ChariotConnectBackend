@@ -133,6 +133,31 @@ export class RiderService {
     }
   }
 
+  static async verifyEmail(email: string, otp: string) {
+    try {
+      const verifiedOtp = await verifyOTP(email, otp);
+
+      if (!verifiedOtp) {
+        throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
+      }
+
+      const rider = await prisma.rider.update({
+        where: { email },
+        data: { isEmailVerified: true },
+      });
+
+      logger.info(`Email verified for rider: ${email}`);
+
+      return {
+        success: true,
+        message: "Email verified successfully.",
+      };
+    } catch (error) {
+      logger.error("Error in rider email verification:", error);
+      throw error;
+    }
+  }
+
   static async loginStep1(email: string) {
     try {
       // Check if rider exists
