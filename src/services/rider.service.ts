@@ -354,6 +354,7 @@ export class RiderService {
           areaOfWork: true,
           bikePlateNumber: true,
           bankName: true,
+          currentLocation: true,
           accountName: true,
           profilePhotoUrl: true,
           onlineStatus: true,
@@ -383,6 +384,17 @@ export class RiderService {
           lastName: data.lastName || undefined,
           phone: data.phone || undefined,
           areaOfWork: data.areaOfWork || undefined,
+          gender: data.gender || undefined,
+          state: data.state || undefined,
+          country: data.country || undefined,
+          currentLocation: data.currentLocation
+            ? {
+                set: {
+                  latitude: data.currentLocation.latitude,
+                  longitude: data.currentLocation.longitude,
+                },
+              }
+            : undefined,
         },
         select: {
           id: true,
@@ -390,6 +402,7 @@ export class RiderService {
           lastName: true,
           email: true,
           phone: true,
+          currentLocation: true,
         },
       });
 
@@ -400,7 +413,6 @@ export class RiderService {
       throw error;
     }
   }
-
   static async updateProfilePhoto(riderId: string, photoUrl: string) {
     try {
       const rider = await prisma.rider.update({

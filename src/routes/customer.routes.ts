@@ -409,7 +409,6 @@ protectedRouter.get(
     }
   },
 );
-
 /**
  * @swagger
  * /customers/profile:
@@ -420,6 +419,7 @@ protectedRouter.get(
  *     security:
  *       - bearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -433,6 +433,15 @@ protectedRouter.get(
  *                 type: string
  *               receiveMarketingEmails:
  *                 type: boolean
+ *               currentLocation:
+ *                 type: object
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                     format: float
+ *                   longitude:
+ *                     type: number
+ *                     format: float
  *     responses:
  *       200:
  *         description: Profile updated successfully

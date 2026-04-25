@@ -38,7 +38,10 @@ enum OnlineStatus {
   ONLINE
   OFFLINE
 }
-
+type Point {
+  latitude  Float?
+  longitude Float?
+}
 model Customer {
   id                     String            @id @default(auto()) @map("_id") @db.ObjectId
   firstName              String
@@ -52,6 +55,7 @@ model Customer {
   isEmailVerified        Boolean           @default(false)
   profilePhotoUrl        String?
   password               String
+  currentLocation               Point?
   receiveMarketingEmails Boolean           @default(false)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
@@ -79,6 +83,7 @@ model Vendor {
   businessOwnerName      String?
   isBusinessRegistered   Boolean
   profilePhotoUrl        String?
+  currentLocation               Point?
   password               String
   receiveMarketingEmails Boolean            @default(false)
   verificationStatus     VerificationStatus @default(PENDING)
@@ -111,6 +116,7 @@ model Rider {
   areaOfWork            String
   drivingLicenseUrl     String
   ninNumber             String
+  currentLocation               Point?
   idCardUrl             String
   bikePlateNumber       String
   password              String

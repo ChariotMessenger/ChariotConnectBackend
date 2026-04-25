@@ -392,6 +392,7 @@ export class CustomerService {
           profilePhotoUrl: true,
           receiveMarketingEmails: true,
           createdAt: true,
+          currentLocation: true,
         },
       });
 
@@ -415,18 +416,31 @@ export class CustomerService {
           firstName: data.firstName || undefined,
           lastName: data.lastName || undefined,
           phone: data.phone || undefined,
+          gender: data.gender || undefined,
+          country: data.country || undefined,
           receiveMarketingEmails:
             data.receiveMarketingEmails !== undefined
               ? data.receiveMarketingEmails
               : undefined,
+          currentLocation: data.currentLocation
+            ? {
+                set: {
+                  latitude: data.currentLocation.latitude,
+                  longitude: data.currentLocation.longitude,
+                },
+              }
+            : undefined,
         },
         select: {
           id: true,
           firstName: true,
           lastName: true,
+          gender: true,
+          country: true,
           email: true,
           phone: true,
           profilePhotoUrl: true,
+          currentLocation: true,
         },
       });
 

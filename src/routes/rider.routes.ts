@@ -348,9 +348,33 @@ protectedRouter.get(
  *       - Rider Profile
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               areaOfWork:
+ *                 type: string
+ *               currentLocation:
+ *                 type: object
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                     format: float
+ *                   longitude:
+ *                     type: number
+ *                     format: float
  *     responses:
  *       200:
- *         description: Profile updated
+ *         description: Profile updated successfully
  */
 protectedRouter.put(
   "/profile",

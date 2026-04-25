@@ -458,6 +458,7 @@ export class VendorService {
           verificationStatus: true,
           receiveMarketingEmails: true,
           createdAt: true,
+          currentLocation: true,
         },
       });
 
@@ -487,6 +488,14 @@ export class VendorService {
             data.receiveMarketingEmails !== undefined
               ? data.receiveMarketingEmails
               : undefined,
+          currentLocation: data.currentLocation
+            ? {
+                set: {
+                  latitude: data.currentLocation.latitude,
+                  longitude: data.currentLocation.longitude,
+                },
+              }
+            : undefined,
         },
         select: {
           id: true,
@@ -494,6 +503,7 @@ export class VendorService {
           lastName: true,
           businessName: true,
           email: true,
+          currentLocation: true,
         },
       });
 
@@ -504,7 +514,6 @@ export class VendorService {
       throw error;
     }
   }
-
   static async updateProfilePhoto(vendorId: string, photoUrl: string) {
     try {
       const vendor = await prisma.vendor.update({
