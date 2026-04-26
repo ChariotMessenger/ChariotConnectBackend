@@ -7,18 +7,22 @@ import EmailService from "./email.service";
 import { UserRole, VerificationStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 
+interface Point {
+  latitude?: number;
+  longitude?: number;
+}
+
 export class VendorService {
   static async registerStep1(data: {
     country: string;
     businessType: string;
     businessName: string;
-    businessAddress: string;
+    businessAddress: Point;
     isOwner: boolean;
     businessOwnerName?: string;
     isBusinessRegistered: boolean;
   }) {
     try {
-      // Store in session or temp storage (for this step we just validate and return)
       logger.info(
         `Vendor registration Step 1 initiated for business: ${data.businessName}`,
       );
@@ -69,7 +73,7 @@ export class VendorService {
     country: string;
     businessType: string;
     businessName: string;
-    businessAddress: string;
+    businessAddress: Point;
     isOwner: boolean;
     businessOwnerName?: string;
     isBusinessRegistered: boolean;
@@ -77,7 +81,6 @@ export class VendorService {
     password: string;
   }) {
     try {
-      // Check if vendor already exists
       const existingVendor = await prisma.vendor.findFirst({
         where: {
           OR: [{ email: data.email }, { phone: data.phone }],
@@ -101,22 +104,18 @@ export class VendorService {
         }
       }
 
-      // Create OTP
       const otp = await createOTPVerification(data.email, UserRole.VENDOR);
 
-      // Send OTP to email
       await EmailService.sendOTPEmail(data.email, otp.code, data.firstName);
 
       logger.info(`Vendor registration Step 2 initiated for ${data.email}`);
 
-      // Store registration data temporarily (you might use Redis or sessions for this)
-      // For now, we'll return the OTP sent message
       return {
         success: true,
         message: "OTP sent to email. Please verify to complete registration.",
         email: data.email,
         otpExpiry: otp.expiresAt,
-        registrationData: data, // In production, store this in Redis/session
+        registrationData: data,
       };
     } catch (error) {
       logger.error("Error in vendor registration step 2:", error);
@@ -151,7 +150,7 @@ export class VendorService {
     country: string;
     businessType: string;
     businessName: string;
-    businessAddress: string;
+    businessAddress: Point;
     isOwner: boolean;
     businessOwnerName?: string;
     isBusinessRegistered: boolean;
@@ -159,17 +158,14 @@ export class VendorService {
     password: string;
   }) {
     try {
-      // Verify OTP
       const verifiedOtp = await verifyOTP(data.email, data.otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      // Hash password
       const hashedPassword = await hashPassword(data.password);
 
-      // Create vendor
       const vendor = await prisma.vendor.create({
         data: {
           firstName: data.firstName,
@@ -179,7 +175,12 @@ export class VendorService {
           country: data.country,
           businessType: data.businessType,
           businessName: data.businessName,
-          businessAddress: data.businessAddress,
+          businessAddress: {
+            set: {
+              latitude: data.businessAddress.latitude,
+              longitude: data.businessAddress.longitude,
+            },
+          },
           isOwner: data.isOwner,
           businessOwnerName: data.businessOwnerName || null,
           isBusinessRegistered: data.isBusinessRegistered,
@@ -189,14 +190,12 @@ export class VendorService {
         },
       });
 
-      // Generate token
       const token = generateToken({
         id: vendor.id,
         email: vendor.email,
         userType: UserRole.VENDOR,
       });
 
-      // Send welcome email
       await EmailService.sendWelcomeEmail(
         vendor.email,
         `${vendor.firstName} ${vendor.lastName}`,
@@ -229,7 +228,6 @@ export class VendorService {
 
   static async loginWithOTP(email: string) {
     try {
-      // Check if vendor exists
       const vendor = await prisma.vendor.findUnique({
         where: { email },
       });
@@ -238,14 +236,12 @@ export class VendorService {
         throw new CustomError("Email not found", 404, "EMAIL_NOT_FOUND");
       }
 
-      // Create OTP
       const otp = await createOTPVerification(
         email,
         UserRole.VENDOR,
         vendor.id,
       );
 
-      // Send OTP to email
       await EmailService.sendOTPEmail(email, otp.code, vendor.firstName);
 
       logger.info(`Vendor login OTP sent to ${email}`);
@@ -329,16 +325,15 @@ export class VendorService {
       throw error;
     }
   }
+
   static async verifyLoginOTP(email: string, otp: string) {
     try {
-      // Verify OTP
       const verifiedOtp = await verifyOTP(email, otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      // Get vendor
       const vendor = await prisma.vendor.findUnique({
         where: { email },
       });
@@ -347,7 +342,6 @@ export class VendorService {
         throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
       }
 
-      // Generate token
       const token = generateToken({
         id: vendor.id,
         email: vendor.email,
@@ -438,6 +432,7 @@ export class VendorService {
       throw error;
     }
   }
+
   static async getProfile(vendorId: string) {
     try {
       const vendor = await prisma.vendor.findUnique({
@@ -483,7 +478,14 @@ export class VendorService {
           lastName: data.lastName || undefined,
           phone: data.phone || undefined,
           businessName: data.businessName || undefined,
-          businessAddress: data.businessAddress || undefined,
+          businessAddress: data.businessAddress
+            ? {
+                set: {
+                  latitude: data.businessAddress.latitude,
+                  longitude: data.businessAddress.longitude,
+                },
+              }
+            : undefined,
           receiveMarketingEmails:
             data.receiveMarketingEmails !== undefined
               ? data.receiveMarketingEmails
@@ -504,6 +506,7 @@ export class VendorService {
           businessName: true,
           email: true,
           currentLocation: true,
+          businessAddress: true,
         },
       });
 
@@ -514,6 +517,7 @@ export class VendorService {
       throw error;
     }
   }
+
   static async updateProfilePhoto(vendorId: string, photoUrl: string) {
     try {
       const vendor = await prisma.vendor.update({
@@ -535,8 +539,6 @@ export class VendorService {
     radiusKm: number = 10,
   ) {
     try {
-      // Get all vendors - in production, use geospatial queries
-      // For now, returning all verified vendors
       const vendors = await prisma.vendor.findMany({
         where: {
           verified: true,

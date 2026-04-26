@@ -77,7 +77,7 @@ model Vendor {
   currency               String             @default("NGN")
   businessType           String
   businessName           String
-  businessAddress        String
+ businessAddress        Point?
   isEmailVerified        Boolean           @default(false)
   isOwner                Boolean
   businessOwnerName      String?

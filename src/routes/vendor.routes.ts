@@ -6,10 +6,24 @@ const router = Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Point:
+ *       type: object
+ *       properties:
+ *         latitude:
+ *           type: number
+ *           format: float
+ *         longitude:
+ *           type: number
+ *           format: float
+ */
+
+/**
+ * @swagger
  * /vendors/register/step-1:
  *   post:
  *     summary: Vendor Registration Step 1
- *     description: Register vendor with business information
  *     tags:
  *       - Vendor Authentication
  *     requestBody:
@@ -33,7 +47,7 @@ const router = Router();
  *               businessName:
  *                 type: string
  *               businessAddress:
- *                 type: string
+ *                 $ref: '#/components/schemas/Point'
  *               isOwner:
  *                 type: boolean
  *               businessOwnerName:
@@ -98,6 +112,25 @@ router.delete(
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - email
+ *               - phone
+ *               - password
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               receiveMarketingEmails:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: OTP sent to email
@@ -405,7 +438,6 @@ protectedRouter.get(
     }
   },
 );
-
 /**
  * @swagger
  * /vendors/profile:
@@ -431,18 +463,11 @@ protectedRouter.get(
  *               businessName:
  *                 type: string
  *               businessAddress:
- *                 type: string
+ *                 $ref: '#/components/schemas/Point'
  *               receiveMarketingEmails:
  *                 type: boolean
  *               currentLocation:
- *                 type: object
- *                 properties:
- *                   latitude:
- *                     type: number
- *                     format: float
- *                   longitude:
- *                     type: number
- *                     format: float
+ *                 $ref: '#/components/schemas/Point'
  *     responses:
  *       200:
  *         description: Profile updated successfully
