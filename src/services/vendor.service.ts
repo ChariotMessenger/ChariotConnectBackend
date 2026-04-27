@@ -4,7 +4,7 @@ import { hashPassword, comparePassword } from "../utils/password";
 import { generateToken } from "../utils/jwt";
 import { createOTPVerification, verifyOTP } from "../utils/otp";
 import EmailService from "./email.service";
-import { UserRole, VerificationStatus } from "@prisma/client";
+import { UserRole, VerificationStatus, OrderStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 
 interface Point {
