@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { AdminAnalyticsController } from "../../controllers/admin/adminAnalytics.controller";
-import { authMiddleware } from "../../middlewares/auth";
-
+import { authenticateAdmin } from "../../middlewares/adminAuth";
 const router = Router();
 
 /**
@@ -22,7 +21,7 @@ const router = Router();
  *       200:
  *         description: Analytics object containing totals
  */
-router.get("/stats", authMiddleware, AdminAnalyticsController.getStats);
+router.get("/stats", authenticateAdmin, AdminAnalyticsController.getStats);
 
 /**
  * @swagger
@@ -62,7 +61,7 @@ router.get("/stats", authMiddleware, AdminAnalyticsController.getStats);
  */
 router.get(
   "/activities",
-  authMiddleware,
+  authenticateAdmin,
   AdminAnalyticsController.getActivities,
 );
 

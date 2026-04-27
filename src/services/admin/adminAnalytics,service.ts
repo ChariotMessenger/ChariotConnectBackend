@@ -15,7 +15,7 @@ export class AdminAnalyticsService {
       prisma.vendor.count(),
       prisma.rider.count(),
       prisma.order.count(),
-      prisma.order.count({ where: { status: OrderStatus.COMPLETED } }),
+      prisma.order.count({ where: { status: OrderStatus.DELIVERED } }),
       prisma.transaction.aggregate({
         where: { status: PaymentStatus.SUCCESS },
         _sum: { amount: true },
