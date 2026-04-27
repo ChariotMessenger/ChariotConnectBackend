@@ -1,7 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { vendorController } from "../controllers/vendor.controller";
 import { authMiddleware } from "../middlewares/auth";
-
 const router = Router();
 
 /**

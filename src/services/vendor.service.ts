@@ -167,6 +167,16 @@ export class VendorService {
 
       const hashedPassword = await hashPassword(data.password);
 
+      const currencyMap: Record<string, string> = {
+        Nigeria: "NGN",
+        Rwanda: "RWF",
+        Ghana: "GHS",
+        Kenya: "KES",
+        Uganda: "UGX",
+      };
+
+      const vendorCurrency = currencyMap[data.country] || "NGN";
+
       const vendor = await prisma.vendor.create({
         data: {
           firstName: data.firstName,
@@ -174,6 +184,7 @@ export class VendorService {
           email: data.email,
           phone: data.phone,
           country: data.country,
+          currency: vendorCurrency,
           businessType: data.businessType,
           businessName: data.businessName,
           businessAddress: {
@@ -217,6 +228,7 @@ export class VendorService {
           email: vendor.email,
           phone: vendor.phone,
           country: vendor.country,
+          currency: vendor.currency,
           verificationStatus: vendor.verificationStatus,
           profilePhotoUrl: vendor.profilePhotoUrl,
         },
@@ -631,7 +643,18 @@ export class VendorService {
             businessAddress: true,
             phone: true,
             profilePhotoUrl: true,
+            currency: true,
             createdAt: true,
+            catalogItems: {
+              where: { available: true },
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                imageUrl: true,
+                description: true,
+              },
+            },
           },
           skip,
           take: limit,

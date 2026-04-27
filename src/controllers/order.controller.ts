@@ -6,15 +6,9 @@ import { AuthRequest } from "../middlewares/auth";
 export class OrderController {
   static async createOrder(req: AuthRequest, res: Response) {
     try {
-      const ip =
-        (req.headers["x-forwarded-for"] as string) ||
-        req.socket.remoteAddress ||
-        "";
-      const currency = await getCurrencyByIP(ip.split(",")[0].trim());
       const order = await OrderService.createOrder({
         ...req.body,
         customerId: req.user!.id,
-        currency,
       });
       res.status(201).json({ success: true, order });
     } catch (error: any) {
@@ -45,13 +39,12 @@ export class OrderController {
         (req.headers["x-forwarded-for"] as string) ||
         req.socket.remoteAddress ||
         "";
-      const currency = await getCurrencyByIP(ip.split(",")[0].trim());
+
       const result = await OrderService.initializePayment(
         req.body.orderId,
         req.user!.email,
-        currency,
-        req.body.phone,
       );
+
       res.status(200).json({ success: true, ...result });
     } catch (error: any) {
       res

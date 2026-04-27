@@ -127,9 +127,6 @@ router.patch(
  *             properties:
  *               orderId:
  *                 type: string
- *               phone:
- *                 type: string
- *                 description: Required for PawaPay/Mobile Money
  *     responses:
  *       200:
  *         description: Payment initialized with provider data or URL

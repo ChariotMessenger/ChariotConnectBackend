@@ -13,15 +13,20 @@ export class OrderService {
     customerId: string;
     items: any;
     totalAmount: number;
-    currency: string;
     deliveryLocation: any;
     notes?: string;
   }) {
     const vendor = await prisma.vendor.findUnique({
       where: { id: data.vendorId },
+      select: {
+        currency: true,
+        businessAddress: true,
+      },
     });
-    if (!vendor)
+
+    if (!vendor) {
       throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
+    }
 
     return await prisma.order.create({
       data: {
@@ -29,7 +34,7 @@ export class OrderService {
         customerId: data.customerId,
         items: data.items,
         totalAmount: data.totalAmount,
-        currency: data.currency,
+        currency: vendor.currency,
         notes: data.notes,
         status: OrderStatus.WAITING_FOR_APPROVAL,
         deliveryLocation: data.deliveryLocation,
@@ -37,7 +42,6 @@ export class OrderService {
       },
     });
   }
-
   static async vendorUpdateStatus(
     orderId: string,
     vendorId: string,
@@ -59,13 +63,16 @@ export class OrderService {
     });
   }
 
-  static async initializePayment(
-    orderId: string,
-    email: string,
-    currency: string,
-    phone?: string,
-  ) {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+  static async initializePayment(orderId: string, email: string) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: {
+          select: { phone: true },
+        },
+      },
+    });
+
     if (!order || order.status !== OrderStatus.AWAITING_PAYMENT) {
       throw new CustomError(
         "Order not ready for payment",
@@ -74,9 +81,18 @@ export class OrderService {
       );
     }
 
+    const customerPhone = order.customer?.phone;
+    const currency = order.currency;
+
     if (currency === "RWF") {
-      if (!phone)
-        throw new CustomError("Phone number required", 400, "PHONE_REQUIRED");
+      if (!customerPhone) {
+        throw new CustomError(
+          "Customer phone number not found in profile. Required for RWF payments.",
+          400,
+          "PHONE_REQUIRED",
+        );
+      }
+
       const response = await axios.post(
         "https://api.pawapay.cloud/deposits",
         {
@@ -84,7 +100,7 @@ export class OrderService {
           amount: order.totalAmount.toString(),
           currency: "RWF",
           correspondent: "MTN_MOMO_RWA",
-          payer: { address: { value: phone } },
+          payer: { address: { value: customerPhone } },
           customerTimestamp: new Date().toISOString(),
         },
         { headers: { Authorization: `Bearer ${PAWAPAY_SECRET}` } },
@@ -99,6 +115,7 @@ export class OrderService {
           provider: "PAWAPAY",
         },
       });
+
       return { provider: "PAWAPAY", data: response.data };
     } else {
       const response = await axios.post(
@@ -106,7 +123,7 @@ export class OrderService {
         {
           email,
           amount: Math.round(order.totalAmount * 100),
-          currency: "NGN",
+          currency: currency || "NGN",
           metadata: { orderId },
         },
         { headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` } },
@@ -117,17 +134,17 @@ export class OrderService {
           orderId,
           reference: response.data.data.reference,
           amount: order.totalAmount,
-          currency: "NGN",
+          currency: currency || "NGN",
           provider: "PAYSTACK",
         },
       });
+
       return {
         provider: "PAYSTACK",
         url: response.data.data.authorization_url,
       };
     }
   }
-
   static async verifyPayment(reference: string, provider: string) {
     let isPaid = false;
     let orderId = "";
