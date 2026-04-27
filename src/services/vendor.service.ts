@@ -10,6 +10,7 @@ import { CustomError } from "../middlewares/errorHandler";
 interface Point {
   latitude?: number;
   longitude?: number;
+  locationName?: string;
 }
 
 export class VendorService {
@@ -483,6 +484,7 @@ export class VendorService {
                 set: {
                   latitude: data.businessAddress.latitude,
                   longitude: data.businessAddress.longitude,
+                  locationName: data.businessAddress.locationName,
                 },
               }
             : undefined,
@@ -495,6 +497,7 @@ export class VendorService {
                 set: {
                   latitude: data.currentLocation.latitude,
                   longitude: data.currentLocation.longitude,
+                  locationName: data.currentLocation.locationName,
                 },
               }
             : undefined,
@@ -532,31 +535,120 @@ export class VendorService {
       throw error;
     }
   }
+  static async getVendorOrders(
+    vendorId: string,
+    status?: OrderStatus,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
+      const whereClause = {
+        vendorId,
+        ...(status && { status }),
+      };
 
+      const [orders, total] = await prisma.$transaction([
+        prisma.order.findMany({
+          where: whereClause,
+          include: {
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                profilePhotoUrl: true,
+              },
+            },
+            rider: {
+              select: {
+                firstName: true,
+                lastName: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.order.count({ where: whereClause }),
+      ]);
+
+      return {
+        orders,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching vendor orders:", error);
+      throw error;
+    }
+  }
   static async getVendorsByLocation(
     latitude: number,
     longitude: number,
     radiusKm: number = 10,
+    page: number = 1,
+    limit: number = 10,
   ) {
     try {
-      const vendors = await prisma.vendor.findMany({
-        where: {
-          verified: true,
-          verificationStatus: VerificationStatus.VERIFIED,
-        },
-        select: {
-          id: true,
-          businessName: true,
-          businessType: true,
-          businessAddress: true,
-          phone: true,
-          profilePhotoUrl: true,
-          createdAt: true,
-        },
-      });
+      const kmPerDegree = 111;
+      const latDelta = radiusKm / kmPerDegree;
+      const lngDelta =
+        radiusKm / (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
+      const skip = (page - 1) * limit;
 
-      logger.info(`Vendors fetched for location: ${latitude}, ${longitude}`);
-      return vendors;
+      const whereClause = {
+        verified: true,
+        verificationStatus: VerificationStatus.VERIFIED,
+        businessAddress: {
+          is: {
+            latitude: {
+              gte: latitude - latDelta,
+              lte: latitude + latDelta,
+            },
+            longitude: {
+              gte: longitude - lngDelta,
+              lte: longitude + lngDelta,
+            },
+          },
+        },
+      };
+
+      const [vendors, total] = await prisma.$transaction([
+        prisma.vendor.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            businessName: true,
+            businessType: true,
+            businessAddress: true,
+            phone: true,
+            profilePhotoUrl: true,
+            createdAt: true,
+          },
+          skip,
+          take: limit,
+          orderBy: { businessName: "asc" },
+        }),
+        prisma.vendor.count({ where: whereClause }),
+      ]);
+
+      return {
+        vendors,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
       logger.error("Error fetching vendors by location:", error);
       throw error;

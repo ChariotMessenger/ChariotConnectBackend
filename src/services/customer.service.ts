@@ -4,7 +4,7 @@ import { hashPassword, comparePassword } from "../utils/password";
 import { generateToken } from "../utils/jwt";
 import { createOTPVerification, verifyOTP } from "../utils/otp";
 import EmailService from "./email.service";
-import { UserRole, VerificationStatus } from "@prisma/client";
+import { UserRole, OrderStatus, VerificationStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 
 export class CustomerService {
@@ -407,6 +407,60 @@ export class CustomerService {
       throw error;
     }
   }
+  static async getCustomerOrders(
+    customerId: string,
+    status?: OrderStatus,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
+
+      const [orders, total] = await prisma.$transaction([
+        prisma.order.findMany({
+          where: {
+            customerId,
+            ...(status && { status }),
+          },
+          include: {
+            vendor: {
+              select: {
+                id: true,
+                businessName: true,
+                phone: true,
+                profilePhotoUrl: true,
+              },
+            },
+            rider: {
+              select: { firstName: true, lastName: true, phone: true },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.order.count({
+          where: {
+            customerId,
+            ...(status && { status }),
+          },
+        }),
+      ]);
+
+      return {
+        orders,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching customer orders:", error);
+      throw error;
+    }
+  }
 
   static async updateProfile(customerId: string, data: any) {
     try {
@@ -427,6 +481,7 @@ export class CustomerService {
                 set: {
                   latitude: data.currentLocation.latitude,
                   longitude: data.currentLocation.longitude,
+                  locationName: data.currentLocation.locationName,
                 },
               }
             : undefined,

@@ -10,6 +10,7 @@ import { messageService } from "../services/message.service";
 import UploadService from "../services/upload.service";
 import { logger } from "../utils/logger";
 import { CustomError } from "../middlewares/errorHandler";
+import { OrderStatus } from "@prisma/client";
 
 export class CustomerController {
   static async registerStep1(req: AuthRequest, res: Response) {
@@ -269,20 +270,57 @@ export class CustomerController {
 
   static async fetchVendorsByLocation(req: AuthRequest, res: Response) {
     try {
-      const { latitude, longitude, radiusKm } = req.body;
-      const vendors = await vendorService.getVendorsByLocation(
-        latitude,
-        longitude,
-        radiusKm || 10,
+      const { latitude, longitude, radiusKm, page, limit } = req.body;
+
+      if (!latitude || !longitude) {
+        throw new CustomError(
+          "Latitude and longitude are required",
+          400,
+          "LOCATION_REQUIRED",
+        );
+      }
+
+      const result = await vendorService.getVendorsByLocation(
+        parseFloat(latitude),
+        parseFloat(longitude),
+        radiusKm ? parseFloat(radiusKm) : 10,
+        parseInt(page) || 1,
+        parseInt(limit) || 10,
       );
 
       res.status(200).json({
         success: true,
-        data: vendors,
+        ...result,
       });
-    } catch (error) {
+    } catch (error: any) {
       logger.error("Error in fetchVendorsByLocation:", error);
-      throw error;
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+  static async getOrders(req: AuthRequest, res: Response) {
+    try {
+      const status = req.query.status as OrderStatus;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const result = await customerService.getCustomerOrders(
+        req.user!.id,
+        status,
+        page,
+        limit,
+      );
+
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error: any) {
+      res
+        .status(error.statusCode || 500)
+        .json({ success: false, message: error.message });
     }
   }
 

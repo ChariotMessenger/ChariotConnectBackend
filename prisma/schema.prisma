@@ -21,11 +21,17 @@ enum VerificationStatus {
 }
 
 enum OrderStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-  COMPLETED
+  WAITING_FOR_APPROVAL
+  AWAITING_PAYMENT
+  PAID                         
+  VENDOR_PACKING               
+  AWAITING_PICK_UP             
+  RIDER_ACCEPTED              
+  RIDER_EN_ROUTE_TO_VENDOR
+  RIDER_EN_ROUTE_TO_CUSTOMER
+  DELIVERED
   CANCELLED
+  REJECTED
 }
 
 enum MessageStatus {
@@ -38,10 +44,13 @@ enum OnlineStatus {
   ONLINE
   OFFLINE
 }
+
 type Point {
-  latitude  Float?
-  longitude Float?
+  latitude     Float?
+  longitude    Float?
+  locationName String?
 }
+
 model Customer {
   id                     String            @id @default(auto()) @map("_id") @db.ObjectId
   firstName              String
@@ -55,7 +64,7 @@ model Customer {
   isEmailVerified        Boolean           @default(false)
   profilePhotoUrl        String?
   password               String
-  currentLocation               Point?
+  currentLocation        Point?
   receiveMarketingEmails Boolean           @default(false)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
@@ -64,6 +73,8 @@ model Customer {
   customerReviews        Review[]          @relation("CustomerReviews")
   messages               Message[]         @relation("CustomerMessages")
   messageRooms           MessageRoom[]     @relation("CustomerRooms")
+  orders                 Order[]           @relation("CustomerOrders")
+
   @@index([country])
 }
 
@@ -77,13 +88,13 @@ model Vendor {
   currency               String             @default("NGN")
   businessType           String
   businessName           String
- businessAddress        Point?
-  isEmailVerified        Boolean           @default(false)
+  businessAddress        Point?
+  isEmailVerified        Boolean            @default(false)
   isOwner                Boolean
   businessOwnerName      String?
   isBusinessRegistered   Boolean
   profilePhotoUrl        String?
-  currentLocation               Point?
+  currentLocation        Point?
   password               String
   receiveMarketingEmails Boolean            @default(false)
   verificationStatus     VerificationStatus @default(PENDING)
@@ -94,9 +105,10 @@ model Vendor {
   favoritedBy            FavoriteVendor[]
   catalogItems           CatalogItem[]
   vendorReviews          Review[]           @relation("VendorReviews")
-  orders                 Order[]
+  orders                 Order[]            @relation("VendorOrders")
   messages               Message[]          @relation("VendorMessages")
   messageRooms           MessageRoom[]      @relation("VendorRooms")
+
   @@index([country])
   @@index([businessType])
 }
@@ -111,12 +123,12 @@ model Rider {
   gender                String
   country               String
   currency              String             @default("NGN")
-  isEmailVerified        Boolean           @default(false)
+  isEmailVerified       Boolean            @default(false)
   state                 String
   areaOfWork            String
   drivingLicenseUrl     String
   ninNumber             String
-  currentLocation               Point?
+  currentLocation       Point?
   idCardUrl             String
   bikePlateNumber       String
   password              String
@@ -136,9 +148,39 @@ model Rider {
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
   otpVerifications      OTPVerification[]
+  deliveries            Order[]            @relation("RiderOrders")
+
   @@index([country])
   @@index([state])
   @@index([onlineStatus])
+}
+
+model Order {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId         String      @db.ObjectId
+  customerId       String      @db.ObjectId
+  riderId          String?     @db.ObjectId
+  items            Json
+  totalAmount      Float
+  currency         String
+  status           OrderStatus @default(WAITING_FOR_APPROVAL)
+  notes            String?
+  deliveryLocation Point?
+  pickupLocation   Point?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  pickupAt         DateTime?     
+  deliveredAt      DateTime?
+  transactions Transaction[]
+  vendor       Vendor        @relation("VendorOrders", fields: [vendorId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Cascade)
+  rider        Rider?        @relation("RiderOrders", fields: [riderId], references: [id])
+
+  @@index([vendorId])
+  @@index([customerId])
+  @@index([riderId])
+  @@index([status])
 }
 
 model OTPVerification {
@@ -154,6 +196,7 @@ model OTPVerification {
   customer     Customer? @relation(fields: [userId], references: [id], onDelete: Cascade)
   vendor       Vendor?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   rider        Rider?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([email])
   @@index([code])
   @@index([userId])
@@ -170,25 +213,8 @@ model CatalogItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  @@index([vendorId])
-}
 
-model Order {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  vendorId    String      @db.ObjectId
-  customerId  String      @db.ObjectId
-  items       String
-  totalAmount Float
-  currency    String
-  status      OrderStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  transactions Transaction[]
-  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   @@index([vendorId])
-  @@index([customerId])
-  @@index([status])
 }
 
 model Review {
@@ -201,6 +227,7 @@ model Review {
   updatedAt  DateTime @updatedAt
   vendor     Vendor   @relation("VendorReviews", fields: [vendorId], references: [id], onDelete: Cascade)
   customer   Customer @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
+
   @@unique([vendorId, customerId])
   @@index([vendorId])
   @@index([customerId])
@@ -213,6 +240,7 @@ model FavoriteVendor {
   createdAt  DateTime @default(now())
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
   @@unique([customerId, vendorId])
   @@index([customerId])
   @@index([vendorId])
@@ -227,6 +255,7 @@ model MessageRoom {
   updatedAt  DateTime  @updatedAt
   customer   Customer  @relation("CustomerRooms", fields: [customerId], references: [id], onDelete: Cascade)
   vendor     Vendor    @relation("VendorRooms", fields: [vendorId], references: [id], onDelete: Cascade)
+
   @@unique([customerId, vendorId])
   @@index([customerId])
   @@index([vendorId])
@@ -244,6 +273,7 @@ model Message {
   room       MessageRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
   customer   Customer?     @relation("CustomerMessages", fields: [senderId], references: [id], onDelete: Cascade)
   vendor     Vendor?       @relation("VendorMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
   @@index([roomId])
   @@index([senderId])
   @@index([status])
@@ -265,6 +295,7 @@ model Admin {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   role      Role        @relation(fields: [roleId], references: [id])
+
   @@index([status])
 }
 
@@ -285,16 +316,15 @@ enum PaymentStatus {
 }
 
 model Transaction {
-  id            String        @id @default(auto()) @map("_id") @db.ObjectId
-  orderId       String        @db.ObjectId
-  reference     String        @unique // Paystack Reference
-  amount        Float
-  currency      String
-  status        PaymentStatus @default(PENDING)
-  provider      String        @default("PAYSTACK")
-  paymentDetails String?      // Store raw JSON from Paystack
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  orderId        String        @db.ObjectId
+  reference      String        @unique
+  amount         Float
+  currency       String
+  status         PaymentStatus @default(PENDING)
+  provider       String        @default("PAYSTACK")
+  paymentDetails String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }

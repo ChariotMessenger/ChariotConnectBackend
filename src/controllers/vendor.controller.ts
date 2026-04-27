@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middlewares/auth";
 import { vendorService } from "../services/vendor.service";
 import { catalogService } from "../services/catalog.service";
-import { orderService } from "../services/order.service";
+import { OrderStatus } from "@prisma/client";
 import { messageService } from "../services/message.service";
 import { reviewService } from "../services/review-favorite.service";
 import UploadService from "../services/upload.service";
@@ -295,71 +295,30 @@ export class VendorController {
   // Order operations
   static async getOrders(req: AuthRequest, res: Response) {
     try {
-      const { status } = req.query;
-      const orders = await orderService.getVendorOrders(
-        req.user!.id,
-        status as any,
+      const vendorId = req.user!.id;
+      const status = req.query.status as OrderStatus;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const result = await vendorService.getVendorOrders(
+        vendorId,
+        status,
+        page,
+        limit,
       );
+
       res.status(200).json({
         success: true,
-        data: orders,
+        ...result,
       });
-    } catch (error) {
-      logger.error("Error in getOrders:", error);
-      throw error;
+    } catch (error: any) {
+      logger.error("Error in VendorController.getOrders:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
     }
   }
-
-  static async acceptOrder(req: AuthRequest, res: Response) {
-    try {
-      const { orderId } = req.params;
-      const order = await orderService.acceptOrder(orderId, req.user!.id);
-      res.status(200).json({
-        success: true,
-        message: "Order accepted",
-        data: order,
-      });
-    } catch (error) {
-      logger.error("Error in acceptOrder:", error);
-      throw error;
-    }
-  }
-
-  static async rejectOrder(req: AuthRequest, res: Response) {
-    try {
-      const { orderId } = req.params;
-      const { reason } = req.body;
-      const order = await orderService.rejectOrder(
-        orderId,
-        req.user!.id,
-        reason,
-      );
-      res.status(200).json({
-        success: true,
-        message: "Order rejected",
-        data: order,
-      });
-    } catch (error) {
-      logger.error("Error in rejectOrder:", error);
-      throw error;
-    }
-  }
-
-  static async completeOrder(req: AuthRequest, res: Response) {
-    try {
-      const { orderId } = req.params;
-      const order = await orderService.completeOrder(orderId, req.user!.id);
-      res.status(200).json({
-        success: true,
-        message: "Order completed",
-        data: order,
-      });
-    } catch (error) {
-      logger.error("Error in completeOrder:", error);
-      throw error;
-    }
-  }
-
   // Messaging
   static async getMessages(req: AuthRequest, res: Response) {
     try {

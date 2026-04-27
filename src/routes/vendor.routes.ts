@@ -17,6 +17,8 @@ const router = Router();
  *         longitude:
  *           type: number
  *           format: float
+ *        locationName:
+ *          type: string
  */
 
 /**
@@ -637,9 +639,8 @@ protectedRouter.get(
  * @swagger
  * /vendors/orders:
  *   get:
- *     summary: Get Vendor Orders
- *     tags:
- *       - Vendor Orders
+ *     summary: Get vendor's received orders with pagination
+ *     tags: [Vendor Operations]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -647,105 +648,68 @@ protectedRouter.get(
  *         name: status
  *         schema:
  *           type: string
+ *           enum:
+ *             - WAITING_FOR_APPROVAL
+ *             - AWAITING_PAYMENT
+ *             - PAID
+ *             - VENDOR_PACKING
+ *             - AWAITING_PICK_UP
+ *             - DELIVERED
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
  *     responses:
  *       200:
- *         description: Vendor orders retrieved
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 orders:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       totalAmount:
+ *                         type: number
+ *                       customer:
+ *                         type: object
+ *                         properties:
+ *                           firstName:
+ *                             type: string
+ *                           phone:
+ *                             type: string
+ *                       items:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                       status:
+ *                         type: string
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  */
 protectedRouter.get(
   "/orders",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await vendorController.getOrders(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-/**
- * @swagger
- * /vendors/orders/{orderId}/accept:
- *   post:
- *     summary: Accept Order
- *     tags:
- *       - Vendor Orders
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: orderId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Order accepted
- */
-protectedRouter.post(
-  "/orders/:orderId/accept",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await vendorController.acceptOrder(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-/**
- * @swagger
- * /vendors/orders/{orderId}/reject:
- *   post:
- *     summary: Reject Order
- *     tags:
- *       - Vendor Orders
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: orderId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Order rejected
- */
-protectedRouter.post(
-  "/orders/:orderId/reject",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await vendorController.rejectOrder(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-/**
- * @swagger
- * /vendors/orders/{orderId}/complete:
- *   post:
- *     summary: Complete Order
- *     tags:
- *       - Vendor Orders
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: orderId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Order completed
- */
-protectedRouter.post(
-  "/orders/:orderId/complete",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await vendorController.completeOrder(req as any, res);
     } catch (error) {
       next(error);
     }

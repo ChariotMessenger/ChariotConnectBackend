@@ -463,6 +463,84 @@ protectedRouter.post(
 
 /**
  * @swagger
+ * /riders/nearby-jobs:
+ *   get:
+ *     summary: Get available orders within a specific radius with pagination
+ *     tags: [Rider Operations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: lat
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: Rider's current latitude
+ *       - in: query
+ *         name: lng
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: Rider's current longitude
+ *       - in: query
+ *         name: radius
+ *         schema:
+ *           type: number
+ *           default: 5
+ *         description: Search radius in kilometers
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: integer
+ *                 orders:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       totalAmount:
+ *                         type: number
+ *                       pickupLocation:
+ *                         type: object
+ *                         properties:
+ *                           latitude:
+ *                             type: number
+ *                           longitude:
+ *                             type: number
+ *                           locationName:
+ *                             type: string
+ *                       deliveryLocation:
+ *                         type: object
+ *                         properties:
+ *                           latitude:
+ *                             type: number
+ *                           longitude:
+ *                             type: number
+ *                           locationName:
+ *                             type: string
+ */
+router.get("/nearby-jobs", authMiddleware, riderController.getNearbyJobs);
+/**
+ * @swagger
  * /riders/online:
  *   get:
  *     summary: Get Online Riders

@@ -3,7 +3,12 @@ import { logger } from "../utils/logger";
 import { generateToken } from "../utils/jwt";
 import { createOTPVerification, verifyOTP } from "../utils/otp";
 import EmailService from "./email.service";
-import { UserRole, VerificationStatus, OnlineStatus } from "@prisma/client";
+import {
+  UserRole,
+  OrderStatus,
+  VerificationStatus,
+  OnlineStatus,
+} from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { hashPassword, comparePassword } from "../utils/password";
 
@@ -392,6 +397,7 @@ export class RiderService {
                 set: {
                   latitude: data.currentLocation.latitude,
                   longitude: data.currentLocation.longitude,
+                  locationName: data.currentLocation.locationName,
                 },
               }
             : undefined,
@@ -443,6 +449,45 @@ export class RiderService {
     }
   }
 
+  static async getNearbyAvailableOrders(
+    lat: number,
+    lng: number,
+    radiusInKm: number = 5,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    try {
+      const kmPerDegree = 111;
+      const latDelta = radiusInKm / kmPerDegree;
+      const lngDelta =
+        radiusInKm / (kmPerDegree * Math.cos(lat * (Math.PI / 180)));
+      const skip = (page - 1) * limit;
+
+      const orders = await prisma.order.findMany({
+        where: {
+          status: OrderStatus.AWAITING_PICK_UP,
+          riderId: null,
+          pickupLocation: {
+            is: {
+              latitude: { gte: lat - latDelta, lte: lat + latDelta },
+              longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
+            },
+          },
+        },
+        include: {
+          vendor: { select: { businessName: true, phone: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      });
+
+      return orders;
+    } catch (error) {
+      logger.error("Error fetching nearby orders:", error);
+      throw error;
+    }
+  }
   static async goOffline(riderId: string) {
     try {
       const rider = await prisma.rider.update({

@@ -2,267 +2,192 @@ import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
-import EmailService from "./email.service";
 import axios from "axios";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
+const PAWAPAY_SECRET = process.env.PAWAPAY_SECRET_KEY;
 
 export class OrderService {
   static async createOrder(data: {
     vendorId: string;
     customerId: string;
-    items: any[];
+    items: any;
     totalAmount: number;
     currency: string;
-    email: string;
+    deliveryLocation: any;
     notes?: string;
   }) {
-    try {
-      const order = await prisma.order.create({
-        data: {
-          vendorId: data.vendorId,
-          customerId: data.customerId,
-          items: JSON.stringify(data.items),
-          totalAmount: data.totalAmount,
-          currency: data.currency,
-          notes: data.notes,
-          status: OrderStatus.PENDING,
-        },
-      });
+    const vendor = await prisma.vendor.findUnique({
+      where: { id: data.vendorId },
+    });
+    if (!vendor)
+      throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
 
-      logger.info(`Order created: ${order.id}`);
+    return await prisma.order.create({
+      data: {
+        vendorId: data.vendorId,
+        customerId: data.customerId,
+        items: data.items,
+        totalAmount: data.totalAmount,
+        currency: data.currency,
+        notes: data.notes,
+        status: OrderStatus.WAITING_FOR_APPROVAL,
+        deliveryLocation: data.deliveryLocation,
+        pickupLocation: vendor.businessAddress as any,
+      },
+    });
+  }
 
-      const paystackResponse = await axios.post(
-        "https://api.paystack.co/transaction/initialize",
-        {
-          email: data.email,
-          amount: Math.round(data.totalAmount * 100),
-          currency: data.currency,
-          metadata: { orderId: order.id },
-          callback_url: `${process.env.APP_URL}/api/orders/payment/callback`,
-        },
-        { headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` } },
+  static async vendorUpdateStatus(
+    orderId: string,
+    vendorId: string,
+    status: OrderStatus,
+  ) {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, vendorId },
+    });
+    if (!order)
+      throw new CustomError(
+        "Unauthorized or not found",
+        404,
+        "ORDER_NOT_FOUND",
       );
 
-      const { reference, authorization_url } = paystackResponse.data.data;
+    return await prisma.order.update({
+      where: { id: orderId },
+      data: { status },
+    });
+  }
+
+  static async initializePayment(
+    orderId: string,
+    email: string,
+    currency: string,
+    phone?: string,
+  ) {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order || order.status !== OrderStatus.AWAITING_PAYMENT) {
+      throw new CustomError(
+        "Order not ready for payment",
+        400,
+        "INVALID_STATUS",
+      );
+    }
+
+    if (currency === "RWF") {
+      if (!phone)
+        throw new CustomError("Phone number required", 400, "PHONE_REQUIRED");
+      const response = await axios.post(
+        "https://api.pawapay.cloud/deposits",
+        {
+          depositId: orderId,
+          amount: order.totalAmount.toString(),
+          currency: "RWF",
+          correspondent: "MTN_MOMO_RWA",
+          payer: { address: { value: phone } },
+          customerTimestamp: new Date().toISOString(),
+        },
+        { headers: { Authorization: `Bearer ${PAWAPAY_SECRET}` } },
+      );
 
       await prisma.transaction.create({
         data: {
-          orderId: order.id,
-          reference: reference,
-          amount: data.totalAmount,
-          currency: data.currency,
-          status: PaymentStatus.PENDING,
+          orderId,
+          reference: response.data.depositId,
+          amount: order.totalAmount,
+          currency: "RWF",
+          provider: "PAWAPAY",
         },
       });
-
-      const vendor = await prisma.vendor.findUnique({
-        where: { id: data.vendorId },
-      });
-
-      if (vendor) {
-        await EmailService.sendOrderNotificationEmail(vendor.email, {
-          orderId: order.id,
-          amount: data.totalAmount,
-          status: order.status,
-        });
-      }
-
-      return { order, paymentLink: authorization_url, reference };
-    } catch (error) {
-      logger.error("Error creating order:", error);
-      throw error;
-    }
-  }
-
-  static async verifyPayment(reference: string) {
-    try {
-      const response = await axios.get(
-        `https://api.paystack.co/transaction/verify/${reference}`,
+      return { provider: "PAWAPAY", data: response.data };
+    } else {
+      const response = await axios.post(
+        "https://api.paystack.co/transaction/initialize",
+        {
+          email,
+          amount: Math.round(order.totalAmount * 100),
+          currency: "NGN",
+          metadata: { orderId },
+        },
         { headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` } },
       );
 
-      const { status, metadata } = response.data.data;
-
-      if (status === "success") {
-        await prisma.$transaction([
-          prisma.transaction.update({
-            where: { reference },
-            data: { status: PaymentStatus.SUCCESS },
-          }),
-          prisma.order.update({
-            where: { id: metadata.orderId },
-            data: { status: OrderStatus.ACCEPTED },
-          }),
-        ]);
-        return { status: "success", orderId: metadata.orderId };
-      }
-
-      return { status: "failed" };
-    } catch (error) {
-      logger.error("Error verifying payment:", error);
-      throw error;
-    }
-  }
-
-  static async acceptOrder(orderId: string, vendorId: string) {
-    try {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-      });
-      if (!order || order.vendorId !== vendorId) {
-        throw new CustomError(
-          "Order not found or unauthorized",
-          404,
-          "ORDER_NOT_FOUND",
-        );
-      }
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.ACCEPTED },
-      });
-      logger.info(`Order accepted: ${orderId}`);
-      return updatedOrder;
-    } catch (error) {
-      logger.error("Error accepting order:", error);
-      throw error;
-    }
-  }
-
-  static async rejectOrder(orderId: string, vendorId: string, reason?: string) {
-    try {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-      });
-      if (!order || order.vendorId !== vendorId) {
-        throw new CustomError(
-          "Order not found or unauthorized",
-          404,
-          "ORDER_NOT_FOUND",
-        );
-      }
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
+      await prisma.transaction.create({
         data: {
-          status: OrderStatus.REJECTED,
-          notes: reason || order.notes,
+          orderId,
+          reference: response.data.data.reference,
+          amount: order.totalAmount,
+          currency: "NGN",
+          provider: "PAYSTACK",
         },
       });
-      logger.info(`Order rejected: ${orderId}`);
-      return updatedOrder;
-    } catch (error) {
-      logger.error("Error rejecting order:", error);
-      throw error;
-    }
-  }
-
-  static async completeOrder(orderId: string, vendorId: string) {
-    try {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-      });
-      if (!order || order.vendorId !== vendorId) {
-        throw new CustomError(
-          "Order not found or unauthorized",
-          404,
-          "ORDER_NOT_FOUND",
-        );
-      }
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.COMPLETED },
-      });
-      logger.info(`Order completed: ${orderId}`);
-      return updatedOrder;
-    } catch (error) {
-      logger.error("Error completing order:", error);
-      throw error;
-    }
-  }
-
-  static async cancelOrder(orderId: string, customerId: string) {
-    try {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-      });
-      if (!order || order.customerId !== customerId) {
-        throw new CustomError(
-          "Order not found or unauthorized",
-          404,
-          "ORDER_NOT_FOUND",
-        );
-      }
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.CANCELLED },
-      });
-      logger.info(`Order cancelled: ${orderId}`);
-      return updatedOrder;
-    } catch (error) {
-      logger.error("Error cancelling order:", error);
-      throw error;
-    }
-  }
-
-  static async getOrder(orderId: string) {
-    try {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: {
-          vendor: {
-            select: { id: true, businessName: true, phone: true },
-          },
-        },
-      });
-      if (!order) {
-        throw new CustomError("Order not found", 404, "ORDER_NOT_FOUND");
-      }
       return {
-        ...order,
-        items: JSON.parse(order.items),
+        provider: "PAYSTACK",
+        url: response.data.data.authorization_url,
       };
-    } catch (error) {
-      logger.error("Error fetching order:", error);
-      throw error;
     }
   }
 
-  static async getVendorOrders(vendorId: string, status?: OrderStatus) {
-    try {
-      const orders = await prisma.order.findMany({
-        where: { vendorId, ...(status && { status }) },
-        orderBy: { createdAt: "desc" },
-      });
-      return orders.map((order) => ({
-        ...order,
-        items: JSON.parse(order.items),
-      }));
-    } catch (error) {
-      logger.error("Error fetching vendor orders:", error);
-      throw error;
+  static async verifyPayment(reference: string, provider: string) {
+    let isPaid = false;
+    let orderId = "";
+
+    if (provider === "PAYSTACK") {
+      const res = await axios.get(
+        `https://api.paystack.co/transaction/verify/${reference}`,
+        { headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` } },
+      );
+      if (res.data.data.status === "success") {
+        isPaid = true;
+        orderId = res.data.data.metadata.orderId;
+      }
+    } else {
+      const res = await axios.get(
+        `https://api.pawapay.cloud/deposits/${reference}`,
+        { headers: { Authorization: `Bearer ${PAWAPAY_SECRET}` } },
+      );
+      if (res.data.status === "COMPLETED") {
+        isPaid = true;
+        orderId = reference;
+      }
     }
+
+    if (isPaid) {
+      return await prisma.$transaction([
+        prisma.transaction.update({
+          where: { reference },
+          data: { status: PaymentStatus.SUCCESS },
+        }),
+        prisma.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.PAID },
+        }),
+      ]);
+    }
+    throw new CustomError("Payment not verified", 400, "PAYMENT_FAILED");
   }
 
-  static async getCustomerOrders(customerId: string, status?: OrderStatus) {
-    try {
-      const orders = await prisma.order.findMany({
-        where: { customerId, ...(status && { status }) },
-        orderBy: { createdAt: "desc" },
-        include: {
-          vendor: {
-            select: { id: true, businessName: true, phone: true },
-          },
-        },
-      });
-      return orders.map((order) => ({
-        ...order,
-        items: JSON.parse(order.items),
-      }));
-    } catch (error) {
-      logger.error("Error fetching customer orders:", error);
-      throw error;
-    }
+  static async riderAcceptJob(orderId: string, riderId: string) {
+    return await prisma.order.update({
+      where: { id: orderId },
+      data: { riderId, status: OrderStatus.RIDER_ACCEPTED },
+    });
+  }
+
+  static async riderConfirmPickup(orderId: string, riderId: string) {
+    return await prisma.order.update({
+      where: { id: orderId, riderId },
+      data: {
+        status: OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER,
+        pickupAt: new Date(),
+      },
+    });
+  }
+
+  static async riderFinalizeDelivery(orderId: string, riderId: string) {
+    return await prisma.order.update({
+      where: { id: orderId, riderId },
+      data: { status: OrderStatus.DELIVERED, deliveredAt: new Date() },
+    });
   }
 }
-
-export const orderService = OrderService;

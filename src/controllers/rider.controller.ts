@@ -182,6 +182,41 @@ export class RiderController {
     }
   }
 
+  static async getNearbyJobs(req: AuthRequest, res: Response) {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+      const radius = req.query.radius
+        ? parseFloat(req.query.radius as string)
+        : 5;
+
+      if (isNaN(lat) || isNaN(lng)) {
+        throw new CustomError(
+          "Valid latitude and longitude are required",
+          400,
+          "INVALID_LOCATION",
+        );
+      }
+
+      const orders = await riderService.getNearbyAvailableOrders(
+        lat,
+        lng,
+        radius,
+      );
+
+      res.status(200).json({
+        success: true,
+        count: (orders as any).length,
+        orders,
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
   static async goOffline(req: AuthRequest, res: Response) {
     try {
       const rider = await riderService.goOffline(req.user!.id);

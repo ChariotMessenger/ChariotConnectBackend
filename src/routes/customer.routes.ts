@@ -3,7 +3,25 @@ import { customerController } from "../controllers/customer.controller";
 import { authMiddleware } from "../middlewares/auth";
 
 const router = Router();
-
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Point:
+ *       type: object
+ *       properties:
+ *         latitude:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *         longitude:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *         locationName:
+ *           type: string
+ *           nullable: true
+ */
 /**
  * @swagger
  * /customers/register/step-1:
@@ -442,6 +460,8 @@ protectedRouter.get(
  *                   longitude:
  *                     type: number
  *                     format: float
+ *                  locationName:
+ *                    type: string
  *     responses:
  *       200:
  *         description: Profile updated successfully
@@ -493,9 +513,96 @@ protectedRouter.post(
 
 /**
  * @swagger
+ * /customers/orders:
+ *   get:
+ *     summary: Get customer order history with pagination
+ *     tags:
+ *       - Customer Operations
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - WAITING_FOR_APPROVAL
+ *             - AWAITING_PAYMENT
+ *             - PAID
+ *             - VENDOR_PACKING
+ *             - DELIVERED
+ *             - CANCELLED
+ *         description: Optional status filter
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 orders:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       totalAmount:
+ *                         type: number
+ *                       status:
+ *                         type: string
+ *                       items:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                       pickupLocation:
+ *                         $ref: '#/components/schemas/Point'
+ *                       deliveryLocation:
+ *                         $ref: '#/components/schemas/Point'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ */
+protectedRouter.get(
+  "/orders",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.getOrders(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
  * /customers/vendors/by-location:
  *   post:
  *     summary: Fetch Vendors by Location
+ *     description: Retrieve verified vendors within a specific radius of the customer's coordinates with pagination.
  *     tags:
  *       - Customer Operations
  *     security:
@@ -512,13 +619,55 @@ protectedRouter.post(
  *             properties:
  *               latitude:
  *                 type: number
+ *                 example: 6.5244
  *               longitude:
  *                 type: number
+ *                 example: 3.3792
  *               radiusKm:
  *                 type: number
+ *                 default: 10
+ *               page:
+ *                 type: integer
+ *                 default: 1
+ *               limit:
+ *                 type: integer
+ *                 default: 10
  *     responses:
  *       200:
  *         description: Vendors retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 vendors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       businessName:
+ *                         type: string
+ *                       businessType:
+ *                         type: string
+ *                       profilePhotoUrl:
+ *                         type: string
+ *                       businessAddress:
+ *                         $ref: '#/components/schemas/Point'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  */
 protectedRouter.post(
   "/vendors/by-location",
