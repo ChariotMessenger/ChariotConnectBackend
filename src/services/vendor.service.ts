@@ -191,6 +191,7 @@ export class VendorService {
             set: {
               latitude: data.businessAddress.latitude,
               longitude: data.businessAddress.longitude,
+              locationName: data.businessAddress.locationName,
             },
           },
           isOwner: data.isOwner,
@@ -464,6 +465,7 @@ export class VendorService {
           isOwner: true,
           isBusinessRegistered: true,
           brandLogoUrl: true,
+          businessOwnerName: true,
           coverPhotoUrl: true,
           bio: true,
           rank: true,
@@ -472,7 +474,30 @@ export class VendorService {
           verificationStatus: true,
           receiveMarketingEmails: true,
           createdAt: true,
-          currentLocation: true,
+          productCategories: {
+            select: {
+              id: true,
+              name: true,
+              vendorId: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          catalogItems: {
+            select: {
+              id: true,
+              vendorId: true,
+              categoryId: true,
+              categoryName: true,
+              name: true,
+              description: true,
+              price: true,
+              imageUrl: true,
+              available: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
         },
       });
 
@@ -480,8 +505,15 @@ export class VendorService {
         throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
       }
 
+      const { productCategories, catalogItems, ...profileData } = vendor;
+
       logger.info(`Vendor profile fetched: ${vendorId}`);
-      return vendor;
+
+      return {
+        ...profileData,
+        categories: productCategories,
+        items: catalogItems,
+      };
     } catch (error) {
       logger.error("Error fetching vendor profile:", error);
       throw error;
@@ -500,6 +532,12 @@ export class VendorService {
           bio: data.bio || undefined,
           vendorWorkPeriod: data.vendorWorkPeriod || undefined,
           vendorServiceType: data.vendorServiceType || undefined,
+          businessOwnerName: data.businessOwnerName || undefined,
+          businessType: data.businessType || undefined,
+          isBusinessRegistered:
+            data.isBusinessRegistered !== undefined
+              ? data.isBusinessRegistered
+              : undefined,
           businessAddress: data.businessAddress
             ? {
                 set: {
@@ -513,15 +551,6 @@ export class VendorService {
             data.receiveMarketingEmails !== undefined
               ? data.receiveMarketingEmails
               : undefined,
-          currentLocation: data.currentLocation
-            ? {
-                set: {
-                  latitude: data.currentLocation.latitude,
-                  longitude: data.currentLocation.longitude,
-                  locationName: data.currentLocation.locationName,
-                },
-              }
-            : undefined,
         },
         select: {
           id: true,

@@ -94,7 +94,6 @@ model Vendor {
   businessOwnerName      String?
   isBusinessRegistered   Boolean
   profilePhotoUrl        String?
-  currentLocation        Point?
   brandLogoUrl           String?           
   coverPhotoUrl          String?
   bio                    String?
@@ -110,6 +109,7 @@ model Vendor {
   otpVerifications       OTPVerification[]
   favoritedBy            FavoriteVendor[]
   catalogItems           CatalogItem[]
+  productCategories     ProductCategory[]
   vendorReviews          Review[]           @relation("VendorReviews")
   orders                 Order[]            @relation("VendorOrders")
   messages               Message[]          @relation("VendorMessages")
@@ -209,17 +209,33 @@ model OTPVerification {
 }
 
 model CatalogItem {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  vendorId    String   @db.ObjectId
-  name        String
-  description String?
-  price       Float
-  imageUrl    String?
-  available   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId     String   @db.ObjectId
+  categoryId   String?  @db.ObjectId
+  categoryName String?
+  name         String
+  description  String?
+  price        Float
+  imageUrl     String?
+  available    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  vendor       Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category     ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
+  @@index([vendorId])
+  @@index([categoryId])
+}
+model ProductCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  vendorId  String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  vendor    Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items     CatalogItem[]
+
+  @@unique([vendorId, name])
   @@index([vendorId])
 }
 

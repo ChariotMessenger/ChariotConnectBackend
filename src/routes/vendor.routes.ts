@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { vendorController } from "../controllers/vendor.controller";
 import { authMiddleware } from "../middlewares/auth";
+import { upload } from "../middlewares/multer";
 const router = Router();
 
 /**
@@ -574,7 +575,7 @@ protectedRouter.get(
  *           schema:
  *             type: object
  *             properties:
- *               image:
+ *               logo:
  *                 type: string
  *                 format: binary
  *     responses:
@@ -583,6 +584,7 @@ protectedRouter.get(
  */
 protectedRouter.patch(
   "/profile/brand-logo",
+  upload.single("logo"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await vendorController.uploadBrandLogo(req as any, res);
@@ -608,7 +610,7 @@ protectedRouter.patch(
  *           schema:
  *             type: object
  *             properties:
- *               image:
+ *               cover:
  *                 type: string
  *                 format: binary
  *     responses:
@@ -617,6 +619,7 @@ protectedRouter.patch(
  */
 protectedRouter.patch(
   "/profile/cover-photo",
+  upload.single("cover"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await vendorController.uploadCoverPhoto(req as any, res);
@@ -625,12 +628,11 @@ protectedRouter.patch(
     }
   },
 );
-
 /**
  * @swagger
  * /vendors/catalog:
  *   post:
- *     summary: Create Catalog Item
+ *     summary: Create Catalog Item with Image
  *     tags:
  *       - Vendor Catalog
  *     security:
@@ -638,7 +640,7 @@ protectedRouter.patch(
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -647,18 +649,22 @@ protectedRouter.patch(
  *             properties:
  *               name:
  *                 type: string
- *               description:
- *                 type: string
  *               price:
  *                 type: number
- *               imageUrl:
+ *               description:
  *                 type: string
+ *               categoryId:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Catalog item created
  */
 protectedRouter.post(
   "/catalog",
+  upload.single("image"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await vendorController.createCatalogItem(req as any, res);
@@ -683,12 +689,32 @@ protectedRouter.post(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               categoryId:
+ *                 type: string
+ *               available:
+ *                 type: boolean
+ *               image:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       200:
  *         description: Catalog item updated
  */
 protectedRouter.put(
   "/catalog/:itemId",
+  upload.single("image"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await vendorController.updateCatalogItem(req as any, res);
@@ -737,6 +763,15 @@ protectedRouter.delete(
  *       - Vendor Catalog
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: Vendor catalog retrieved
@@ -746,6 +781,145 @@ protectedRouter.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await vendorController.getCatalog(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /vendors/categories:
+ *   post:
+ *     summary: Create Product Category
+ *     tags:
+ *       - Vendor Catalog
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Category created
+ */
+protectedRouter.post(
+  "/categories",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.createCategory(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /vendors/categories:
+ *   get:
+ *     summary: Get Vendor Categories
+ *     tags:
+ *       - Vendor Catalog
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Categories retrieved
+ */
+protectedRouter.get(
+  "/categories",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.getCategories(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /vendors/categories/{categoryId}:
+ *   put:
+ *     summary: Update Category
+ *     tags:
+ *       - Vendor Catalog
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Category updated
+ */
+protectedRouter.put(
+  "/categories/:categoryId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.updateCategory(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /vendors/categories/{categoryId}:
+ *   delete:
+ *     summary: Delete Category
+ *     tags:
+ *       - Vendor Catalog
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Category deleted
+ */
+protectedRouter.delete(
+  "/categories/:categoryId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.deleteCategory(req as any, res);
     } catch (error) {
       next(error);
     }

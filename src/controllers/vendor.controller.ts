@@ -272,10 +272,31 @@ export class VendorController {
   // Catalog operations
   static async createCatalogItem(req: AuthRequest, res: Response) {
     try {
-      const item = await catalogService.createItem(req.user!.id, req.body);
+      const vendorId = req.user!.id;
+
+      const item = await catalogService.createItem(vendorId, req.body);
+
+      if (req.file) {
+        try {
+          const imageUrl = await UploadService.uploadCatalogImage(
+            req.file,
+            vendorId,
+            item.id,
+          );
+
+          await catalogService.updateItem(item.id, vendorId, { imageUrl });
+          item.imageUrl = imageUrl;
+        } catch (uploadError) {
+          logger.error(
+            "Image upload failed, but item was created:",
+            uploadError,
+          );
+        }
+      }
+
       res.status(201).json({
         success: true,
-        message: "Catalog item created",
+        message: "Catalog item created successfully",
         data: item,
       });
     } catch (error) {
@@ -287,11 +308,25 @@ export class VendorController {
   static async updateCatalogItem(req: AuthRequest, res: Response) {
     try {
       const { itemId } = req.params;
+      const vendorId = req.user!.id;
+
+      let updateData = { ...req.body };
+
+      if (req.file) {
+        const imageUrl = await UploadService.uploadCatalogImage(
+          req.file,
+          vendorId,
+          itemId,
+        );
+        updateData.imageUrl = imageUrl;
+      }
+
       const item = await catalogService.updateItem(
         itemId,
-        req.user!.id,
-        req.body,
+        vendorId,
+        updateData,
       );
+
       res.status(200).json({
         success: true,
         message: "Catalog item updated",
@@ -316,13 +351,91 @@ export class VendorController {
 
   static async getCatalog(req: AuthRequest, res: Response) {
     try {
-      const items = await catalogService.getVendorCatalog(req.user!.id);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      const result = await catalogService.getVendorCatalog(
+        req.user!.id,
+        page,
+        limit,
+      );
       res.status(200).json({
         success: true,
-        data: items,
+        data: result.items,
+        pagination: result.pagination,
       });
     } catch (error) {
       logger.error("Error in getCatalog:", error);
+      throw error;
+    }
+  }
+
+  static async createCategory(req: AuthRequest, res: Response) {
+    try {
+      const { name } = req.body;
+      const category = await catalogService.createCategory(req.user!.id, name);
+      res.status(201).json({
+        success: true,
+        message: "Category created",
+        data: category,
+      });
+    } catch (error) {
+      logger.error("Error in createCategory:", error);
+      throw error;
+    }
+  }
+
+  static async updateCategory(req: AuthRequest, res: Response) {
+    try {
+      const { categoryId } = req.params;
+      const { name } = req.body;
+      const category = await catalogService.updateCategory(
+        categoryId,
+        req.user!.id,
+        name,
+      );
+      res.status(200).json({
+        success: true,
+        message: "Category updated",
+        data: category,
+      });
+    } catch (error) {
+      logger.error("Error in updateCategory:", error);
+      throw error;
+    }
+  }
+
+  static async deleteCategory(req: AuthRequest, res: Response) {
+    try {
+      const { categoryId } = req.params;
+      const result = await catalogService.deleteCategory(
+        categoryId,
+        req.user!.id,
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in deleteCategory:", error);
+      throw error;
+    }
+  }
+
+  static async getCategories(req: AuthRequest, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      const result = await catalogService.getVendorCategories(
+        req.user!.id,
+        page,
+        limit,
+      );
+      res.status(200).json({
+        success: true,
+        data: result.categories,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      logger.error("Error in getCategories:", error);
       throw error;
     }
   }
