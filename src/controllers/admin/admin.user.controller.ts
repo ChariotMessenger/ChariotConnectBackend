@@ -71,8 +71,8 @@ export class AdminUserController {
     next: NextFunction,
   ) {
     try {
-      const { type, id } = req.params; // type: "vendor" | "rider"
-      const { action } = req.body; // "VERIFY" | "REJECT"
+      const { type, id } = req.params;
+      const { action } = req.body;
 
       const updatedUser = await adminUserService.verifyUser(
         type as "vendor" | "rider",

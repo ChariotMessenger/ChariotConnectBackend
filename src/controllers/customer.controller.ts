@@ -300,6 +300,7 @@ export class CustomerController {
       });
     }
   }
+
   static async getOrders(req: AuthRequest, res: Response) {
     try {
       const status = req.query.status as OrderStatus;
