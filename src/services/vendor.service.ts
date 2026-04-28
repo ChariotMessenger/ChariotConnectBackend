@@ -561,7 +561,6 @@ export class VendorService {
           bio: true,
           vendorWorkPeriod: true,
           vendorServiceType: true,
-          currentLocation: true,
           businessAddress: true,
           brandLogoUrl: true,
           coverPhotoUrl: true,
