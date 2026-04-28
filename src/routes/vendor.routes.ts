@@ -475,7 +475,7 @@ protectedRouter.put(
  * /vendors/profile:
  *   get:
  *     summary: Get Vendor Profile
- *     description: Returns the complete vendor profile including branding, operational hours, and verification status.
+ *     description: Returns the complete vendor profile including branding, operational hours, verification status, and the full catalog.
  *     tags:
  *       - Vendor Profile
  *     security:
@@ -511,6 +511,9 @@ protectedRouter.put(
  *                       type: string
  *                     businessName:
  *                       type: string
+ *                     businessOwnerName:
+ *                       type: string
+ *                       nullable: true
  *                     businessAddress:
  *                       $ref: '#/components/schemas/Point'
  *                     isOwner:
@@ -546,8 +549,56 @@ protectedRouter.put(
  *                     createdAt:
  *                       type: string
  *                       format: date-time
- *                     currentLocation:
- *                       $ref: '#/components/schemas/Point'
+ *                     categories:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           vendorId:
+ *                             type: string
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           vendorId:
+ *                             type: string
+ *                           categoryId:
+ *                             type: string
+ *                             nullable: true
+ *                           categoryName:
+ *                             type: string
+ *                             nullable: true
+ *                           name:
+ *                             type: string
+ *                           description:
+ *                             type: string
+ *                             nullable: true
+ *                           price:
+ *                             type: number
+ *                           imageUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           available:
+ *                             type: boolean
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
  */
 protectedRouter.get(
   "/profile",
