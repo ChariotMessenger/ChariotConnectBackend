@@ -206,10 +206,40 @@ export class VendorController {
     }
   }
 
-  static async uploadProfilePhoto(req: AuthRequest, res: Response) {
+  static async uploadBrandLogo(req: AuthRequest, res: Response) {
     try {
       if (!req.file) {
-        throw new CustomError("No file uploaded", 400, "NO_FILE");
+        throw new CustomError("No logo file uploaded", 400, "NO_FILE");
+      }
+
+      const logoUrl = await UploadService.uploadProfilePhoto(
+        req.file,
+        req.user!.id,
+        "VENDOR",
+      );
+
+      const vendor = await VendorService.updateBrandLogo(req.user!.id, logoUrl);
+
+      res.status(200).json({
+        success: true,
+        message: "Brand logo updated successfully",
+        data: {
+          brandLogoUrl: vendor.brandLogoUrl,
+        },
+      });
+    } catch (error: any) {
+      logger.error("Error in VendorController.uploadBrandLogo:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  static async uploadCoverPhoto(req: AuthRequest, res: Response) {
+    try {
+      if (!req.file) {
+        throw new CustomError("No cover photo file uploaded", 400, "NO_FILE");
       }
 
       const photoUrl = await UploadService.uploadProfilePhoto(
@@ -218,19 +248,24 @@ export class VendorController {
         "VENDOR",
       );
 
-      const vendor = await vendorService.updateProfilePhoto(
+      const vendor = await VendorService.updateCoverPhoto(
         req.user!.id,
         photoUrl,
       );
 
       res.status(200).json({
         success: true,
-        message: "Profile photo updated",
-        data: vendor,
+        message: "Cover photo updated successfully",
+        data: {
+          coverPhotoUrl: vendor.coverPhotoUrl,
+        },
       });
-    } catch (error) {
-      logger.error("Error in uploadProfilePhoto:", error);
-      throw error;
+    } catch (error: any) {
+      logger.error("Error in VendorController.uploadCoverPhoto:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
     }
   }
 

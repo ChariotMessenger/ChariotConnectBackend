@@ -457,12 +457,18 @@ export class VendorService {
           email: true,
           phone: true,
           country: true,
+          currency: true,
           businessType: true,
           businessName: true,
           businessAddress: true,
           isOwner: true,
           isBusinessRegistered: true,
-          profilePhotoUrl: true,
+          brandLogoUrl: true,
+          coverPhotoUrl: true,
+          bio: true,
+          rank: true,
+          vendorWorkPeriod: true,
+          vendorServiceType: true,
           verificationStatus: true,
           receiveMarketingEmails: true,
           createdAt: true,
@@ -491,6 +497,9 @@ export class VendorService {
           lastName: data.lastName || undefined,
           phone: data.phone || undefined,
           businessName: data.businessName || undefined,
+          bio: data.bio || undefined,
+          vendorWorkPeriod: data.vendorWorkPeriod || undefined,
+          vendorServiceType: data.vendorServiceType || undefined,
           businessAddress: data.businessAddress
             ? {
                 set: {
@@ -520,8 +529,13 @@ export class VendorService {
           lastName: true,
           businessName: true,
           email: true,
+          bio: true,
+          vendorWorkPeriod: true,
+          vendorServiceType: true,
           currentLocation: true,
           businessAddress: true,
+          brandLogoUrl: true,
+          coverPhotoUrl: true,
         },
       });
 
@@ -533,17 +547,32 @@ export class VendorService {
     }
   }
 
-  static async updateProfilePhoto(vendorId: string, photoUrl: string) {
+  static async updateBrandLogo(vendorId: string, logoUrl: string) {
     try {
       const vendor = await prisma.vendor.update({
         where: { id: vendorId },
-        data: { profilePhotoUrl: photoUrl },
+        data: { brandLogoUrl: logoUrl },
       });
 
-      logger.info(`Vendor profile photo updated: ${vendorId}`);
+      logger.info(`Vendor brand logo updated: ${vendorId}`);
       return vendor;
     } catch (error) {
-      logger.error("Error updating vendor profile photo:", error);
+      logger.error("Error updating vendor brand logo:", error);
+      throw error;
+    }
+  }
+
+  static async updateCoverPhoto(vendorId: string, photoUrl: string) {
+    try {
+      const vendor = await prisma.vendor.update({
+        where: { id: vendorId },
+        data: { coverPhotoUrl: photoUrl },
+      });
+
+      logger.info(`Vendor cover photo updated: ${vendorId}`);
+      return vendor;
+    } catch (error) {
+      logger.error("Error updating vendor cover photo:", error);
       throw error;
     }
   }

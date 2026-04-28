@@ -419,29 +419,6 @@ protectedRouter.use(authMiddleware as any);
 /**
  * @swagger
  * /vendors/profile:
- *   get:
- *     summary: Get Vendor Profile
- *     tags:
- *       - Vendor Profile
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Vendor profile retrieved
- */
-protectedRouter.get(
-  "/profile",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await vendorController.getProfile(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-/**
- * @swagger
- * /vendors/profile:
  *   put:
  *     summary: Update Vendor Profile
  *     tags:
@@ -463,6 +440,14 @@ protectedRouter.get(
  *                 type: string
  *               businessName:
  *                 type: string
+ *               bio:
+ *                 type: string
+ *               vendorServiceType:
+ *                 type: string
+ *                 example: PICKUP_AND_DELIVERY
+ *               vendorWorkPeriod:
+ *                 type: object
+ *                 description: JSON object for opening hours
  *               businessAddress:
  *                 $ref: '#/components/schemas/Point'
  *               receiveMarketingEmails:
@@ -486,22 +471,155 @@ protectedRouter.put(
 
 /**
  * @swagger
- * /vendors/profile/photo:
- *   post:
- *     summary: Upload Profile Photo
+ * /vendors/profile:
+ *   get:
+ *     summary: Get Vendor Profile
+ *     description: Returns the complete vendor profile including branding, operational hours, and verification status.
  *     tags:
  *       - Vendor Profile
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Profile photo updated
+ *         description: Vendor profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     firstName:
+ *                       type: string
+ *                     lastName:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     country:
+ *                       type: string
+ *                     currency:
+ *                       type: string
+ *                     businessType:
+ *                       type: string
+ *                     businessName:
+ *                       type: string
+ *                     businessAddress:
+ *                       $ref: '#/components/schemas/Point'
+ *                     isOwner:
+ *                       type: boolean
+ *                     isBusinessRegistered:
+ *                       type: boolean
+ *                     brandLogoUrl:
+ *                       type: string
+ *                       nullable: true
+ *                     coverPhotoUrl:
+ *                       type: string
+ *                       nullable: true
+ *                     bio:
+ *                       type: string
+ *                       nullable: true
+ *                     rank:
+ *                       type: number
+ *                       format: float
+ *                     vendorWorkPeriod:
+ *                       type: object
+ *                       nullable: true
+ *                     vendorServiceType:
+ *                       type: string
+ *                       nullable: true
+ *                     verificationStatus:
+ *                       type: string
+ *                       enum:
+ *                         - PENDING
+ *                         - VERIFIED
+ *                         - REJECTED
+ *                     receiveMarketingEmails:
+ *                       type: boolean
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     currentLocation:
+ *                       $ref: '#/components/schemas/Point'
  */
-protectedRouter.post(
-  "/profile/photo",
+protectedRouter.get(
+  "/profile",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await vendorController.uploadProfilePhoto(req as any, res);
+      await vendorController.getProfile(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+/**
+ * @swagger
+ * /vendors/profile/brand-logo:
+ *   patch:
+ *     summary: Upload Brand Logo
+ *     tags:
+ *       - Vendor Profile
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Brand logo updated
+ */
+protectedRouter.patch(
+  "/profile/brand-logo",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.uploadBrandLogo(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /vendors/profile/cover-photo:
+ *   patch:
+ *     summary: Upload Cover Photo
+ *     tags:
+ *       - Vendor Profile
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Cover photo updated
+ */
+protectedRouter.patch(
+  "/profile/cover-photo",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.uploadCoverPhoto(req as any, res);
     } catch (error) {
       next(error);
     }

@@ -539,35 +539,35 @@ protectedRouter.post(
  *                             type: string
  */
 router.get("/nearby-jobs", authMiddleware, riderController.getNearbyJobs);
-/**
- * @swagger
- * /riders/online:
- *   get:
- *     summary: Get Online Riders
- *     description: Fetch all online riders in a specific state
- *     tags:
- *       - Rider Operations
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: state
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Online riders retrieved
- */
-protectedRouter.get(
-  "/online",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await riderController.getOnlineRiders(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+// /**
+//  * @swagger
+//  * /riders/online:
+//  *   get:
+//  *     summary: Get Online Riders
+//  *     description: Fetch all online riders in a specific state
+//  *     tags:
+//  *       - Rider Operations
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: query
+//  *         name: state
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *     responses:
+//  *       200:
+//  *         description: Online riders retrieved
+//  */
+// protectedRouter.get(
+//   "/online",
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       await riderController.getOnlineRiders(req as any, res);
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+// );
 router.use("/", protectedRouter);
 export default router;

@@ -95,6 +95,12 @@ model Vendor {
   isBusinessRegistered   Boolean
   profilePhotoUrl        String?
   currentLocation        Point?
+  brandLogoUrl           String?           
+  coverPhotoUrl          String?
+  bio                    String?
+  rank                   Float            @default(0)
+  vendorWorkPeriod       Json?             
+  vendorServiceType      String?
   password               String
   receiveMarketingEmails Boolean            @default(false)
   verificationStatus     VerificationStatus @default(PENDING)
