@@ -218,7 +218,7 @@ export class VendorController {
         "VENDOR",
       );
 
-      const vendor = await VendorService.updateBrandLogo(req.user!.id, logoUrl);
+      const vendor = await vendorService.updateBrandLogo(req.user!.id, logoUrl);
 
       res.status(200).json({
         success: true,
@@ -248,7 +248,7 @@ export class VendorController {
         "VENDOR",
       );
 
-      const vendor = await VendorService.updateCoverPhoto(
+      const vendor = await vendorService.updateCoverPhoto(
         req.user!.id,
         photoUrl,
       );
