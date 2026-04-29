@@ -2,7 +2,9 @@ import nodemailer from "nodemailer";
 import { logger } from "../utils/logger";
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     type: "OAuth2",
     user: process.env.GOOGLE_USER,
@@ -11,7 +13,6 @@ const transporter = nodemailer.createTransport({
     refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
   },
 });
-
 export class EmailService {
   private static async send(options: {
     to: string;
