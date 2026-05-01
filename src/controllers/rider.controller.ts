@@ -18,11 +18,87 @@ export class RiderController {
 
   static async verifyEmail(req: AuthRequest, res: Response) {
     try {
-      const { email, otp } = req.body;
-      const result = await riderService.verifyEmail(email, otp);
+      const { email, phoneNumber, otp } = req.body;
+
+      if ((!email && !phoneNumber) || !otp) {
+        return res.status(400).json({
+          success: false,
+          message: "Identifier (Email/Phone) and OTP are required",
+          code: "MISSING_VERIFICATION_DATA",
+        });
+      }
+
+      const result = await riderService.verifyAccount({
+        email,
+        phoneNumber,
+        otp,
+      });
       res.status(200).json(result);
     } catch (error) {
-      logger.error("Error in verifyEmail:", error);
+      logger.error("Error in rider verifyAccount controller:", error);
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
+  static async forgotPasswordStep1(req: AuthRequest, res: Response) {
+    try {
+      const { email, phoneNumber } = req.body;
+
+      if (!email && !phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Email or Phone Number is required",
+          code: "MISSING_IDENTIFIER",
+        });
+      }
+
+      const result = await riderService.forgotPasswordStep1({
+        email,
+        phoneNumber,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in rider forgotPasswordStep1 controller:", error);
+      if (error instanceof CustomError) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
+  static async forgotPasswordStep2(req: AuthRequest, res: Response) {
+    try {
+      const { email, phoneNumber, otp, newPassword } = req.body;
+
+      if ((!email && !phoneNumber) || !otp || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Identifier (Email/Phone), OTP, and new password are required",
+          code: "MISSING_RESET_DATA",
+        });
+      }
+
+      const result = await riderService.forgotPasswordStep2({
+        email,
+        phoneNumber,
+        otp,
+        newPassword,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error in rider forgotPasswordStep2 controller:", error);
       if (error instanceof CustomError) {
         return res.status(error.status).json({
           success: false,
@@ -36,11 +112,20 @@ export class RiderController {
 
   static async resendOTP(req: AuthRequest, res: Response) {
     try {
-      const { email } = req.body;
-      const result = await riderService.resendOTP(email);
+      const { email, phoneNumber } = req.body;
+
+      if (!email && !phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Email or Phone Number is required",
+          code: "MISSING_IDENTIFIER",
+        });
+      }
+
+      const result = await riderService.resendOTP({ email, phoneNumber });
       res.status(200).json(result);
     } catch (error) {
-      logger.error("Error in resendOTP:", error);
+      logger.error("Error in rider resendOTP controller:", error);
       if (error instanceof CustomError) {
         return res.status(error.status).json({
           success: false,

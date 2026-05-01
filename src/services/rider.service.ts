@@ -357,6 +357,123 @@ export class RiderService {
       throw error;
     }
   }
+
+  static async forgotPasswordStep1(data: {
+    email?: string;
+    phoneNumber?: string;
+  }) {
+    try {
+      const { email, phoneNumber } = data;
+
+      if (!email && !phoneNumber) {
+        throw new CustomError(
+          "Email or Phone Number is required",
+          400,
+          "IDENTIFIER_REQUIRED",
+        );
+      }
+
+      const rider = await prisma.rider.findFirst({
+        where: {
+          OR: [
+            { email: email || undefined },
+            { phone: phoneNumber || undefined },
+          ],
+        },
+      });
+
+      if (!rider) {
+        throw new CustomError(
+          "Rider with this identifier does not exist",
+          404,
+          "RIDER_NOT_FOUND",
+        );
+      }
+
+      const identifier = phoneNumber || email!;
+      const otp = await createOTPVerification(
+        identifier,
+        UserRole.RIDER,
+        rider.id,
+      );
+
+      if (phoneNumber) {
+        await SmsService.sendSms({
+          recipient: phoneNumber,
+          content: `Your Chariot Connect password reset code is ${otp.code}. Expires in 15 mins.`,
+          sender: "Chariot",
+          tag: "forgot-password",
+        });
+        logger.info(`Rider forgot password OTP sent to phone: ${phoneNumber}`);
+      } else {
+        await EmailService.sendOTPEmail(email!, otp.code, rider.firstName);
+        logger.info(`Rider forgot password OTP sent to email: ${email}`);
+      }
+
+      return {
+        success: true,
+        message: `Password reset OTP sent to ${phoneNumber ? "phone" : "email"}`,
+        identifier,
+        otpExpiry: otp.expiresAt,
+      };
+    } catch (error) {
+      logger.error("Error in rider forgotPasswordStep1:", error);
+      throw error;
+    }
+  }
+
+  static async forgotPasswordStep2(data: {
+    email?: string;
+    phoneNumber?: string;
+    otp: string;
+    newPassword: string;
+  }) {
+    try {
+      const { email, phoneNumber, otp, newPassword } = data;
+
+      if (!email && !phoneNumber) {
+        throw new CustomError(
+          "Email or Phone Number is required",
+          400,
+          "IDENTIFIER_REQUIRED",
+        );
+      }
+
+      const target = email || phoneNumber!;
+      const verifiedOtp = await verifyOTP(target, otp);
+
+      if (!verifiedOtp) {
+        throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
+      }
+
+      const rider = await prisma.rider.findFirst({
+        where: email ? { email } : { phone: phoneNumber },
+      });
+
+      if (!rider) {
+        throw new CustomError("Rider not found", 404, "RIDER_NOT_FOUND");
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+
+      await prisma.rider.update({
+        where: { id: rider.id },
+        data: { password: hashedPassword },
+      });
+
+      logger.info(`Password successfully reset for rider ID: ${rider.id}`);
+
+      return {
+        success: true,
+        message:
+          "Password reset successful. You can now login with your new password.",
+      };
+    } catch (error) {
+      logger.error("Error in rider forgotPasswordStep2:", error);
+      throw error;
+    }
+  }
+
   static async deleteAccount(riderId: string) {
     try {
       const rider = await prisma.rider.findUnique({
