@@ -6,7 +6,7 @@ import { createOTPVerification, verifyOTP } from "../utils/otp";
 import EmailService from "./email.service";
 import { UserRole, VerificationStatus, OrderStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
-
+import { SmsService } from "./sms-service";
 interface Point {
   latitude?: number;
   longitude?: number;
@@ -124,16 +124,49 @@ export class VendorService {
     }
   }
 
-  static async resendOTP(email: string) {
+  static async resendOTP(data: { email?: string; phoneNumber?: string }) {
     try {
-      const otp = await createOTPVerification(email, UserRole.VENDOR);
-      await EmailService.sendOTPEmail(email, otp.code);
+      const { email, phoneNumber } = data;
 
-      logger.info(`OTP resent to vendor: ${email}`);
+      if (!email && !phoneNumber) {
+        throw new CustomError(
+          "Email or Phone Number is required",
+          400,
+          "IDENTIFIER_REQUIRED",
+        );
+      }
+
+      const target = email || phoneNumber!;
+      const vendor = await prisma.vendor.findFirst({
+        where: email ? { email } : { phone: phoneNumber },
+      });
+
+      if (!vendor) {
+        throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
+      }
+
+      const otp = await createOTPVerification(
+        target,
+        UserRole.VENDOR,
+        vendor.id,
+      );
+
+      if (phoneNumber) {
+        await SmsService.sendSms({
+          recipient: phoneNumber,
+          content: `Your new Chariot Connect verification code is ${otp.code}. It expires in 15 mins.`,
+          sender: "Chariot",
+          tag: "resend-otp",
+        });
+        logger.info(`OTP resent to vendor phone: ${phoneNumber}`);
+      } else {
+        await EmailService.sendOTPEmail(email!, otp.code, vendor.firstName);
+        logger.info(`OTP resent to vendor email: ${email}`);
+      }
 
       return {
         success: true,
-        message: "A new OTP has been sent to your email.",
+        message: `A new OTP has been sent to your ${phoneNumber ? "phone" : "email"}.`,
         otpExpiry: otp.expiresAt,
       };
     } catch (error) {
@@ -272,34 +305,62 @@ export class VendorService {
     }
   }
 
-  static async forgotPasswordStep1(email: string) {
+  static async forgotPasswordStep1(data: {
+    email?: string;
+    phoneNumber?: string;
+  }) {
     try {
-      const vendor = await prisma.vendor.findUnique({
-        where: { email },
+      const { email, phoneNumber } = data;
+
+      if (!email && !phoneNumber) {
+        throw new CustomError(
+          "Email or Phone Number is required",
+          400,
+          "IDENTIFIER_REQUIRED",
+        );
+      }
+
+      const vendor = await prisma.vendor.findFirst({
+        where: {
+          OR: [
+            { email: email || undefined },
+            { phone: phoneNumber || undefined },
+          ],
+        },
       });
 
       if (!vendor) {
         throw new CustomError(
-          "Vendor with this email does not exist",
+          "Vendor with this identifier does not exist",
           404,
           "VENDOR_NOT_FOUND",
         );
       }
 
+      const identifier = phoneNumber || email!;
       const otp = await createOTPVerification(
-        email,
+        identifier,
         UserRole.VENDOR,
         vendor.id,
       );
 
-      await EmailService.sendOTPEmail(email, otp.code, vendor.firstName);
-
-      logger.info(`Vendor forgot password OTP sent to ${email}`);
+      if (phoneNumber) {
+        await SmsService.sendSms({
+          recipient: phoneNumber,
+          content: `Your Chariot Connect password reset code is ${otp.code}. Expires in 15 mins.`,
+          sender: "Chariot",
+          tag: "forgot-password",
+        });
+        logger.info(`Vendor forgot password OTP sent to phone: ${phoneNumber}`);
+      } else {
+        await EmailService.sendOTPEmail(email!, otp.code, vendor.firstName);
+        logger.info(`Vendor forgot password OTP sent to email: ${email}`);
+      }
 
       return {
         success: true,
-        message: "Password reset OTP sent to email",
-        email,
+        message: `Password reset OTP sent to ${phoneNumber ? "phone" : "email"}`,
+        identifier,
         otpExpiry: otp.expiresAt,
       };
     } catch (error) {
@@ -309,25 +370,45 @@ export class VendorService {
   }
 
   static async forgotPasswordStep2(data: {
-    email: string;
+    email?: string;
+    phoneNumber?: string;
     otp: string;
     newPassword: string;
   }) {
     try {
-      const verifiedOtp = await verifyOTP(data.email, data.otp);
+      const { email, phoneNumber, otp, newPassword } = data;
+
+      if (!email && !phoneNumber) {
+        throw new CustomError(
+          "Email or Phone Number is required",
+          400,
+          "IDENTIFIER_REQUIRED",
+        );
+      }
+
+      const target = email || phoneNumber!;
+      const verifiedOtp = await verifyOTP(target, otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      const hashedPassword = await hashPassword(data.newPassword);
+      const vendor = await prisma.vendor.findFirst({
+        where: email ? { email } : { phone: phoneNumber },
+      });
+
+      if (!vendor) {
+        throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
 
       await prisma.vendor.update({
-        where: { email: data.email },
+        where: { id: vendor.id },
         data: { password: hashedPassword },
       });
 
-      logger.info(`Password successfully reset for vendor: ${data.email}`);
+      logger.info(`Password successfully reset for vendor ID: ${vendor.id}`);
 
       return {
         success: true,
@@ -339,7 +420,6 @@ export class VendorService {
       throw error;
     }
   }
-
   static async verifyLoginOTP(email: string, otp: string) {
     try {
       const verifiedOtp = await verifyOTP(email, otp);

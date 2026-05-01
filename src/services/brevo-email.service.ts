@@ -1,43 +1,36 @@
-import axios from "axios";
+import nodemailer from "nodemailer";
 import { logger } from "../utils/logger";
 
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    type: "OAuth2",
+    user: process.env.GOOGLE_USER,
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+  },
+});
 export class EmailService {
-  private static readonly BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
-  private static readonly API_KEY = process.env.BREVO_API_KEY;
-  private static readonly SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL;
-  private static readonly SENDER_NAME =
-    process.env.BREVO_SENDER_NAME || "Chariot Connect";
-
   private static async send(options: {
     to: string;
     subject: string;
     html: string;
   }): Promise<boolean> {
     try {
-      const response = await axios.post(
-        this.BREVO_API_URL,
-        {
-          sender: { name: this.SENDER_NAME, email: this.SENDER_EMAIL },
-          to: [{ email: options.to }],
-          subject: options.subject,
-          htmlContent: options.html,
-        },
-        {
-          headers: {
-            accept: "application/json",
-            "api-key": this.API_KEY,
-            "content-type": "application/json",
-          },
-        },
-      );
+      const info = await transporter.sendMail({
+        from: `"${process.env.SMTP_SENDER_NAME}" <${process.env.GOOGLE_USER}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      });
 
-      logger.info(`Email sent successfully: ${response.data.messageId}`);
+      logger.info(`Email sent: ${info.messageId}`);
       return true;
-    } catch (error: any) {
-      logger.error(
-        "Brevo Email sending error:",
-        error.response?.data || error.message,
-      );
+    } catch (error) {
+      logger.error("Gmail API sending error:", error);
       return false;
     }
   }
@@ -139,12 +132,10 @@ export class EmailService {
 
   static async testEmailConnection(): Promise<boolean> {
     try {
-      const response = await axios.get("https://api.brevo.com/v3/account", {
-        headers: { "api-key": this.API_KEY },
-      });
-      return !!response.data;
+      await transporter.verify();
+      return true;
     } catch (error) {
-      logger.error("Brevo API connection check failed:", error);
+      logger.error("Gmail API connection check failed:", error);
       return false;
     }
   }

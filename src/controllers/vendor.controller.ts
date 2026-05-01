@@ -59,20 +59,19 @@ export class VendorController {
       throw error;
     }
   }
-
   static async resendOTP(req: AuthRequest, res: Response) {
     try {
-      const { email } = req.body;
+      const { email, phoneNumber } = req.body;
 
-      if (!email) {
+      if (!email && !phoneNumber) {
         return res.status(400).json({
           success: false,
-          message: "Email is required",
-          code: "MISSING_EMAIL",
+          message: "Email or Phone Number is required",
+          code: "MISSING_IDENTIFIER",
         });
       }
 
-      const result = await vendorService.resendOTP(email);
+      const result = await vendorService.resendOTP({ email, phoneNumber });
       res.status(200).json(result);
     } catch (error) {
       logger.error("Error in resendOTP controller:", error);
@@ -82,17 +81,20 @@ export class VendorController {
 
   static async forgotPasswordStep1(req: AuthRequest, res: Response) {
     try {
-      const { email } = req.body;
+      const { email, phoneNumber } = req.body;
 
-      if (!email) {
+      if (!email && !phoneNumber) {
         return res.status(400).json({
           success: false,
-          message: "Email is required",
-          code: "MISSING_EMAIL",
+          message: "Email or Phone Number is required",
+          code: "MISSING_IDENTIFIER",
         });
       }
 
-      const result = await vendorService.forgotPasswordStep1(email);
+      const result = await vendorService.forgotPasswordStep1({
+        email,
+        phoneNumber,
+      });
       res.status(200).json(result);
     } catch (error) {
       logger.error("Error in vendor forgotPasswordStep1 controller:", error);
@@ -102,18 +104,20 @@ export class VendorController {
 
   static async forgotPasswordStep2(req: AuthRequest, res: Response) {
     try {
-      const { email, otp, newPassword } = req.body;
+      const { email, phoneNumber, otp, newPassword } = req.body;
 
-      if (!email || !otp || !newPassword) {
+      if ((!email && !phoneNumber) || !otp || !newPassword) {
         return res.status(400).json({
           success: false,
-          message: "Email, OTP, and new password are required",
+          message:
+            "Identifier (Email/Phone), OTP, and new password are required",
           code: "MISSING_RESET_DATA",
         });
       }
 
       const result = await vendorService.forgotPasswordStep2({
         email,
+        phoneNumber,
         otp,
         newPassword,
       });

@@ -56,7 +56,7 @@ model Customer {
   firstName              String
   lastName               String
   email                  String            @unique
-  phone                  String
+  phone                  String       @unique 
   birthday               DateTime
   gender                 String
   country                String
@@ -83,7 +83,7 @@ model Vendor {
   firstName              String
   lastName               String
   email                  String             @unique
-  phone                  String
+  phone                  String             @unique
   country                String
   currency               String             @default("NGN")
   businessType           String
@@ -124,7 +124,7 @@ model Rider {
   firstName             String
   lastName              String
   email                 String             @unique
-  phone                 String
+  phone                 String            @unique
   birthday              DateTime
   gender                String
   country               String

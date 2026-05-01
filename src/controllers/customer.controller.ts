@@ -84,17 +84,17 @@ export class CustomerController {
 
   static async resendOTP(req: AuthRequest, res: Response) {
     try {
-      const { email } = req.body;
+      const { email, phoneNumber } = req.body;
 
-      if (!email) {
+      if (!email && !phoneNumber) {
         return res.status(400).json({
           success: false,
-          message: "Email is required",
-          code: "MISSING_EMAIL",
+          message: "Email or Phone Number is required",
+          code: "MISSING_IDENTIFIER",
         });
       }
 
-      const result = await customerService.resendOTP(email);
+      const result = await customerService.resendOTP({ email, phoneNumber });
       res.status(200).json(result);
     } catch (error) {
       logger.error("Error in resendOTP controller:", error);
@@ -165,41 +165,44 @@ export class CustomerController {
       throw error;
     }
   }
-
   static async forgotPasswordStep1(req: AuthRequest, res: Response) {
     try {
-      const { email } = req.body;
+      const { email, phoneNumber } = req.body;
 
-      if (!email) {
+      if (!email && !phoneNumber) {
         return res.status(400).json({
           success: false,
-          message: "Email is required",
-          code: "MISSING_EMAIL",
+          message: "Email or Phone Number is required",
+          code: "MISSING_IDENTIFIER",
         });
       }
 
-      const result = await customerService.forgotPasswordStep1(email);
+      const result = await customerService.forgotPasswordStep1({
+        email,
+        phoneNumber,
+      });
       res.status(200).json(result);
     } catch (error) {
       logger.error("Error in forgotPasswordStep1 controller:", error);
       throw error;
     }
   }
-
   static async forgotPasswordStep2(req: AuthRequest, res: Response) {
     try {
-      const { email, otp, newPassword } = req.body;
+      const { email, phoneNumber, otp, newPassword } = req.body;
 
-      if (!email || !otp || !newPassword) {
+      if ((!email && !phoneNumber) || !otp || !newPassword) {
         return res.status(400).json({
           success: false,
-          message: "Email, OTP, and new password are required",
+          message:
+            "Identifier (Email/Phone), OTP, and new password are required",
           code: "MISSING_RESET_DATA",
         });
       }
 
       const result = await customerService.forgotPasswordStep2({
         email,
+        phoneNumber,
         otp,
         newPassword,
       });
@@ -209,7 +212,6 @@ export class CustomerController {
       throw error;
     }
   }
-
   static async getProfile(req: AuthRequest, res: Response) {
     try {
       const customer = await customerService.getProfile(req.user!.id);

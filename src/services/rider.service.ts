@@ -11,7 +11,7 @@ import {
 } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { hashPassword, comparePassword } from "../utils/password";
-
+import { SmsService } from "./sms-service";
 export class RiderService {
   static async register(data: {
     firstName: string;
@@ -107,33 +107,49 @@ export class RiderService {
     }
   }
 
-  static async resendOTP(email: string) {
+  static async resendOTP(data: { email?: string; phoneNumber?: string }) {
     try {
-      const rider = await prisma.rider.findUnique({
-        where: { email },
-      });
+      const { email, phoneNumber } = data;
 
-      if (!rider) {
+      if (!email && !phoneNumber) {
         throw new CustomError(
-          "Rider with this email does not exist",
-          404,
-          "RIDER_NOT_FOUND",
+          "Email or Phone Number is required",
+          400,
+          "IDENTIFIER_REQUIRED",
         );
       }
 
-      const otp = await createOTPVerification(email, UserRole.RIDER, rider.id);
+      const target = email || phoneNumber!;
+      const rider = await prisma.rider.findFirst({
+        where: email ? { email } : { phone: phoneNumber },
+      });
 
-      await EmailService.sendOTPEmail(email, otp.code, rider.firstName);
+      if (!rider) {
+        throw new CustomError("Rider not found", 404, "RIDER_NOT_FOUND");
+      }
 
-      logger.info(`OTP resent to rider: ${email}`);
+      const otp = await createOTPVerification(target, UserRole.RIDER, rider.id);
+
+      if (phoneNumber) {
+        await SmsService.sendSms({
+          recipient: phoneNumber,
+          content: `Your new Chariot Connect verification code is ${otp.code}. It expires in 15 mins.`,
+          sender: "Chariot",
+          tag: "resend-otp",
+        });
+        logger.info(`OTP resent to rider phone: ${phoneNumber}`);
+      } else {
+        await EmailService.sendOTPEmail(email!, otp.code, rider.firstName);
+        logger.info(`OTP resent to rider email: ${email}`);
+      }
 
       return {
         success: true,
-        message: "A new OTP has been sent to your email.",
+        message: `A new OTP has been sent to your ${phoneNumber ? "phone" : "email"}.`,
         otpExpiry: otp.expiresAt,
       };
     } catch (error) {
-      logger.error("Error resending OTP for rider:", error);
+      logger.error("Error resending rider OTP:", error);
       throw error;
     }
   }
