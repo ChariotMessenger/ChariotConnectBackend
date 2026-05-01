@@ -268,39 +268,41 @@ export class CustomerController {
     }
   }
 
-  static async fetchVendorsByLocation(req: AuthRequest, res: Response) {
+  static async fetchVendors(req: AuthRequest, res: Response) {
     try {
-      const { latitude, longitude, radiusKm, page, limit } = req.body;
+      const { latitude, longitude, radiusKm, vendorServiceType, page, limit } =
+        req.body;
 
-      if (!latitude || !longitude) {
+      if (!latitude && !longitude && !vendorServiceType) {
         throw new CustomError(
-          "Latitude and longitude are required",
+          "Either location or service type must be provided",
           400,
-          "LOCATION_REQUIRED",
+          "FILTER_REQUIRED",
         );
       }
 
-      const result = await vendorService.getVendorsByLocation(
-        parseFloat(latitude),
-        parseFloat(longitude),
-        radiusKm ? parseFloat(radiusKm) : 10,
-        parseInt(page) || 1,
-        parseInt(limit) || 10,
-      );
+      const result = await vendorService.getVendors({
+        latitude: latitude ? parseFloat(latitude) : undefined,
+        longitude: longitude ? parseFloat(longitude) : undefined,
+        radiusKm: radiusKm ? parseFloat(radiusKm) : 10,
+        serviceType: vendorServiceType,
+        page: parseInt(page) || 1,
+        limit: parseInt(limit) || 10,
+      });
 
       res.status(200).json({
         success: true,
         ...result,
       });
     } catch (error: any) {
-      logger.error("Error in fetchVendorsByLocation:", error);
+      logger.error("Error in fetchVendors:", error);
       res.status(error.statusCode || 500).json({
         success: false,
         message: error.message,
+        errorCode: error.errorCode || "INTERNAL_ERROR",
       });
     }
   }
-
   static async getOrders(req: AuthRequest, res: Response) {
     try {
       const status = req.query.status as OrderStatus;

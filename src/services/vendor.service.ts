@@ -659,24 +659,42 @@ export class VendorService {
       throw error;
     }
   }
-  static async getVendorsByLocation(
-    latitude: number,
-    longitude: number,
-    radiusKm: number = 10,
-    page: number = 1,
-    limit: number = 10,
-  ) {
+  static async getVendors(params: {
+    latitude?: number;
+    longitude?: number;
+    radiusKm?: number;
+    serviceType?: "FOOD" | "GROCERY" | "PHARMACY";
+    page?: number;
+    limit?: number;
+  }) {
     try {
-      const kmPerDegree = 111;
-      const latDelta = radiusKm / kmPerDegree;
-      const lngDelta =
-        radiusKm / (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
+      const {
+        latitude,
+        longitude,
+        radiusKm = 10,
+        serviceType,
+        page = 1,
+        limit = 10,
+      } = params;
+
       const skip = (page - 1) * limit;
 
-      const whereClause = {
+      const whereClause: any = {
         verified: true,
-        verificationStatus: VerificationStatus.VERIFIED,
-        businessAddress: {
+        verificationStatus: "VERIFIED",
+      };
+
+      if (serviceType) {
+        whereClause.vendorServiceType = serviceType;
+      }
+
+      if (latitude !== undefined && longitude !== undefined) {
+        const kmPerDegree = 111;
+        const latDelta = radiusKm / kmPerDegree;
+        const lngDelta =
+          radiusKm / (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
+
+        whereClause.businessAddress = {
           is: {
             latitude: {
               gte: latitude - latDelta,
@@ -687,8 +705,8 @@ export class VendorService {
               lte: longitude + lngDelta,
             },
           },
-        },
-      };
+        };
+      }
 
       const [vendors, total] = await prisma.$transaction([
         prisma.vendor.findMany({
@@ -697,6 +715,7 @@ export class VendorService {
             id: true,
             businessName: true,
             businessType: true,
+            vendorServiceType: true,
             businessAddress: true,
             phone: true,
             profilePhotoUrl: true,
@@ -730,7 +749,7 @@ export class VendorService {
         },
       };
     } catch (error) {
-      logger.error("Error fetching vendors by location:", error);
+      logger.error("Error fetching vendors:", error);
       throw error;
     }
   }

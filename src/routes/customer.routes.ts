@@ -599,10 +599,10 @@ protectedRouter.get(
 
 /**
  * @swagger
- * /customers/vendors/by-location:
+ * /customers/vendors:
  *   post:
- *     summary: Fetch Vendors by Location
- *     description: Retrieve verified vendors within a specific radius of the customer's coordinates with pagination.
+ *     summary: Fetch Vendors
+ *     description: Retrieve verified vendors filtered by location and/or service type (FOOD, GROCERY, PHARMACY) with pagination.
  *     tags:
  *       - Customer Operations
  *     security:
@@ -613,9 +613,6 @@ protectedRouter.get(
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - latitude
- *               - longitude
  *             properties:
  *               latitude:
  *                 type: number
@@ -626,6 +623,10 @@ protectedRouter.get(
  *               radiusKm:
  *                 type: number
  *                 default: 10
+ *               vendorServiceType:
+ *                 type: string
+ *                 enum: [FOOD, GROCERY, PHARMACY]
+ *                 example: FOOD
  *               page:
  *                 type: integer
  *                 default: 1
@@ -653,6 +654,8 @@ protectedRouter.get(
  *                         type: string
  *                       businessType:
  *                         type: string
+ *                       vendorServiceType:
+ *                         type: string
  *                       profilePhotoUrl:
  *                         type: string
  *                       businessAddress:
@@ -670,10 +673,10 @@ protectedRouter.get(
  *                       type: integer
  */
 protectedRouter.post(
-  "/vendors/by-location",
+  "/vendors",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await customerController.fetchVendorsByLocation(req as any, res);
+      await customerController.fetchVendors(req as any, res);
     } catch (error) {
       next(error);
     }
