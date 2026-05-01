@@ -157,7 +157,7 @@ export class CustomerService {
         where: {
           OR: [
             { email: email || undefined },
-            { phoneNumber: phoneNumber || undefined },
+            { phone: phoneNumber || undefined },
           ],
         },
       });

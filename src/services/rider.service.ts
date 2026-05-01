@@ -154,27 +154,52 @@ export class RiderService {
     }
   }
 
-  static async verifyEmail(email: string, otp: string) {
+  static async verifyAccount(data: {
+    email?: string;
+    phoneNumber?: string;
+    otp: string;
+  }) {
     try {
-      const verifiedOtp = await verifyOTP(email, otp);
+      const { email, phoneNumber, otp } = data;
+
+      if (!email && !phoneNumber) {
+        throw new CustomError(
+          "Email or Phone Number is required",
+          400,
+          "IDENTIFIER_REQUIRED",
+        );
+      }
+
+      const target = email || phoneNumber!;
+      const verifiedOtp = await verifyOTP(target, otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      const rider = await prisma.rider.update({
-        where: { email },
-        data: { isEmailVerified: true },
+      const rider = await prisma.rider.findFirst({
+        where: email ? { email } : { phone: phoneNumber },
       });
 
-      logger.info(`Email verified for rider: ${email}`);
+      if (!rider) {
+        throw new CustomError("Rider not found", 404, "RIDER_NOT_FOUND");
+      }
+
+      await prisma.rider.update({
+        where: { id: rider.id },
+        data: {
+          isEmailVerified: true,
+        },
+      });
+
+      logger.info(`Account verified for rider: ${target}`);
 
       return {
         success: true,
-        message: "Email verified successfully.",
+        message: `${email ? "Email" : "Phone number"} verified successfully.`,
       };
     } catch (error) {
-      logger.error("Error in rider email verification:", error);
+      logger.error("Error in rider account verification:", error);
       throw error;
     }
   }
