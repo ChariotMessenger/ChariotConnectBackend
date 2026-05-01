@@ -46,7 +46,6 @@ export class RiderController {
       throw error;
     }
   }
-
   static async forgotPasswordStep1(req: AuthRequest, res: Response) {
     try {
       const { email, phoneNumber } = req.body;
@@ -54,7 +53,7 @@ export class RiderController {
       if (!email && !phoneNumber) {
         return res.status(400).json({
           success: false,
-          message: "Email or Phone Number is required",
+          message: "Email or Phone Number is required!",
           code: "MISSING_IDENTIFIER",
         });
       }
