@@ -67,6 +67,7 @@ model Customer {
   currentLocation        Point?
   receiveMarketingEmails Boolean           @default(false)
   createdAt              DateTime          @default(now())
+  status  String  @default("ACTIVE")
   updatedAt              DateTime          @updatedAt
   otpVerifications       OTPVerification[]
   favorites              FavoriteVendor[]
@@ -105,6 +106,7 @@ model Vendor {
   verificationStatus     VerificationStatus @default(PENDING)
   verified               Boolean            @default(false)
   createdAt              DateTime           @default(now())
+  status  String  @default("ACTIVE")
   updatedAt              DateTime           @updatedAt
   otpVerifications       OTPVerification[]
   favoritedBy            FavoriteVendor[]
@@ -149,6 +151,7 @@ model Rider {
   accountName           String
   verifyIdentityUrl     String
   onlineStatus          OnlineStatus       @default(OFFLINE)
+  status  String  @default("ACTIVE")
   verificationStatus    VerificationStatus @default(PENDING)
   verified              Boolean            @default(false)
   createdAt             DateTime           @default(now())
@@ -175,6 +178,12 @@ model Order {
   pickupLocation   Point?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+
+
+  vendorNet        Float     @default(0)        // What the vendor earns after your commission
+  deliveryFee      Float     @default(0)        // What the rider earns for the trip
+  settlementStatus String    @default("PENDING") // PENDING or PAID (to Vendor)
+  payoutStatus     String    @default("PENDING")
 
   pickupAt         DateTime?     
   deliveredAt      DateTime?

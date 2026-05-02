@@ -24,14 +24,7 @@ const adminRouter = Router();
  *         name: status
  *         schema:
  *           type: string
- *           enum:
- *             - PENDING
- *             - VERIFIED
- *             - REJECTED
- *       - in: query
- *         name: verified
- *         schema:
- *           type: boolean
+ *           enum: [PENDING, VERIFIED, REJECTED]
  *       - in: query
  *         name: search
  *         schema:
@@ -70,21 +63,26 @@ adminRouter.get(
  *         name: status
  *         schema:
  *           type: string
- *           enum:
- *             - PENDING
- *             - VERIFIED
- *             - REJECTED
+ *           enum: [PENDING, VERIFIED, REJECTED]
  *       - in: query
  *         name: onlineStatus
  *         schema:
  *           type: string
- *           enum:
- *             - ONLINE
- *             - OFFLINE
+ *           enum: [ONLINE, OFFLINE]
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
  *     responses:
  *       200:
  *         description: Success
@@ -109,6 +107,16 @@ adminRouter.get(
  *         name: search
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
  *     responses:
  *       200:
  *         description: Success
@@ -134,9 +142,7 @@ adminRouter.get(
  *         required: true
  *         schema:
  *           type: string
- *           enum:
- *             - vendor
- *             - rider
+ *           enum: [vendor, rider]
  *       - in: path
  *         name: id
  *         required: true
@@ -148,14 +154,11 @@ adminRouter.get(
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - action
+ *             required: [action]
  *             properties:
  *               action:
  *                 type: string
- *                 enum:
- *                   - VERIFY
- *                   - REJECT
+ *                 enum: [VERIFY, REJECT]
  *     responses:
  *       200:
  *         description: Account updated successfully
@@ -164,6 +167,48 @@ adminRouter.patch(
   "/users/verify/:type/:id",
   authenticateAdmin,
   AdminUserController.handleUserVerification,
+);
+
+// Status Management (Suspend/Activate)
+/**
+ * @swagger
+ * /admin/users/status/{type}/{id}:
+ *   patch:
+ *     summary: Toggle user operational status (ACTIVE/SUSPENDED)
+ *     tags: [Admin User Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [vendor, rider, customer]
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, SUSPENDED]
+ *     responses:
+ *       200:
+ *         description: Status updated successfully
+ */
+adminRouter.patch(
+  "/users/status/:type/:id",
+  authenticateAdmin,
+  AdminUserController.toggleUserStatus,
 );
 
 // Deep Detail View
@@ -181,10 +226,7 @@ adminRouter.patch(
  *         required: true
  *         schema:
  *           type: string
- *           enum:
- *             - vendor
- *             - rider
- *             - customer
+ *           enum: [vendor, rider, customer]
  *       - in: path
  *         name: id
  *         required: true
