@@ -69,4 +69,38 @@ export class AdminAuthService {
       include: { role: true },
     });
   }
+
+  async seedAdmin() {
+    const hashedPassword = await bcrypt.hash("Password@123!", 10);
+
+    let superAdminRole = await prisma.role.findFirst({
+      where: { title: "SUPER_ADMIN" },
+    });
+
+    if (!superAdminRole) {
+      superAdminRole = await prisma.role.create({
+        data: {
+          title: "SUPER_ADMIN",
+          permissions: ["*"],
+        },
+      });
+    }
+
+    const admin = await prisma.admin.upsert({
+      where: { email: "admin@umali.com" },
+      update: {
+        password: hashedPassword,
+        status: "ACTIVE",
+      },
+      create: {
+        email: "admin@umali.com",
+        name: "System Admin",
+        password: hashedPassword,
+        roleId: superAdminRole.id,
+        status: "ACTIVE",
+      },
+    });
+
+    return { message: "Admin seeded successfully", email: admin.email };
+  }
 }

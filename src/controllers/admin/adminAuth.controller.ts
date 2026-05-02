@@ -25,4 +25,12 @@ export class AdminAuthController {
       return res.status(400).json({ success: false, message: error.message });
     }
   }
+  static async seed(req: Request, res: Response) {
+    try {
+      const result = await authService.seedAdmin();
+      return res.status(201).json({ success: true, ...result });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
 }
