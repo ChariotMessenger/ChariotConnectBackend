@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 export class AdminUserManagementService {
   /**
-   * Manage Customers - Matches Users/Customers UI
+   * Manage Customers
    */
   async getAllCustomers(query: {
     page?: number;
@@ -34,7 +34,6 @@ export class AdminUserManagementService {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          currentLocation: true,
           _count: { select: { orders: true } },
         },
       }),
@@ -52,7 +51,7 @@ export class AdminUserManagementService {
   }
 
   /**
-   * Manage Vendors - Matches "Vendors" UI
+   * Manage Vendors
    */
   async getAllVendors(query: {
     page?: number;
@@ -95,7 +94,6 @@ export class AdminUserManagementService {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          businessAddress: true,
           _count: { select: { orders: true } },
         },
       }),
@@ -114,7 +112,7 @@ export class AdminUserManagementService {
   }
 
   /**
-   * Manage Riders - Matches "Rider Details" UI
+   * Manage Riders
    */
   async getAllRiders(query: {
     page?: number;
@@ -152,7 +150,6 @@ export class AdminUserManagementService {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          currentLocation: true,
           _count: { select: { deliveries: true } },
         },
       }),
@@ -174,7 +171,6 @@ export class AdminUserManagementService {
     const vendor = await prisma.vendor.findUnique({
       where: { id },
       include: {
-        businessAddress: true,
         orders: {
           take: 10,
           orderBy: { createdAt: "desc" },
@@ -206,7 +202,7 @@ export class AdminUserManagementService {
     return {
       ...vendor,
       stats: {
-        ordersRouted: vendor._count.orders,
+        ordersRouted: vendor._count?.orders || 0,
         totalEarned: earnings._sum.vendorNet || 0,
         pendingSettlement: pendingSettlement._sum.vendorNet || 0,
       },
@@ -217,7 +213,6 @@ export class AdminUserManagementService {
     const rider = await prisma.rider.findUnique({
       where: { id },
       include: {
-        currentLocation: true,
         deliveries: {
           take: 10,
           orderBy: { createdAt: "desc" },
@@ -225,6 +220,7 @@ export class AdminUserManagementService {
             customer: { select: { firstName: true, lastName: true } },
           },
         },
+        _count: { select: { deliveries: true } },
       },
     });
 
@@ -245,7 +241,7 @@ export class AdminUserManagementService {
     return {
       ...rider,
       stats: {
-        successfulDeliveries: deliveryStats._count._all,
+        successfulDeliveries: deliveryStats._count._all || 0,
         totalEarned: deliveryStats._sum.deliveryFee || 0,
         pendingPayout: pendingPayout._sum.deliveryFee || 0,
       },
@@ -261,6 +257,7 @@ export class AdminUserManagementService {
       action === "VERIFY"
         ? VerificationStatus.VERIFIED
         : VerificationStatus.REJECTED;
+
     const delegate = (prisma as any)[type];
 
     return await delegate.update({
@@ -279,7 +276,6 @@ export class AdminUserManagementService {
     return await prisma.customer.findUnique({
       where: { id },
       include: {
-        currentLocation: true,
         orders: {
           take: 10,
           orderBy: { createdAt: "desc" },
