@@ -16,15 +16,38 @@ export interface PlatformActivity {
   createdAt: Date;
 }
 
+const calculatePercentageChange = (
+  current: number,
+  previous: number,
+  label: string,
+) => {
+  if (previous === 0) return current > 0 ? `+100% ${label}` : `0% ${label}`;
+  const change = ((current - previous) / previous) * 100;
+  const sign = change >= 0 ? "+" : "";
+  return `${sign}${change.toFixed(1)}% ${label}`;
+};
+
 export const getDashboardStats = async () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
   const [
     totalCustomers,
+    prevMonthCustomers,
     ordersToday,
-    successfulDeliveries,
-    transactions,
+    ordersYesterday,
+    successfulDeliveriesToday,
+    successfulDeliveriesYesterday,
+    transactionsToday,
+    transactionsYesterday,
     pendingVendors,
     pendingRiders,
     recentOrders,
@@ -32,14 +55,35 @@ export const getDashboardStats = async () => {
     recentTransactions,
   ] = await Promise.all([
     prisma.customer.count(),
-    prisma.order.count({ where: { createdAt: { gte: today } } }),
+    prisma.customer.count({ where: { createdAt: { lt: thisMonthStart } } }),
+
+    prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.order.count({
-      where: { status: OrderStatus.DELIVERED, updatedAt: { gte: today } },
+      where: { createdAt: { gte: yesterdayStart, lt: todayStart } },
     }),
+
+    prisma.order.count({
+      where: { status: OrderStatus.DELIVERED, updatedAt: { gte: todayStart } },
+    }),
+    prisma.order.count({
+      where: {
+        status: OrderStatus.DELIVERED,
+        updatedAt: { gte: yesterdayStart, lt: todayStart },
+      },
+    }),
+
     prisma.transaction.findMany({
-      where: { status: "SUCCESS", createdAt: { gte: today } },
+      where: { status: "SUCCESS", createdAt: { gte: todayStart } },
       select: { amount: true, currency: true },
     }),
+    prisma.transaction.findMany({
+      where: {
+        status: "SUCCESS",
+        createdAt: { gte: yesterdayStart, lt: todayStart },
+      },
+      select: { amount: true, currency: true },
+    }),
+
     prisma.vendor.count({
       where: { verificationStatus: VerificationStatus.PENDING },
     }),
@@ -47,7 +91,6 @@ export const getDashboardStats = async () => {
       where: { verificationStatus: VerificationStatus.PENDING },
     }),
 
-    // Fetching data for Recent Activity
     prisma.order.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
@@ -71,7 +114,6 @@ export const getDashboardStats = async () => {
     }),
   ]);
 
-  // Transform into a unified Activity feed
   const activities: PlatformActivity[] = [
     ...recentOrders.map((o) => ({
       type:
@@ -99,9 +141,9 @@ export const getDashboardStats = async () => {
     })),
   ]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 10); // Final top 10 recent activities
+    .slice(0, 10);
 
-  const transactionValues = transactions.reduce(
+  const transactionValuesToday = transactionsToday.reduce(
     (acc, curr) => {
       acc[curr.currency] = (acc[curr.currency] || 0) + curr.amount;
       return acc;
@@ -109,11 +151,56 @@ export const getDashboardStats = async () => {
     {} as Record<string, number>,
   );
 
+  const transactionValuesYesterday = transactionsYesterday.reduce(
+    (acc, curr) => {
+      acc[curr.currency] = (acc[curr.currency] || 0) + curr.amount;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  const totalValueToday = Object.values(transactionValuesToday).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  const totalValueYesterday = Object.values(transactionValuesYesterday).reduce(
+    (a, b) => a + b,
+    0,
+  );
+
   return {
-    totalCustomers,
-    ordersToday,
-    successfulDeliveries,
-    transactionValues,
+    totalCustomers: {
+      value: totalCustomers,
+      change: calculatePercentageChange(
+        totalCustomers,
+        prevMonthCustomers,
+        "from last month",
+      ),
+    },
+    ordersToday: {
+      value: ordersToday,
+      change: calculatePercentageChange(
+        ordersToday,
+        ordersYesterday,
+        "vs yesterday",
+      ),
+    },
+    successfulDeliveries: {
+      value: successfulDeliveriesToday,
+      change: calculatePercentageChange(
+        successfulDeliveriesToday,
+        successfulDeliveriesYesterday,
+        "vs yesterday",
+      ),
+    },
+    transactionValue: {
+      values: transactionValuesToday,
+      change: calculatePercentageChange(
+        totalValueToday,
+        totalValueYesterday,
+        "vs yesterday",
+      ),
+    },
     totalPendingVerifications: pendingVendors + pendingRiders,
     recentActivity: activities,
   };
