@@ -41,7 +41,9 @@ app.use(helmet());
 
 // CORS
 const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:3000",
+  process.env.FRONTEND_URL ||
+    "http://localhost:3000" ||
+    "https://umali-admin.vercel.app",
   "http://localhost:19000", // Expo Go default
   "http://localhost:8081", // React Native default
   "capacitor://localhost", // Capacitor iOS
