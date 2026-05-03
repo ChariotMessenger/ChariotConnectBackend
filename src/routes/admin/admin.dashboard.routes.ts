@@ -16,57 +16,94 @@ const verificationController = new VerificationController();
  *     description: Management of Vendor and Rider approval processes
  */
 
-// Dashboard Routes
-/**
- * @swagger
- * /admin/dashboard/stats:
- *   get:
- *     summary: Get high-level platform metrics and recent activity
- *     tags: [Admin Dashboard]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Success
- */
+// Dashboard & Stats
 adminDashboardRouter.get(
   "/dashboard/stats",
   authenticateAdmin,
   dashboardController.getStats,
 );
 
-// Verification Routes
+// Transaction Routes
 /**
  * @swagger
- * /admin/verifications:
+ * /admin/transactions:
  *   get:
- *     summary: Get paginated list of pending verifications for Vendors or Riders
- *     tags: [Admin Verifications]
+ *     summary: Get all platform transactions
+ *     tags: [Admin Dashboard]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: type
- *         required: true
+ *         name: status
  *         schema:
  *           type: string
- *           enum: [VENDOR, RIDER]
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *     responses:
- *       200:
- *         description: Success
- *       400:
- *         description: Invalid type provided
+ *           enum: [PENDING, SUCCESS, FAILED]
  */
+adminDashboardRouter.get(
+  "/transactions",
+  authenticateAdmin,
+  dashboardController.getTransactions,
+);
+
+/**
+ * @swagger
+ * /admin/transactions/{id}:
+ *   get:
+ *     summary: Get specific transaction breakdown
+ *     tags: [Admin Dashboard]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ */
+adminDashboardRouter.get(
+  "/transactions/:id",
+  authenticateAdmin,
+  dashboardController.getTransactionDetail,
+);
+
+// Order Routes
+/**
+ * @swagger
+ * /admin/orders:
+ *   get:
+ *     summary: Get all platform orders
+ *     tags: [Admin Dashboard]
+ */
+adminDashboardRouter.get(
+  "/orders",
+  authenticateAdmin,
+  dashboardController.getOrders,
+);
+
+/**
+ * @swagger
+ * /admin/orders/{id}:
+ *   get:
+ *     summary: Get full order and delivery details
+ *     tags: [Admin Dashboard]
+ */
+adminDashboardRouter.get(
+  "/orders/:id",
+  authenticateAdmin,
+  dashboardController.getOrderDetail,
+);
+
+// Pricing Configuration
+/**
+ * @swagger
+ * /admin/pricing:
+ *   patch:
+ *     summary: Update platform fees and cuts
+ *     tags: [Admin Dashboard]
+ */
+adminDashboardRouter.patch(
+  "/pricing",
+  authenticateAdmin,
+  dashboardController.updatePricing,
+);
+
+// Verification Routes
 adminDashboardRouter.get(
   "/verifications",
   authenticateAdmin,

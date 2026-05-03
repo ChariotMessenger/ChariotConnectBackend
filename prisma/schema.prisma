@@ -359,3 +359,11 @@ model Transaction {
   updatedAt      DateTime      @updatedAt
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
+
+model PricingConfiguration {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  deliveryCut         Float    @default(20.0) 
+  orderProtectionFee  Float    @default(5.0)  
+  orderProcessingFee  Float    @default(5.0)  
+  updatedAt           DateTime @updatedAt
+}
