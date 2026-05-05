@@ -272,12 +272,19 @@ export class CustomerController {
 
   static async fetchVendors(req: AuthRequest, res: Response) {
     try {
-      const { latitude, longitude, radiusKm, vendorServiceType, page, limit } =
-        req.body;
+      const {
+        latitude,
+        longitude,
+        radiusKm,
+        vendorServiceType,
+        search,
+        page,
+        limit,
+      } = req.body;
 
-      if (!latitude && !longitude && !vendorServiceType) {
+      if (!latitude && !longitude && !vendorServiceType && !search) {
         throw new CustomError(
-          "Either location or service type must be provided",
+          "Please provide a location, service type, or search term to find vendors",
           400,
           "FILTER_REQUIRED",
         );
@@ -288,6 +295,7 @@ export class CustomerController {
         longitude: longitude ? parseFloat(longitude) : undefined,
         radiusKm: radiusKm ? parseFloat(radiusKm) : 10,
         serviceType: vendorServiceType,
+        search: search?.toString(),
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 10,
       });

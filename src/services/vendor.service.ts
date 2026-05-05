@@ -744,6 +744,7 @@ export class VendorService {
     longitude?: number;
     radiusKm?: number;
     serviceType?: "FOOD" | "GROCERY" | "PHARMACY";
+    search?: string; // New search parameter
     page?: number;
     limit?: number;
   }) {
@@ -753,6 +754,7 @@ export class VendorService {
         longitude,
         radiusKm = 10,
         serviceType,
+        search,
         page = 1,
         limit = 10,
       } = params;
@@ -788,6 +790,19 @@ export class VendorService {
         };
       }
 
+      if (search) {
+        whereClause.OR = [
+          { businessName: { contains: search, mode: "insensitive" } },
+          {
+            catalogItems: {
+              some: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        ];
+      }
+
       const [vendors, total] = await prisma.$transaction([
         prisma.vendor.findMany({
           where: whereClause,
@@ -801,14 +816,32 @@ export class VendorService {
             profilePhotoUrl: true,
             currency: true,
             createdAt: true,
+            brandLogoUrl: true,
+            coverPhotoUrl: true,
+            country: true,
+            vendorWorkPeriod: true,
+            bio: true,
+            rank: true,
+            productCategories: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
             catalogItems: {
-              where: { available: true },
+              where: {
+                available: true,
+                ...(search
+                  ? { name: { contains: search, mode: "insensitive" } }
+                  : {}),
+              },
               select: {
                 id: true,
                 name: true,
                 price: true,
                 imageUrl: true,
                 description: true,
+                categoryId: true,
               },
             },
           },
