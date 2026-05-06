@@ -591,7 +591,7 @@ export class VendorService {
 
       return {
         ...profileData,
-        categories: productCategories,
+        productCategories: productCategories,
         items: catalogItems,
       };
     } catch (error) {
