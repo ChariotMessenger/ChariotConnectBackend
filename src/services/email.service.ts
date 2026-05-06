@@ -61,7 +61,7 @@ export class EmailService {
       `;
     return this.send({
       to: email,
-      subject: "Your Chariot Connect Verification Code",
+      subject: "Your Umali Verification Code",
       html,
     });
   }
@@ -73,7 +73,7 @@ export class EmailService {
   ): Promise<boolean> {
     const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
-          <h2>Welcome to Chariot Connect</h2>
+          <h2>Welcome to Umali</h2>
           <p>Hello ${userName},</p>
           <p>Your account as a <strong>${userType}</strong> has been successfully created.</p>
           <ul>
@@ -88,7 +88,7 @@ export class EmailService {
       `;
     return this.send({
       to: email,
-      subject: "Welcome to Chariot Connect!",
+      subject: "Welcome to Umali!",
       html,
     });
   }

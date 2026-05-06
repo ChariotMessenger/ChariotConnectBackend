@@ -117,7 +117,7 @@ export class CustomerService {
       if (phoneNumber) {
         await SmsService.sendSms({
           recipient: phoneNumber,
-          content: `Your new Chariot Connect verification code is ${otp.code}. It expires in 15 mins.`,
+          content: `Your new Umali verification code is ${otp.code}. It expires in 15 mins.`,
           sender: "Chariot",
           tag: "resend-otp",
         });
