@@ -40,9 +40,12 @@ export class RiderService {
   }) {
     try {
       // Check if rider already exists
+
+      const normalizedEmail = data.email.trim().toLowerCase();
+
       const existingRider = await prisma.rider.findFirst({
         where: {
-          OR: [{ email: data.email }, { phone: data.phone }],
+          OR: [{ email: normalizedEmail }, { phone: data.phone }],
         },
       });
 
@@ -61,7 +64,7 @@ export class RiderService {
         data: {
           firstName: data.firstName,
           lastName: data.lastName,
-          email: data.email,
+          email: normalizedEmail,
           phone: data.phone,
           password: hashedPassword,
           birthday: new Date(data.birthday),
@@ -120,8 +123,10 @@ export class RiderService {
       }
 
       const target = email || phoneNumber!;
+      const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
+
       const rider = await prisma.rider.findFirst({
-        where: email ? { email } : { phone: phoneNumber },
+        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
       });
 
       if (!rider) {
@@ -298,9 +303,14 @@ export class RiderService {
     password: string;
   }) {
     try {
+      const normalizedIdentifier = data.identifier.trim().toLowerCase();
+
       const rider = await prisma.rider.findFirst({
         where: {
-          OR: [{ email: data.identifier }, { phone: data.identifier }],
+          OR: [
+            { email: normalizedIdentifier },
+            { phone: normalizedIdentifier },
+          ],
         },
       });
 
@@ -372,11 +382,12 @@ export class RiderService {
           "IDENTIFIER_REQUIRED",
         );
       }
+      const normalizedEmail = email?.trim().toLowerCase();
 
       const rider = await prisma.rider.findFirst({
         where: {
           OR: [
-            { email: email || undefined },
+            { email: normalizedEmail || undefined },
             { phone: phoneNumber || undefined },
           ],
         },
@@ -441,13 +452,13 @@ export class RiderService {
 
       const target = email || phoneNumber!;
       const verifiedOtp = await verifyOTP(target, otp);
-
+      const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
       const rider = await prisma.rider.findFirst({
-        where: email ? { email } : { phone: phoneNumber },
+        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
       });
 
       if (!rider) {

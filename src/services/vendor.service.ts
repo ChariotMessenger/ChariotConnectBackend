@@ -82,14 +82,16 @@ export class VendorService {
     password: string;
   }) {
     try {
+      const normalizedEmail = data.email.trim().toLowerCase();
+
       const existingVendor = await prisma.vendor.findFirst({
         where: {
-          OR: [{ email: data.email }, { phone: data.phone }],
+          OR: [{ email: normalizedEmail }, { phone: data.phone }],
         },
       });
 
       if (existingVendor) {
-        if (existingVendor.email === data.email) {
+        if (existingVendor.email === normalizedEmail) {
           throw new CustomError(
             "Email already registered",
             400,
@@ -105,11 +107,17 @@ export class VendorService {
         }
       }
 
-      const otp = await createOTPVerification(data.email, UserRole.VENDOR);
+      const otp = await createOTPVerification(normalizedEmail, UserRole.VENDOR);
 
-      await EmailService.sendOTPEmail(data.email, otp.code, data.firstName);
+      await EmailService.sendOTPEmail(
+        normalizedEmail,
+        otp.code,
+        data.firstName,
+      );
 
-      logger.info(`Vendor registration Step 2 initiated for ${data.email}`);
+      logger.info(
+        `Vendor registration Step 2 initiated for ${normalizedEmail}`,
+      );
 
       return {
         success: true,
@@ -137,8 +145,10 @@ export class VendorService {
       }
 
       const target = email || phoneNumber!;
+      const normalizedEmail = email?.trim().toLowerCase();
+
       const vendor = await prisma.vendor.findFirst({
-        where: email ? { email } : { phone: phoneNumber },
+        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
       });
 
       if (!vendor) {
@@ -209,12 +219,13 @@ export class VendorService {
       };
 
       const vendorCurrency = currencyMap[data.country] || "NGN";
+      const normalizedEmail = data.email.trim().toLowerCase();
 
       const vendor = await prisma.vendor.create({
         data: {
           firstName: data.firstName,
           lastName: data.lastName,
-          email: data.email,
+          email: normalizedEmail,
           phone: data.phone,
           country: data.country,
           currency: vendorCurrency,
@@ -319,11 +330,12 @@ export class VendorService {
           "IDENTIFIER_REQUIRED",
         );
       }
+      const normalizedEmail = email?.trim().toLowerCase();
 
       const vendor = await prisma.vendor.findFirst({
         where: {
           OR: [
-            { email: email || undefined },
+            { email: normalizedEmail || undefined },
             { phone: phoneNumber || undefined },
           ],
         },
@@ -388,13 +400,14 @@ export class VendorService {
 
       const target = email || phoneNumber!;
       const verifiedOtp = await verifyOTP(target, otp);
+      const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
       const vendor = await prisma.vendor.findFirst({
-        where: email ? { email } : { phone: phoneNumber },
+        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
       });
 
       if (!vendor) {
@@ -470,9 +483,14 @@ export class VendorService {
     password: string;
   }) {
     try {
+      const normalizedIdentifier = data.identifier.trim().toLowerCase();
+
       const vendor = await prisma.vendor.findFirst({
         where: {
-          OR: [{ email: data.identifier }, { phone: data.identifier }],
+          OR: [
+            { email: normalizedIdentifier },
+            { phone: normalizedIdentifier },
+          ],
         },
       });
 

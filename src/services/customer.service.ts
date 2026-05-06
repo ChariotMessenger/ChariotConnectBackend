@@ -21,9 +21,11 @@ export class CustomerService {
     receiveMarketingEmails: boolean;
   }) {
     try {
+      const normalizedEmail = data.email.trim().toLowerCase();
+
       const existingUser = await prisma.customer.findFirst({
         where: {
-          OR: [{ email: data.email }, { phone: data.phone }],
+          OR: [{ email: normalizedEmail }, { phone: data.phone }],
         },
       });
 
@@ -100,8 +102,11 @@ export class CustomerService {
       }
 
       const target = email || phoneNumber!;
+
+      const normalizedEmail = email?.trim().toLowerCase();
+
       const customer = await prisma.customer.findFirst({
-        where: email ? { email } : { phone: phoneNumber },
+        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
       });
 
       if (!customer) {
@@ -152,11 +157,12 @@ export class CustomerService {
           "IDENTIFIER_REQUIRED",
         );
       }
+      const normalizedEmail = email?.trim().toLowerCase();
 
       const customer = await prisma.customer.findFirst({
         where: {
           OR: [
-            { email: email || undefined },
+            { email: normalizedEmail || undefined },
             { phone: phoneNumber || undefined },
           ],
         },
@@ -176,8 +182,8 @@ export class CustomerService {
       if (phoneNumber) {
         await SmsService.sendSms({
           recipient: phoneNumber,
-          content: `Your Chariot Connect password reset code is ${otp.code}. Expires in 15 mins.`,
-          sender: "Chariot",
+          content: `Your Umali password reset code is ${otp.code}. Expires in 15 mins.`,
+          sender: "Umali",
           tag: "forgot-password",
         });
         logger.info(`Forgot password OTP sent to phone: ${phoneNumber}`);
@@ -217,6 +223,7 @@ export class CustomerService {
 
       const target = email || phoneNumber!;
       const verifiedOtp = await verifyOTP(target, otp);
+      const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
@@ -225,7 +232,7 @@ export class CustomerService {
       const hashedPassword = await hashPassword(newPassword);
 
       await prisma.customer.update({
-        where: email ? { email } : { phone: phoneNumber },
+        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
         data: { password: hashedPassword },
       });
 
@@ -255,7 +262,8 @@ export class CustomerService {
     receiveMarketingEmails: boolean;
   }) {
     try {
-      const verifiedOtp = await verifyOTP(data.email, data.otp);
+      const normalizedEmail = data.email.trim().toLowerCase();
+      const verifiedOtp = await verifyOTP(normalizedEmail, data.otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
@@ -267,7 +275,7 @@ export class CustomerService {
         data: {
           firstName: data.firstName,
           lastName: data.lastName,
-          email: data.email,
+          email: normalizedEmail,
           phone: data.phone,
           birthday: new Date(data.birthday),
           gender: data.gender,
@@ -316,12 +324,16 @@ export class CustomerService {
     password: string;
   }) {
     try {
+      const normalizedIdentifier = data.identifier.trim().toLowerCase();
+
       const customer = await prisma.customer.findFirst({
         where: {
-          OR: [{ email: data.identifier }, { phone: data.identifier }],
+          OR: [
+            { email: normalizedIdentifier },
+            { phone: normalizedIdentifier },
+          ],
         },
       });
-
       if (!customer) {
         throw new CustomError(
           "Invalid credentials",
