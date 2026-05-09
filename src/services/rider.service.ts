@@ -567,6 +567,9 @@ export class RiderService {
                   latitude: data.currentLocation.latitude,
                   longitude: data.currentLocation.longitude,
                   locationName: data.currentLocation.locationName,
+                  tag: data.currentLocation.tag,
+                  fullAddress: data.currentLocation.fullAddress,
+                  placeId: data.currentLocation.placeId,
                 },
               }
             : undefined,

@@ -49,6 +49,9 @@ type Point {
   latitude     Float?
   longitude    Float?
   locationName String?
+  fullAddress  String?
+  placeId     String?
+  tag        String? // e.g., "home", "work", "other"
 }
 
 model Customer {

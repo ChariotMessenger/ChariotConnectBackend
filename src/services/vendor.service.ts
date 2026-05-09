@@ -642,6 +642,9 @@ export class VendorService {
                   latitude: data.businessAddress.latitude,
                   longitude: data.businessAddress.longitude,
                   locationName: data.businessAddress.locationName,
+                  fullAddress: data.businessAddress.fullAddress,
+                  placeId: data.businessAddress.placeId,
+                  tag: data.businessAddress.tag,
                 },
               }
             : undefined,
