@@ -50,6 +50,7 @@ type Point {
   longitude    Float?
   locationName String?
   fullAddress  String?
+  shortAddress String?
   placeId     String?
   tag        String? // e.g., "home", "work", "other"
 }

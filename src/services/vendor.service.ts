@@ -645,6 +645,7 @@ export class VendorService {
                   fullAddress: data.businessAddress.fullAddress,
                   placeId: data.businessAddress.placeId,
                   tag: data.businessAddress.tag,
+                  shortAddress: data.businessAddress.shortAddress,
                 },
               }
             : undefined,

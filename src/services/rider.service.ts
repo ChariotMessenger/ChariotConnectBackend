@@ -570,6 +570,7 @@ export class RiderService {
                   tag: data.currentLocation.tag,
                   fullAddress: data.currentLocation.fullAddress,
                   placeId: data.currentLocation.placeId,
+                  shortAddress: data.currentLocation.shortAddress,
                 },
               }
             : undefined,
