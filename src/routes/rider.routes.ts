@@ -1,110 +1,143 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { riderController } from "../controllers/rider.controller";
 import { authMiddleware } from "../middlewares/auth";
+import { upload } from "../middlewares/multer";
 
 const router = Router();
 
 /**
  * @swagger
- * /riders/register:
+ * tags:
+ *   name: Rider Authentication
+ *   description: Multi-step registration process for riders
+ */
+
+/**
+ * @swagger
+ * /riders/banks:
+ *   get:
+ *     summary: Get supported banks
+ *     description: Retrieve a list of supported banks based on country for Step 3
+ *     tags: [Rider Authentication]
+ *     parameters:
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         example: nigeria
+ *     responses:
+ *       200:
+ *         description: List of banks retrieved successfully
+ */
+router.get("/banks", (req: Request, res: Response, next: NextFunction) => {
+  riderController.getSupportedBanks(req as any, res).catch(next);
+});
+
+/**
+ * @swagger
+ * /riders/register/step-1:
  *   post:
- *     summary: Rider Registration
- *     description: Register a new rider with all required documents and information
- *     tags:
- *       - Rider Authentication
+ *     summary: Registration Step 1 - Personal Info
+ *     description: Validate basic information and check for existing accounts
+ *     tags: [Rider Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - firstName
- *               - lastName
- *               - email
- *               - phone
- *               - birthday
- *               - gender
- *               - country
- *               - state
- *               - areaOfWork
- *               - drivingLicenseUrl
- *               - ninNumber
- *               - idCardUrl
- *               - bikePlateNumber
- *               - password
- *               - guarantorName
- *               - guarantorRelationship
- *               - guarantorPhone
- *               - guarantorNin
- *               - guarantorIdCardUrl
- *               - bankName
- *               - accountNumber
- *               - accountName
- *               - verifyIdentityUrl
+ *             required: [firstName, lastName, email, phone, birthday, gender, country, password]
  *             properties:
- *               firstName:
- *                 type: string
- *               lastName:
- *                 type: string
- *               email:
- *                 type: string
- *               phone:
- *                 type: string
- *               birthday:
- *                 type: string
- *                 format: date
- *               gender:
- *                 type: string
- *               country:
- *                 type: string
- *               state:
- *                 type: string
- *               areaOfWork:
- *                 type: string
- *               drivingLicenseUrl:
- *                 type: string
- *               ninNumber:
- *                 type: string
- *               idCardUrl:
- *                 type: string
- *               bikePlateNumber:
- *                 type: string
- *               password:
- *                 type: string
- *               guarantorName:
- *                 type: string
- *               guarantorRelationship:
- *                 type: string
- *               guarantorPhone:
- *                 type: string
- *               guarantorNin:
- *                 type: string
- *               guarantorIdCardUrl:
- *                 type: string
- *               bankName:
- *                 type: string
- *               accountNumber:
- *                 type: string
- *               accountName:
- *                 type: string
- *               verifyIdentityUrl:
- *                 type: string
+ *               firstName: { type: string }
+ *               lastName: { type: string }
+ *               email: { type: string }
+ *               phone: { type: string }
+ *               birthday: { type: string, format: date }
+ *               gender: { type: string }
+ *               country: { type: string }
+ *               password: { type: string }
+ *     responses:
+ *       200:
+ *         description: Step 1 validated
+ */
+router.post(
+  "/register/step-1",
+  (req: Request, res: Response, next: NextFunction) => {
+    riderController.registerStepOne(req as any, res).catch(next);
+  },
+);
+
+/**
+ * @swagger
+ * /riders/register/step-2:
+ *   post:
+ *     summary: Registration Step 2 - Documents & Work
+ *     description: Upload identity documents and work details. Requires multipart/form-data.
+ *     tags: [Rider Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [email, state, areaOfWork, ninNumber, bikePlateNumber, guarantorName, guarantorRelationship, guarantorPhone, guarantorNin]
+ *             properties:
+ *               email: { type: string }
+ *               state: { type: string }
+ *               areaOfWork: { type: string }
+ *               ninNumber: { type: string }
+ *               bikePlateNumber: { type: string }
+ *               guarantorName: { type: string }
+ *               guarantorRelationship: { type: string }
+ *               guarantorPhone: { type: string }
+ *               guarantorNin: { type: string }
+ *               drivingLicense: { type: string, format: binary }
+ *               idCard: { type: string, format: binary }
+ *               guarantorIdCard: { type: string, format: binary }
+ *     responses:
+ *       200:
+ *         description: Documents uploaded successfully
+ */
+router.post(
+  "/register/step-2",
+  upload.fields([
+    { name: "drivingLicense", maxCount: 1 },
+    { name: "idCard", maxCount: 1 },
+    { name: "guarantorIdCard", maxCount: 1 },
+  ]),
+  (req: Request, res: Response, next: NextFunction) => {
+    riderController.registerStepTwo(req as any, res).catch(next);
+  },
+);
+
+/**
+ * @swagger
+ * /riders/register/step-4:
+ *   post:
+ *     summary: Registration Step 4 - Finalize
+ *     description: Final identity verification and account creation. Send ALL accumulated data here.
+ *     tags: [Rider Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               # All text fields from Steps 1-3 must be included in this multipart request
+ *               email: { type: string }
+ *               verifyIdentity: { type: string, format: binary }
  *     responses:
  *       201:
  *         description: Rider registered successfully
  */
 router.post(
-  "/register",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await riderController.register(req as any, res);
-    } catch (error) {
-      next(error);
-    }
+  "/register/step-4",
+  upload.fields([{ name: "verifyIdentity", maxCount: 1 }]),
+  (req: Request, res: Response, next: NextFunction) => {
+    riderController.registerStepFour(req as any, res).catch(next);
   },
 );
-
 /**
  * @swagger
  * /riders/verify-email:

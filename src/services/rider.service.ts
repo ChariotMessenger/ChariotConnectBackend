@@ -12,101 +12,118 @@ import {
 import { CustomError } from "../middlewares/errorHandler";
 import { hashPassword, comparePassword } from "../utils/password";
 import { SmsService } from "./sms-service";
+import UploadService from "./upload.service";
+import axios from "axios";
+
 export class RiderService {
-  static async register(data: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    birthday: string;
-    gender: string;
-    country: string;
-    state: string;
-    areaOfWork: string;
-    drivingLicenseUrl: string;
-    password: string;
-    ninNumber: string;
-    idCardUrl: string;
-    bikePlateNumber: string;
-    guarantorName: string;
-    guarantorRelationship: string;
-    guarantorPhone: string;
-    guarantorNin: string;
-    guarantorIdCardUrl: string;
-    bankName: string;
-    accountNumber: string;
-    accountName: string;
-    verifyIdentityUrl: string;
-  }) {
+  private static readonly PAYSTACK_URL = "https://api.paystack.co";
+
+  static async validateStepOne(data: { email: string; phone: string }) {
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const existingRider = await prisma.rider.findFirst({
+      where: { OR: [{ email: normalizedEmail }, { phone: data.phone }] },
+    });
+
+    if (existingRider) {
+      throw new CustomError(
+        "Email or phone already registered",
+        400,
+        "RIDER_EXISTS",
+      );
+    }
+    return { success: true };
+  }
+
+  static async processStepTwoDocs(email: string, files: any) {
+    const identifier = email.replace(/[@.]/g, "_");
+
+    const [drivingLicenseUrl, idCardUrl, guarantorIdCardUrl] =
+      await Promise.all([
+        files["drivingLicense"]
+          ? UploadService.uploadDocument(
+              files["drivingLicense"][0],
+              identifier,
+              "licenses",
+            )
+          : Promise.resolve(""),
+        files["idCard"]
+          ? UploadService.uploadDocument(
+              files["idCard"][0],
+              identifier,
+              "id-cards",
+            )
+          : Promise.resolve(""),
+        files["guarantorIdCard"]
+          ? UploadService.uploadDocument(
+              files["guarantorIdCard"][0],
+              identifier,
+              "guarantor-ids",
+            )
+          : Promise.resolve(""),
+      ]);
+
+    return { drivingLicenseUrl, idCardUrl, guarantorIdCardUrl };
+  }
+
+  static async finalizeRegistration(data: any) {
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const hashedPassword = await hashPassword(data.password);
+
+    return await prisma.rider.create({
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: normalizedEmail,
+        phone: data.phone,
+        password: hashedPassword,
+        birthday: new Date(data.birthday),
+        gender: data.gender,
+        country: data.country,
+        state: data.state,
+        areaOfWork: data.areaOfWork,
+        drivingLicenseUrl: data.drivingLicenseUrl,
+        ninNumber: data.ninNumber,
+        idCardUrl: data.idCardUrl,
+        bikePlateNumber: data.bikePlateNumber,
+        guarantorName: data.guarantorName,
+        guarantorRelationship: data.guarantorRelationship,
+        guarantorPhone: data.guarantorPhone,
+        guarantorNin: data.guarantorNin,
+        guarantorIdCardUrl: data.guarantorIdCardUrl,
+        bankName: data.bankName,
+        accountNumber: data.accountNumber,
+        accountName: data.accountName,
+        verifyIdentityUrl: data.verifyIdentityUrl,
+        verificationStatus: VerificationStatus.PENDING,
+      },
+    });
+  }
+
+  static async getBanksByCountry(country: string) {
     try {
-      // Check if rider already exists
-
-      const normalizedEmail = data.email.trim().toLowerCase();
-
-      const existingRider = await prisma.rider.findFirst({
-        where: {
-          OR: [{ email: normalizedEmail }, { phone: data.phone }],
-        },
+      // Paystack uses country codes (e.g., 'nigeria', 'ghana')
+      const response = await axios.get(`${this.PAYSTACK_URL}/bank`, {
+        params: { country: country.toLowerCase() },
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
       });
-
-      if (existingRider) {
-        throw new CustomError(
-          "Email or phone already registered",
-          400,
-          "RIDER_EXISTS",
-        );
-      }
-
-      const hashedPassword = await hashPassword(data.password);
-
-      // Create rider
-      const rider = await prisma.rider.create({
-        data: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: normalizedEmail,
-          phone: data.phone,
-          password: hashedPassword,
-          birthday: new Date(data.birthday),
-          gender: data.gender,
-          country: data.country,
-          state: data.state,
-          areaOfWork: data.areaOfWork,
-          drivingLicenseUrl: data.drivingLicenseUrl,
-          ninNumber: data.ninNumber,
-          idCardUrl: data.idCardUrl,
-          bikePlateNumber: data.bikePlateNumber,
-          guarantorName: data.guarantorName,
-          guarantorRelationship: data.guarantorRelationship,
-          guarantorPhone: data.guarantorPhone,
-          guarantorNin: data.guarantorNin,
-          guarantorIdCardUrl: data.guarantorIdCardUrl,
-          bankName: data.bankName,
-          accountNumber: data.accountNumber,
-          accountName: data.accountName,
-          verifyIdentityUrl: data.verifyIdentityUrl,
-          verificationStatus: VerificationStatus.PENDING,
-        },
-      });
-
-      logger.info(`Rider registered for verification: ${rider.email}`);
-
-      return {
-        success: true,
-        message:
-          "Rider registered successfully. Your documents are under review.",
-        rider: {
-          id: rider.id,
-          firstName: rider.firstName,
-          lastName: rider.lastName,
-          email: rider.email,
-          phone: rider.phone,
-          verificationStatus: rider.verificationStatus,
-        },
-      };
+      return response.data.data; // Returns { name, code, type, etc. }
     } catch (error) {
-      logger.error("Error in rider registration:", error);
-      throw error;
+      logger.error("Paystack Get Banks Error:", error);
+      throw new CustomError("Failed to fetch banks", 500);
+    }
+  }
+
+  static async validateAccount(bankCode: string, accountNumber: string) {
+    try {
+      const response = await axios.get(`${this.PAYSTACK_URL}/bank/resolve`, {
+        params: { account_number: accountNumber, bank_code: bankCode },
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      });
+      // Returns { account_number, account_name, bank_id }
+      return response.data.data;
+    } catch (error) {
+      logger.error("Paystack Resolve Account Error:", error);
+      throw new CustomError("Invalid account number or bank selection", 400);
     }
   }
 

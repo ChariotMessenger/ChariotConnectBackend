@@ -430,8 +430,9 @@ protectedRouter.get(
 /**
  * @swagger
  * /customers/profile:
- *   put:
+ *   patch:
  *     summary: Update Customer Profile
+ *     description: Update authenticated customer profile information
  *     tags:
  *       - Customer Profile
  *     security:
@@ -449,6 +450,10 @@ protectedRouter.get(
  *                 type: string
  *               phone:
  *                 type: string
+ *               gender:
+ *                 type: string
+ *               country:
+ *                 type: string
  *               receiveMarketingEmails:
  *                 type: boolean
  *               currentLocation:
@@ -456,17 +461,38 @@ protectedRouter.get(
  *                 properties:
  *                   latitude:
  *                     type: number
- *                     format: float
  *                   longitude:
  *                     type: number
- *                     format: float
- *                  locationName:
- *                    type: string
+ *                   locationName:
+ *                     type: string
+ *                   tag:
+ *                     type: string
+ *                   fullAddress:
+ *                     type: string
+ *                   placeId:
+ *                     type: string
+ *                   shortAddress:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Invalid request data
+ *       401:
+ *         description: Unauthorized
  */
-protectedRouter.put(
+protectedRouter.patch(
   "/profile",
   async (req: Request, res: Response, next: NextFunction) => {
     try {

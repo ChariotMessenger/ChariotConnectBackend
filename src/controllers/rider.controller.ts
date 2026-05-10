@@ -6,12 +6,68 @@ import { logger } from "../utils/logger";
 import { CustomError } from "../middlewares/errorHandler";
 
 export class RiderController {
-  static async register(req: AuthRequest, res: Response) {
+  static async registerStepOne(req: AuthRequest, res: Response) {
     try {
-      const result = await riderService.register(req.body);
-      res.status(201).json(result);
+      await riderService.validateStepOne(req.body);
+      res.status(200).json({ success: true, message: "Step 1 validated" });
     } catch (error) {
-      logger.error("Error in register:", error);
+      throw error;
+    }
+  }
+
+  static async registerStepTwo(req: AuthRequest, res: Response) {
+    try {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const urls = await riderService.processStepTwoDocs(req.body.email, files);
+
+      res.status(200).json({
+        success: true,
+        message: "Documents uploaded",
+        data: urls,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async registerStepFour(req: AuthRequest, res: Response) {
+    try {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const identifier = req.body.email.replace(/[@.]/g, "_");
+
+      const verifyIdentityUrl = files["verifyIdentity"]
+        ? await UploadService.uploadDocument(
+            files["verifyIdentity"][0],
+            identifier,
+            "verification",
+          )
+        : "";
+
+      const rider = await riderService.finalizeRegistration({
+        ...req.body,
+        verifyIdentityUrl,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Rider registered successfully. Documents are under review.",
+        data: {
+          id: rider.id,
+          email: rider.email,
+          status: rider.verificationStatus,
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async getSupportedBanks(req: AuthRequest, res: Response) {
+    try {
+      const country = (req.query.country as string) || "nigeria";
+      const banks = await riderService.getBanksByCountry(country);
+      res.status(200).json({ success: true, data: banks });
+    } catch (error) {
       throw error;
     }
   }
