@@ -115,7 +115,7 @@ router.post(
  * /riders/register/step-4:
  *   post:
  *     summary: Registration Step 4 - Finalize
- *     description: Final identity verification and account creation. Send ALL accumulated data here.
+ *     description: Final identity verification and account creation. This endpoint requires ALL data collected from previous steps to persist the rider to the database.
  *     tags: [Rider Authentication]
  *     requestBody:
  *       required: true
@@ -123,13 +123,79 @@ router.post(
  *         multipart/form-data:
  *           schema:
  *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - email
+ *               - phone
+ *               - password
+ *               - birthday
+ *               - gender
+ *               - country
+ *               - state
+ *               - areaOfWork
+ *               - drivingLicenseUrl
+ *               - idCardUrl
+ *               - guarantorIdCardUrl
+ *               - ninNumber
+ *               - bikePlateNumber
+ *               - guarantorName
+ *               - guarantorRelationship
+ *               - guarantorPhone
+ *               - guarantorNin
+ *               - bankName
+ *               - accountNumber
+ *               - accountName
+ *               - verifyIdentity
  *             properties:
- *               # All text fields from Steps 1-3 must be included in this multipart request
- *               email: { type: string }
- *               verifyIdentity: { type: string, format: binary }
+ *               # Step 1 Data
+ *               firstName: { type: string }
+ *               lastName: { type: string }
+ *               email: { type: string, format: email }
+ *               phone: { type: string }
+ *               password: { type: string, format: password }
+ *               birthday: { type: string, format: date }
+ *               gender: { type: string }
+ *               country: { type: string }
+ *               # Step 2 Data (Urls returned from Step 2)
+ *               state: { type: string }
+ *               areaOfWork: { type: string }
+ *               drivingLicenseUrl: { type: string }
+ *               idCardUrl: { type: string }
+ *               guarantorIdCardUrl: { type: string }
+ *               ninNumber: { type: string }
+ *               bikePlateNumber: { type: string }
+ *               guarantorName: { type: string }
+ *               guarantorRelationship: { type: string }
+ *               guarantorPhone: { type: string }
+ *               guarantorNin: { type: string }
+ *               # Step 3 Data (Validated via Paystack)
+ *               bankName: { type: string }
+ *               accountNumber: { type: string }
+ *               accountName: { type: string }
+ *               # Step 4 Data (The actual file)
+ *               verifyIdentity:
+ *                 type: string
+ *                 format: binary
+ *                 description: Real-time selfie or identity verification photo
  *     responses:
  *       201:
- *         description: Rider registered successfully
+ *         description: Rider registered successfully. Documents are under review.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 message: { type: string }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: string }
+ *                     email: { type: string }
+ *                     status: { type: string }
+ *       400:
+ *         description: Validation error or missing fields
  */
 router.post(
   "/register/step-4",
