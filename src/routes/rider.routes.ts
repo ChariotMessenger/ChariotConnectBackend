@@ -66,13 +66,12 @@ router.post(
     riderController.registerStepOne(req as any, res).catch(next);
   },
 );
-
 /**
  * @swagger
  * /riders/register/step-2:
  *   post:
  *     summary: Registration Step 2 - Documents & Work
- *     description: Upload identity documents and work details. Requires multipart/form-data.
+ *     description: Upload identity documents and provide work/guarantor details. Returns URLs of uploaded documents to be used in the final registration step.
  *     tags: [Rider Authentication]
  *     requestBody:
  *       required: true
@@ -80,23 +79,76 @@ router.post(
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [email, state, areaOfWork, ninNumber, bikePlateNumber, guarantorName, guarantorRelationship, guarantorPhone, guarantorNin]
+ *             required:
+ *               - email
+ *               - state
+ *               - areaOfWork
+ *               - ninNumber
+ *               - bikePlateNumber
+ *               - guarantorName
+ *               - guarantorRelationship
+ *               - guarantorPhone
+ *               - guarantorNin
+ *               - drivingLicense
+ *               - idCard
+ *               - guarantorIdCard
  *             properties:
- *               email: { type: string }
- *               state: { type: string }
- *               areaOfWork: { type: string }
- *               ninNumber: { type: string }
- *               bikePlateNumber: { type: string }
- *               guarantorName: { type: string }
- *               guarantorRelationship: { type: string }
- *               guarantorPhone: { type: string }
- *               guarantorNin: { type: string }
- *               drivingLicense: { type: string, format: binary }
- *               idCard: { type: string, format: binary }
- *               guarantorIdCard: { type: string, format: binary }
+ *               email:
+ *                 type: string
+ *                 example: rider@example.com
+ *               state:
+ *                 type: string
+ *               areaOfWork:
+ *                 type: string
+ *               ninNumber:
+ *                 type: string
+ *               bikePlateNumber:
+ *                 type: string
+ *               guarantorName:
+ *                 type: string
+ *               guarantorRelationship:
+ *                 type: string
+ *               guarantorPhone:
+ *                 type: string
+ *               guarantorNin:
+ *                 type: string
+ *               drivingLicense:
+ *                 type: string
+ *                 format: binary
+ *               idCard:
+ *                 type: string
+ *                 format: binary
+ *               guarantorIdCard:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       200:
  *         description: Documents uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Documents uploaded
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     drivingLicenseUrl:
+ *                       type: string
+ *                       example: https://storage.com/path/to/license.jpg
+ *                     idCardUrl:
+ *                       type: string
+ *                       example: https://storage.com/path/to/idcard.jpg
+ *                     guarantorIdCardUrl:
+ *                       type: string
+ *                       example: https://storage.com/path/to/guarantor.jpg
+ *       400:
+ *         description: Missing required fields or file upload error
  */
 router.post(
   "/register/step-2",
