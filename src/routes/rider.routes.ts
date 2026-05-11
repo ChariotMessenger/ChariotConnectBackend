@@ -329,6 +329,85 @@ router.post(
 
 /**
  * @swagger
+ * /riders/forgot-password-step1:
+ *   post:
+ *     summary: Forgot Password Step 1
+ *     description: Request an OTP for password reset via email or phone number
+ *     tags:
+ *       - Rider Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       400:
+ *         description: Email or Phone Number is required
+ */
+router.post(
+  "/forgot-password-step1",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await riderController.forgotPasswordStep1(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /riders/forgot-password-step2:
+ *   post:
+ *     summary: Forgot Password Step 2
+ *     description: Reset password using the received OTP
+ *     tags:
+ *       - Rider Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Missing required fields
+ */
+router.post(
+  "/forgot-password-step2",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await riderController.forgotPasswordStep2(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
  * /riders/login-password:
  *   post:
  *     summary: Rider Password Login

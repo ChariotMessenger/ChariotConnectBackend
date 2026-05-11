@@ -11,6 +11,10 @@ interface Point {
   latitude?: number;
   longitude?: number;
   locationName?: string;
+  fullAddress?: string;
+  placeId?: string;
+  tag?: string;
+  shortAddress?: string;
 }
 
 export class VendorService {
