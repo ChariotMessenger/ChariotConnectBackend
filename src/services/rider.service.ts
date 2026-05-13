@@ -351,13 +351,13 @@ export class RiderService {
         );
       }
 
-      if (!rider.verified) {
-        throw new CustomError(
-          "Your account is pending verification. Access denied.",
-          403,
-          "ACCOUNT_NOT_VERIFIED",
-        );
-      }
+      // if (!rider.verified) {
+      //   throw new CustomError(
+      //     "Your account is pending verification. Access denied.",
+      //     403,
+      //     "ACCOUNT_NOT_VERIFIED",
+      //   );
+      // }
 
       const token = generateToken({
         id: rider.id,
