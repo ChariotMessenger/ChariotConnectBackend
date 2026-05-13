@@ -15,6 +15,16 @@ import { SmsService } from "./sms-service";
 import UploadService from "./upload.service";
 import axios from "axios";
 
+interface Point {
+  latitude?: number;
+  longitude?: number;
+  locationName?: string;
+  fullAddress?: string;
+  placeId?: string;
+  tag?: string;
+  shortAddress?: string;
+}
+
 export class RiderService {
   private static readonly PAYSTACK_URL = "https://api.paystack.co";
 
@@ -83,6 +93,16 @@ export class RiderService {
         areaOfWork: data.areaOfWork,
         drivingLicenseUrl: data.drivingLicenseUrl,
         ninNumber: data.ninNumber,
+        riderHomeAddress: data.riderHomeAddress
+          ? {
+              latitude: data.riderHomeAddress.latitude,
+              longitude: data.riderHomeAddress.longitude,
+              locationName: data.riderHomeAddress.locationName,
+              fullAddress: data.riderHomeAddress.fullAddress,
+              placeId: data.riderHomeAddress.placeId,
+              shortAddress: data.riderHomeAddress.shortAddress,
+            }
+          : undefined,
         idCardUrl: data.idCardUrl,
         bikePlateNumber: data.bikePlateNumber,
         guarantorName: data.guarantorName,
@@ -578,6 +598,19 @@ export class RiderService {
           gender: data.gender || undefined,
           state: data.state || undefined,
           country: data.country || undefined,
+          riderHomeAddress: data.riderHomeAddress
+            ? {
+                set: {
+                  latitude: data.riderHomeAddress.latitude,
+                  longitude: data.riderHomeAddress.longitude,
+                  locationName: data.riderHomeAddress.locationName,
+                  tag: data.riderHomeAddress.tag,
+                  fullAddress: data.riderHomeAddress.fullAddress,
+                  placeId: data.riderHomeAddress.placeId,
+                  shortAddress: data.riderHomeAddress.shortAddress,
+                },
+              }
+            : undefined,
           currentLocation: data.currentLocation
             ? {
                 set: {

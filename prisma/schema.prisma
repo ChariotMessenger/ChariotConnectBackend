@@ -136,7 +136,8 @@ model Rider {
   country               String
   currency              String             @default("NGN")
   isEmailVerified       Boolean            @default(false)
-  state                 String
+  riderHomeAddress       Point?
+  state                 String?
   areaOfWork            String
   drivingLicenseUrl     String
   ninNumber             String
