@@ -51,11 +51,6 @@ export class RiderController {
       res.status(201).json({
         success: true,
         message: "Rider registered successfully. Documents are under review.",
-        data: {
-          id: rider.id,
-          email: rider.email,
-          status: rider.verificationStatus,
-        },
       });
     } catch (error) {
       throw error;
