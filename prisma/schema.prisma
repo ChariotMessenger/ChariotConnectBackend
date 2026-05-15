@@ -168,7 +168,14 @@ model Rider {
   @@index([state])
   @@index([onlineStatus])
 }
-
+model PendingRider {
+   id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  email            String   @unique
+  phone            String   @unique
+  registrationData Json
+  otp              String?
+  createdAt        DateTime @default(now())
+}
 model Order {
   id               String      @id @default(auto()) @map("_id") @db.ObjectId
   vendorId         String      @db.ObjectId

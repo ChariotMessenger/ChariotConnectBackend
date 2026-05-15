@@ -77,46 +77,39 @@ export class RiderService {
 
   static async finalizeRegistration(data: any) {
     const normalizedEmail = data.email.trim().toLowerCase();
-    const hashedPassword = await hashPassword(data.password);
 
-    return await prisma.rider.create({
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
+    const existingRider = await prisma.rider.findFirst({
+      where: { OR: [{ email: normalizedEmail }, { phone: data.phone }] },
+    });
+
+    if (existingRider) {
+      throw new CustomError(
+        "Email or phone already registered",
+        400,
+        "RIDER_EXISTS",
+      );
+    }
+
+    const hashedPassword = await hashPassword(data.password);
+    const secureData = { ...data, password: hashedPassword };
+
+    await prisma.pendingRider.upsert({
+      where: { email: normalizedEmail },
+      update: {
+        registrationData: secureData,
+        phone: data.phone,
+      },
+      create: {
         email: normalizedEmail,
         phone: data.phone,
-        password: hashedPassword,
-        birthday: new Date(data.birthday),
-        gender: data.gender,
-        country: data.country,
-        state: data.state,
-        areaOfWork: data.areaOfWork,
-        drivingLicenseUrl: data.drivingLicenseUrl,
-        ninNumber: data.ninNumber,
-        riderHomeAddress: data.riderHomeAddress
-          ? {
-              latitude: data.riderHomeAddress.latitude,
-              longitude: data.riderHomeAddress.longitude,
-              locationName: data.riderHomeAddress.locationName,
-              fullAddress: data.riderHomeAddress.fullAddress,
-              placeId: data.riderHomeAddress.placeId,
-              shortAddress: data.riderHomeAddress.shortAddress,
-            }
-          : undefined,
-        idCardUrl: data.idCardUrl,
-        bikePlateNumber: data.bikePlateNumber,
-        guarantorName: data.guarantorName,
-        guarantorRelationship: data.guarantorRelationship,
-        guarantorPhone: data.guarantorPhone,
-        guarantorNin: data.guarantorNin,
-        guarantorIdCardUrl: data.guarantorIdCardUrl,
-        bankName: data.bankName,
-        accountNumber: data.accountNumber,
-        accountName: data.accountName,
-        verifyIdentityUrl: data.verifyIdentityUrl,
-        verificationStatus: VerificationStatus.PENDING,
+        registrationData: secureData,
       },
     });
+
+    return {
+      success: true,
+      message: "OTP sent. Please verify to complete registration.",
+    };
   }
 
   static async getBanksByCountry(country: string) {
@@ -219,29 +212,65 @@ export class RiderService {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      const rider = await prisma.rider.findFirst({
+      const pending = await prisma.pendingRider.findFirst({
         where: email ? { email } : { phone: phoneNumber },
       });
 
-      if (!rider) {
-        throw new CustomError("Rider not found", 404, "RIDER_NOT_FOUND");
+      if (!pending) {
+        throw new CustomError(
+          "Registration session not found",
+          404,
+          "SESSION_NOT_FOUND",
+        );
       }
 
-      await prisma.rider.update({
-        where: { id: rider.id },
-        data: {
-          isEmailVerified: true,
-        },
+      const regData = pending.registrationData as any;
+
+      const newRider = await prisma.$transaction(async (tx) => {
+        const rider = await tx.rider.create({
+          data: {
+            firstName: regData.firstName,
+            lastName: regData.lastName,
+            email: regData.email,
+            phone: regData.phone,
+            password: regData.password,
+            birthday: new Date(regData.birthday),
+            gender: regData.gender,
+            country: regData.country,
+            state: regData.state,
+            areaOfWork: regData.areaOfWork,
+            drivingLicenseUrl: regData.drivingLicenseUrl,
+            ninNumber: regData.ninNumber,
+            riderHomeAddress: regData.riderHomeAddress,
+            idCardUrl: regData.idCardUrl,
+            bikePlateNumber: regData.bikePlateNumber,
+            guarantorName: regData.guarantorName,
+            guarantorRelationship: regData.guarantorRelationship,
+            guarantorPhone: regData.guarantorPhone,
+            guarantorNin: regData.guarantorNin,
+            guarantorIdCardUrl: regData.guarantorIdCardUrl,
+            bankName: regData.bankName,
+            accountNumber: regData.accountNumber,
+            accountName: regData.accountName,
+            verifyIdentityUrl: regData.verifyIdentityUrl,
+            isEmailVerified: true,
+            verificationStatus: VerificationStatus.PENDING,
+          },
+        });
+
+        await tx.pendingRider.delete({ where: { id: pending.id } });
+        return rider;
       });
 
-      logger.info(`Account verified for rider: ${target}`);
+      logger.info(`Rider created after verification: ${target}`);
 
       return {
         success: true,
-        message: `${email ? "Email" : "Phone number"} verified successfully.`,
+        message: `${email ? "Email" : "Phone number"} verified and account created.`,
+        rider: newRider,
       };
     } catch (error) {
-      logger.error("Error in rider account verification:", error);
+      logger.error("Error in rider verification:", error);
       throw error;
     }
   }
