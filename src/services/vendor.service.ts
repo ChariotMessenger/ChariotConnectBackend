@@ -639,6 +639,9 @@ export class VendorService {
           vendorWorkPeriod: data.vendorWorkPeriod || undefined,
           vendorServiceType: data.vendorServiceType || undefined,
           businessOwnerName: data.businessOwnerName || undefined,
+          bankName: data.bankName || undefined,
+          accountNumber: data.accountNumber || undefined,
+          accountName: data.accountName || undefined,
           businessType: data.businessType || undefined,
           isBusinessRegistered:
             data.isBusinessRegistered !== undefined

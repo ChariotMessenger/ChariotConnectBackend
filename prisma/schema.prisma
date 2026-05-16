@@ -120,7 +120,9 @@ model Vendor {
   orders                 Order[]            @relation("VendorOrders")
   messages               Message[]          @relation("VendorMessages")
   messageRooms           MessageRoom[]      @relation("VendorRooms")
-
+  bankName              String
+  accountNumber         String
+  accountName           String
   @@index([country])
   @@index([businessType])
 }
