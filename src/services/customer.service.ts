@@ -546,47 +546,70 @@ export class CustomerService {
 
   static async updateProfile(customerId: string, data: any) {
     try {
-      const customer = await prisma.customer.update({
-        where: { id: customerId },
-        data: {
-          firstName: data.firstName || undefined,
-          lastName: data.lastName || undefined,
-          phone: data.phone || undefined,
-          gender: data.gender || undefined,
-          country: data.country || undefined,
-          receiveMarketingEmails:
-            data.receiveMarketingEmails !== undefined
-              ? data.receiveMarketingEmails
+      const updatedCustomer = await prisma.$transaction(async (tx) => {
+        const customer = await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            firstName: data.firstName || undefined,
+            lastName: data.lastName || undefined,
+            phone: data.phone || undefined,
+            gender: data.gender || undefined,
+            country: data.country || undefined,
+            receiveMarketingEmails:
+              data.receiveMarketingEmails !== undefined
+                ? data.receiveMarketingEmails
+                : undefined,
+            currentLocation: data.currentLocation
+              ? {
+                  set: {
+                    latitude: data.currentLocation.latitude,
+                    longitude: data.currentLocation.longitude,
+                    locationName: data.currentLocation.locationName,
+                    tag: data.currentLocation.tag,
+                    fullAddress: data.currentLocation.fullAddress,
+                    placeId: data.currentLocation.placeId,
+                    shortAddress: data.currentLocation.shortAddress,
+                  },
+                }
               : undefined,
-          currentLocation: data.currentLocation
-            ? {
-                set: {
-                  latitude: data.currentLocation.latitude,
-                  longitude: data.currentLocation.longitude,
-                  locationName: data.currentLocation.locationName,
-                  tag: data.currentLocation.tag,
-                  fullAddress: data.currentLocation.fullAddress,
-                  placeId: data.currentLocation.placeId,
-                  shortAddress: data.currentLocation.shortAddress,
-                },
-              }
-            : undefined,
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          gender: true,
-          country: true,
-          email: true,
-          phone: true,
-          profilePhotoUrl: true,
-          currentLocation: true,
-        },
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            gender: true,
+            country: true,
+            email: true,
+            phone: true,
+            profilePhotoUrl: true,
+            currentLocation: true,
+          },
+        });
+
+        if (data.currentLocation) {
+          await tx.locationHistory.create({
+            data: {
+              customerId: customer.id,
+              location: {
+                latitude: data.currentLocation.latitude,
+                longitude: data.currentLocation.longitude,
+                locationName: data.currentLocation.locationName,
+                tag: data.currentLocation.tag,
+                fullAddress: data.currentLocation.fullAddress,
+                placeId: data.currentLocation.placeId,
+                shortAddress: data.currentLocation.shortAddress,
+              },
+            },
+          });
+        }
+
+        return customer;
       });
 
-      logger.info(`Customer profile updated: ${customerId}`);
-      return customer;
+      logger.info(
+        `Customer profile and location history updated: ${customerId}`,
+      );
+      return updatedCustomer;
     } catch (error) {
       logger.error("Error updating customer profile:", error);
       throw error;

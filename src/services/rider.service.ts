@@ -617,55 +617,76 @@ export class RiderService {
 
   static async updateProfile(riderId: string, data: any) {
     try {
-      const rider = await prisma.rider.update({
-        where: { id: riderId },
-        data: {
-          firstName: data.firstName || undefined,
-          lastName: data.lastName || undefined,
-          phone: data.phone || undefined,
-          areaOfWork: data.areaOfWork || undefined,
-          gender: data.gender || undefined,
-          state: data.state || undefined,
-          country: data.country || undefined,
-          riderHomeAddress: data.riderHomeAddress
-            ? {
-                set: {
-                  latitude: data.riderHomeAddress.latitude,
-                  longitude: data.riderHomeAddress.longitude,
-                  locationName: data.riderHomeAddress.locationName,
-                  tag: data.riderHomeAddress.tag,
-                  fullAddress: data.riderHomeAddress.fullAddress,
-                  placeId: data.riderHomeAddress.placeId,
-                  shortAddress: data.riderHomeAddress.shortAddress,
-                },
-              }
-            : undefined,
-          currentLocation: data.currentLocation
-            ? {
-                set: {
-                  latitude: data.currentLocation.latitude,
-                  longitude: data.currentLocation.longitude,
-                  locationName: data.currentLocation.locationName,
-                  tag: data.currentLocation.tag,
-                  fullAddress: data.currentLocation.fullAddress,
-                  placeId: data.currentLocation.placeId,
-                  shortAddress: data.currentLocation.shortAddress,
-                },
-              }
-            : undefined,
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          currentLocation: true,
-        },
+      const updatedRider = await prisma.$transaction(async (tx) => {
+        const rider = await tx.rider.update({
+          where: { id: riderId },
+          data: {
+            firstName: data.firstName || undefined,
+            lastName: data.lastName || undefined,
+            phone: data.phone || undefined,
+            areaOfWork: data.areaOfWork || undefined,
+            gender: data.gender || undefined,
+            state: data.state || undefined,
+            country: data.country || undefined,
+            riderHomeAddress: data.riderHomeAddress
+              ? {
+                  set: {
+                    latitude: data.riderHomeAddress.latitude,
+                    longitude: data.riderHomeAddress.longitude,
+                    locationName: data.riderHomeAddress.locationName,
+                    tag: data.riderHomeAddress.tag,
+                    fullAddress: data.riderHomeAddress.fullAddress,
+                    placeId: data.riderHomeAddress.placeId,
+                    shortAddress: data.riderHomeAddress.shortAddress,
+                  },
+                }
+              : undefined,
+            currentLocation: data.currentLocation
+              ? {
+                  set: {
+                    latitude: data.currentLocation.latitude,
+                    longitude: data.currentLocation.longitude,
+                    locationName: data.currentLocation.locationName,
+                    tag: data.currentLocation.tag,
+                    fullAddress: data.currentLocation.fullAddress,
+                    placeId: data.currentLocation.placeId,
+                    shortAddress: data.currentLocation.shortAddress,
+                  },
+                }
+              : undefined,
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            currentLocation: true,
+          },
+        });
+
+        if (data.currentLocation) {
+          await tx.locationHistory.create({
+            data: {
+              riderId: rider.id,
+              location: {
+                latitude: data.currentLocation.latitude,
+                longitude: data.currentLocation.longitude,
+                locationName: data.currentLocation.locationName,
+                tag: data.currentLocation.tag,
+                fullAddress: data.currentLocation.fullAddress,
+                placeId: data.currentLocation.placeId,
+                shortAddress: data.currentLocation.shortAddress,
+              },
+            },
+          });
+        }
+
+        return rider;
       });
 
-      logger.info(`Rider profile updated: ${riderId}`);
-      return rider;
+      logger.info(`Rider profile and location history updated: ${riderId}`);
+      return updatedRider;
     } catch (error) {
       logger.error("Error updating rider profile:", error);
       throw error;
