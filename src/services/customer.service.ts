@@ -593,6 +593,41 @@ export class CustomerService {
     }
   }
 
+  static async getLocationHistory(
+    customerId: string,
+    limit: number = 20,
+    page: number = 1,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
+
+      const [history, total] = await Promise.all([
+        prisma.locationHistory.findMany({
+          where: { customerId },
+          orderBy: { capturedAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.locationHistory.count({
+          where: { customerId },
+        }),
+      ]);
+
+      logger.info(`Fetched location history for customer: ${customerId}`);
+      return {
+        history,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching customer location history:", error);
+      throw error;
+    }
+  }
   static async updateProfilePhoto(customerId: string, photoUrl: string) {
     try {
       const customer = await prisma.customer.update({

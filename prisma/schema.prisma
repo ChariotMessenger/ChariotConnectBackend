@@ -55,6 +55,20 @@ type Point {
   tag        String? // e.g., "home", "work", "other"
 }
 
+model LocationHistory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  location    Point
+  customerId  String?  @db.ObjectId
+  riderId     String?  @db.ObjectId
+  capturedAt  DateTime @default(now())
+
+  customer    Customer? @relation("CustomerLocationHistory", fields: [customerId], references: [id], onDelete: Cascade)
+  rider       Rider?    @relation("RiderLocationHistory", fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, capturedAt])
+  @@index([riderId, capturedAt])
+}
+
 model Customer {
   id                     String            @id @default(auto()) @map("_id") @db.ObjectId
   firstName              String
@@ -79,7 +93,7 @@ model Customer {
   messages               Message[]         @relation("CustomerMessages")
   messageRooms           MessageRoom[]     @relation("CustomerRooms")
   orders                 Order[]           @relation("CustomerOrders")
-
+locationHistory        LocationHistory[] @relation("CustomerLocationHistory")
   @@index([country])
 }
 
@@ -120,9 +134,9 @@ model Vendor {
   orders                 Order[]            @relation("VendorOrders")
   messages               Message[]          @relation("VendorMessages")
   messageRooms           MessageRoom[]      @relation("VendorRooms")
-  bankName              String
-  accountNumber         String
-  accountName           String
+  bankName              String?
+  accountNumber         String?
+  accountName           String?
   @@index([country])
   @@index([businessType])
 }
@@ -165,7 +179,7 @@ model Rider {
   updatedAt             DateTime           @updatedAt
   otpVerifications      OTPVerification[]
   deliveries            Order[]            @relation("RiderOrders")
-
+  locationHistory       LocationHistory[]  @relation("RiderLocationHistory")
   @@index([country])
   @@index([state])
   @@index([onlineStatus])

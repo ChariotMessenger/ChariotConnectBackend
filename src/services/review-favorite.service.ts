@@ -177,29 +177,147 @@ export class FavoriteService {
     }
   }
 
-  static async getCustomerFavorites(customerId: string) {
+  static async getCustomerFavorites(
+    customerId: string,
+    params: {
+      latitude?: number;
+      longitude?: number;
+      radiusKm?: number;
+      serviceType?: "FOOD" | "GROCERY" | "PHARMACY";
+      search?: string;
+      page?: number;
+      limit?: number;
+    } = {},
+  ) {
     try {
-      const favorites = await prisma.favoriteVendor.findMany({
-        where: { customerId },
-        include: {
-          vendor: {
-            select: {
-              id: true,
-              businessName: true,
-              businessType: true,
-              businessAddress: true,
-              phone: true,
-              profilePhotoUrl: true,
+      const {
+        latitude,
+        longitude,
+        radiusKm = 10,
+        serviceType,
+        search,
+        page = 1,
+        limit = 10,
+      } = params;
+
+      const skip = (page - 1) * limit;
+
+      const vendorWhereClause: any = {
+        verified: true,
+        verificationStatus: "VERIFIED",
+      };
+
+      if (serviceType) {
+        vendorWhereClause.vendorServiceType = serviceType;
+      }
+
+      if (latitude !== undefined && longitude !== undefined) {
+        const kmPerDegree = 111;
+        const latDelta = radiusKm / kmPerDegree;
+        const lngDelta =
+          radiusKm / (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
+
+        vendorWhereClause.businessAddress = {
+          is: {
+            latitude: {
+              gte: latitude - latDelta,
+              lte: latitude + latDelta,
+            },
+            longitude: {
+              gte: longitude - lngDelta,
+              lte: longitude + lngDelta,
             },
           },
-        },
-        orderBy: { createdAt: "desc" },
-      });
+        };
+      }
 
-      logger.info(`Customer favorites fetched: ${customerId}`);
-      return favorites;
+      if (search) {
+        vendorWhereClause.OR = [
+          { businessName: { contains: search, mode: "insensitive" } },
+          {
+            catalogItems: {
+              some: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        ];
+      }
+
+      const favoriteWhereClause = {
+        customerId,
+        vendor: vendorWhereClause,
+      };
+
+      const [favorites, total] = await prisma.$transaction([
+        prisma.favoriteVendor.findMany({
+          where: favoriteWhereClause,
+          select: {
+            vendor: {
+              select: {
+                id: true,
+                businessName: true,
+                businessType: true,
+                vendorServiceType: true,
+                businessAddress: true,
+                phone: true,
+                profilePhotoUrl: true,
+                currency: true,
+                createdAt: true,
+                brandLogoUrl: true,
+                coverPhotoUrl: true,
+                country: true,
+                vendorWorkPeriod: true,
+                bio: true,
+                rank: true,
+                productCategories: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+                catalogItems: {
+                  where: {
+                    available: true,
+                    ...(search
+                      ? { name: { contains: search, mode: "insensitive" } }
+                      : {}),
+                  },
+                  select: {
+                    id: true,
+                    name: true,
+                    price: true,
+                    imageUrl: true,
+                    description: true,
+                    categoryId: true,
+                  },
+                },
+              },
+            },
+          },
+          skip,
+          take: limit,
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.favoriteVendor.count({ where: favoriteWhereClause }),
+      ]);
+
+      const vendors = favorites.map((f) => f.vendor);
+
+      logger.info(
+        `Customer favorites fetched with matching filters: ${customerId}`,
+      );
+      return {
+        vendors,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
-      logger.error("Error fetching favorites:", error);
+      logger.error("Error fetching favorites with matching filters:", error);
       throw error;
     }
   }

@@ -366,6 +366,27 @@ export class RiderController {
     }
   }
 
+  static async getLocationHistory(req: AuthRequest, res: Response) {
+    try {
+      const { riderId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const page = parseInt(req.query.page as string) || 1;
+
+      if (!riderId) {
+        return res.status(400).json({ message: "Rider ID is required" });
+      }
+
+      const result = await riderService.getLocationHistory(
+        riderId,
+        limit,
+        page,
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
   static async getOnlineRiders(req: AuthRequest, res: Response) {
     try {
       const { state } = req.query;

@@ -418,6 +418,26 @@ export class CustomerController {
     }
   }
 
+  static async getLocationHistory(req: AuthRequest, res: Response) {
+    try {
+      const { customerId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const page = parseInt(req.query.page as string) || 1;
+
+      if (!customerId) {
+        return res.status(400).json({ message: "Customer ID is required" });
+      }
+
+      const result = await customerService.getLocationHistory(
+        customerId,
+        limit,
+        page,
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
   static async getConversations(req: AuthRequest, res: Response) {
     try {
       const conversations = await messageService.getUserConversations(

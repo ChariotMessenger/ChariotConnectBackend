@@ -536,7 +536,45 @@ protectedRouter.post(
     }
   },
 );
-
+/**
+ * @swagger
+ * /customers/location-history:
+ *   get:
+ *     summary: Get Customer Location History
+ *     description: Retrieve a paginated list of historical locations for the authenticated customer
+ *     tags:
+ *       - Customer Location
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Location history retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+protectedRouter.get(
+  "/location-history",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.getLocationHistory(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 /**
  * @swagger
  * /customers/orders:

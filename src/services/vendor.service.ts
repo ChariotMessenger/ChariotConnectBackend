@@ -618,7 +618,7 @@ export class VendorService {
       return {
         ...profileData,
         productCategories: productCategories,
-        items: catalogItems,
+        catalogItems: catalogItems,
       };
     } catch (error) {
       logger.error("Error fetching vendor profile:", error);

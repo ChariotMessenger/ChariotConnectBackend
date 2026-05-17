@@ -686,6 +686,42 @@ export class RiderService {
     }
   }
 
+  static async getLocationHistory(
+    riderId: string,
+    limit: number = 20,
+    page: number = 1,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
+
+      const [history, total] = await Promise.all([
+        prisma.locationHistory.findMany({
+          where: { riderId },
+          orderBy: { capturedAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.locationHistory.count({
+          where: { riderId },
+        }),
+      ]);
+
+      logger.info(`Fetched location history for rider: ${riderId}`);
+      return {
+        history,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching rider location history:", error);
+      throw error;
+    }
+  }
+
   static async goOnline(riderId: string) {
     try {
       const rider = await prisma.rider.update({
