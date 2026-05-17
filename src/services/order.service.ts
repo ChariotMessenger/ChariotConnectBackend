@@ -7,41 +7,140 @@ import axios from "axios";
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const PAWAPAY_SECRET = process.env.PAWAPAY_SECRET_KEY;
 
+interface ItemDetails {
+  productId: string;
+  itemName: string;
+  productImageUrl: string | null;
+  price: number;
+  quantity: number;
+  description: string | null;
+}
+
+interface PackGroup {
+  packLabel: string;
+  itemList: ItemDetails[];
+}
+
+interface CreateOrderInput {
+  vendorId: string;
+  customerId: string;
+  packsList: PackGroup[];
+  totalAmount: number;
+  deliveryLocation: any;
+  notes?: string;
+}
+
+interface UpdateOrderInput {
+  packsList?: PackGroup[];
+  totalAmount?: number;
+  deliveryLocation?: any;
+  notes?: string;
+}
+
 export class OrderService {
-  static async createOrder(data: {
-    vendorId: string;
-    customerId: string;
-    items: any;
-    totalAmount: number;
-    deliveryLocation: any;
-    notes?: string;
-  }) {
-    const vendor = await prisma.vendor.findUnique({
-      where: { id: data.vendorId },
-      select: {
-        currency: true,
-        businessAddress: true,
-      },
-    });
+  static async createOrder(data: CreateOrderInput) {
+    try {
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: data.vendorId },
+        select: {
+          currency: true,
+          businessAddress: true,
+        },
+      });
 
-    if (!vendor) {
-      throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
+      if (!vendor) {
+        throw new CustomError("Vendor not found", 404, "VENDOR_NOT_FOUND");
+      }
+
+      if (!data.packsList || data.packsList.length === 0) {
+        throw new CustomError(
+          "Order must contain at least one pack list entry",
+          400,
+          "INVALID_ITEMS",
+        );
+      }
+
+      const order = await prisma.order.create({
+        data: {
+          vendorId: data.vendorId,
+          customerId: data.customerId,
+          items: data.packsList as any,
+          totalAmount: data.totalAmount,
+          currency: vendor.currency,
+          notes: data.notes,
+          status: OrderStatus.WAITING_FOR_APPROVAL,
+          deliveryLocation: data.deliveryLocation,
+          pickupLocation: vendor.businessAddress as any,
+        },
+      });
+
+      logger.info(`Order created successfully with grouped packs: ${order.id}`);
+      return order;
+    } catch (error) {
+      logger.error("Error creating order with packs list:", error);
+      throw error;
     }
-
-    return await prisma.order.create({
-      data: {
-        vendorId: data.vendorId,
-        customerId: data.customerId,
-        items: data.items,
-        totalAmount: data.totalAmount,
-        currency: vendor.currency,
-        notes: data.notes,
-        status: OrderStatus.WAITING_FOR_APPROVAL,
-        deliveryLocation: data.deliveryLocation,
-        pickupLocation: vendor.businessAddress as any,
-      },
-    });
   }
+
+  static async updateOrder(
+    orderId: string,
+    customerId: string,
+    data: UpdateOrderInput,
+  ) {
+    try {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          customerId: true,
+          status: true,
+        },
+      });
+
+      if (!order) {
+        throw new CustomError("Order not found", 404, "ORDER_NOT_FOUND");
+      }
+
+      if (order.customerId !== customerId) {
+        throw new CustomError(
+          "Unauthorized to update this order",
+          403,
+          "UNAUTHORIZED",
+        );
+      }
+
+      const allowedStatuses: OrderStatus[] = [
+        OrderStatus.WAITING_FOR_APPROVAL,
+        OrderStatus.AWAITING_PAYMENT,
+      ];
+
+      if (!allowedStatuses.includes(order.status)) {
+        throw new CustomError(
+          `Cannot update order because it is already ${order.status}`,
+          400,
+          "ORDER_ALREADY_PROCESSED",
+        );
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          items: data.packsList ? (data.packsList as any) : undefined,
+          totalAmount:
+            data.totalAmount !== undefined ? data.totalAmount : undefined,
+          deliveryLocation: data.deliveryLocation || undefined,
+          notes: data.notes || undefined,
+        },
+      });
+
+      logger.info(`Order updated successfully by customer: ${orderId}`);
+      return updatedOrder;
+    } catch (error) {
+      logger.error("Error updating order:", error);
+      throw error;
+    }
+  }
+
   static async vendorUpdateStatus(
     orderId: string,
     vendorId: string,

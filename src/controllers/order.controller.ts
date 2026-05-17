@@ -17,7 +17,21 @@ export class OrderController {
         .json({ success: false, message: error.message });
     }
   }
-
+  static async updateOrder(req: AuthRequest, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const order = await OrderService.updateOrder(
+        orderId,
+        req.user!.id,
+        req.body,
+      );
+      res.status(200).json({ success: true, order });
+    } catch (error: any) {
+      res
+        .status(error.statusCode || 500)
+        .json({ success: false, message: error.message });
+    }
+  }
   static async vendorUpdateStatus(req: AuthRequest, res: Response) {
     try {
       const order = await OrderService.vendorUpdateStatus(
