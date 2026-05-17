@@ -7,7 +7,7 @@ import axios from "axios";
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const PAWAPAY_SECRET = process.env.PAWAPAY_SECRET_KEY;
 
-interface ItemDetails {
+export interface ItemDetails {
   productId: string;
   itemName: string;
   productImageUrl: string | null;
@@ -16,7 +16,7 @@ interface ItemDetails {
   description: string | null;
 }
 
-interface PackGroup {
+export interface PackGroup {
   packLabel: string;
   itemList: ItemDetails[];
 }

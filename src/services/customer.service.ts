@@ -7,7 +7,7 @@ import EmailService from "./email.service";
 import { UserRole, OrderStatus, VerificationStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { SmsService } from "./sms-service";
-
+import { PackGroup } from "./order.service";
 export class CustomerService {
   static async registerStep1(data: {
     firstName: string;
@@ -529,8 +529,14 @@ export class CustomerService {
         }),
       ]);
 
+      const formattedOrders = orders.map((order) => ({
+        ...order,
+        packsList: (order.items as unknown as PackGroup[]) || [],
+      }));
+
+      logger.info(`Fetched orders for customer: ${customerId}`);
       return {
-        orders,
+        orders: formattedOrders,
         pagination: {
           total,
           page,
@@ -543,7 +549,6 @@ export class CustomerService {
       throw error;
     }
   }
-
   static async updateProfile(customerId: string, data: any) {
     try {
       const updatedCustomer = await prisma.$transaction(async (tx) => {

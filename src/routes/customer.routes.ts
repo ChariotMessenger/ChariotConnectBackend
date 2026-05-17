@@ -594,8 +594,13 @@ protectedRouter.get(
  *             - AWAITING_PAYMENT
  *             - PAID
  *             - VENDOR_PACKING
+ *             - AWAITING_PICK_UP
+ *             - RIDER_ACCEPTED
+ *             - RIDER_EN_ROUTE_TO_VENDOR
+ *             - RIDER_EN_ROUTE_TO_CUSTOMER
  *             - DELIVERED
  *             - CANCELLED
+ *             - REJECTED
  *         description: Optional status filter
  *       - in: query
  *         name: page
@@ -630,14 +635,72 @@ protectedRouter.get(
  *                         type: number
  *                       status:
  *                         type: string
- *                       items:
- *                         type: array
- *                         items:
- *                           type: object
+ *                       currency:
+ *                         type: string
+ *                       notes:
+ *                         type: string
+ *                         nullable: true
  *                       pickupLocation:
  *                         $ref: '#/components/schemas/Point'
  *                       deliveryLocation:
  *                         $ref: '#/components/schemas/Point'
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       vendor:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           businessName:
+ *                             type: string
+ *                           phone:
+ *                             type: string
+ *                           profilePhotoUrl:
+ *                             type: string
+ *                             nullable: true
+ *                       rider:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           firstName:
+ *                             type: string
+ *                           lastName:
+ *                             type: string
+ *                           phone:
+ *                             type: string
+ *                           profilePhotoUrl:
+ *                             type: string
+ *                             nullable: true
+ *                       packsList:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             packLabel:
+ *                               type: string
+ *                             itemList:
+ *                               type: array
+ *                               items:
+ *                                 type: object
+ *                                 properties:
+ *                                   productId:
+ *                                     type: string
+ *                                   itemName:
+ *                                     type: string
+ *                                   productImageUrl:
+ *                                     type: string
+ *                                     nullable: true
+ *                                   price:
+ *                                     type: number
+ *                                   quantity:
+ *                                     type: integer
+ *                                   description:
+ *                                     type: string
+ *                                     nullable: true
  *                 pagination:
  *                   type: object
  *                   properties:

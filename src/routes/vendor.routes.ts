@@ -976,7 +976,6 @@ protectedRouter.delete(
     }
   },
 );
-
 /**
  * @swagger
  * /vendors/orders:
@@ -996,17 +995,25 @@ protectedRouter.delete(
  *             - PAID
  *             - VENDOR_PACKING
  *             - AWAITING_PICK_UP
+ *             - RIDER_ACCEPTED
+ *             - RIDER_EN_ROUTE_TO_VENDOR
+ *             - RIDER_EN_ROUTE_TO_CUSTOMER
  *             - DELIVERED
+ *             - CANCELLED
+ *             - REJECTED
+ *         description: Optional status filter
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
+ *         description: Page number for pagination
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: Success
@@ -1026,23 +1033,92 @@ protectedRouter.delete(
  *                         type: string
  *                       totalAmount:
  *                         type: number
+ *                       status:
+ *                         type: string
+ *                       currency:
+ *                         type: string
+ *                       notes:
+ *                         type: string
+ *                         nullable: true
+ *                       vendorNet:
+ *                         type: number
+ *                       deliveryFee:
+ *                         type: number
+ *                       settlementStatus:
+ *                         type: string
+ *                       payoutStatus:
+ *                         type: string
+ *                       pickupLocation:
+ *                         $ref: '#/components/schemas/Point'
+ *                       deliveryLocation:
+ *                         $ref: '#/components/schemas/Point'
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
  *                       customer:
  *                         type: object
  *                         properties:
+ *                           id:
+ *                             type: string
  *                           firstName:
+ *                             type: string
+ *                           lastName:
  *                             type: string
  *                           phone:
  *                             type: string
- *                       items:
+ *                           profilePhotoUrl:
+ *                             type: string
+ *                             nullable: true
+ *                       rider:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           firstName:
+ *                             type: string
+ *                           lastName:
+ *                             type: string
+ *                           phone:
+ *                             type: string
+ *                           profilePhotoUrl:
+ *                             type: string
+ *                             nullable: true
+ *                       packsList:
  *                         type: array
  *                         items:
  *                           type: object
- *                       status:
- *                         type: string
+ *                           properties:
+ *                             packLabel:
+ *                               type: string
+ *                             itemList:
+ *                               type: array
+ *                               items:
+ *                                 type: object
+ *                                 properties:
+ *                                   productId:
+ *                                     type: string
+ *                                   itemName:
+ *                                     type: string
+ *                                   productImageUrl:
+ *                                     type: string
+ *                                     nullable: true
+ *                                   price:
+ *                                     type: number
+ *                                   quantity:
+ *                                     type: integer
+ *                                   description:
+ *                                     type: string
+ *                                     nullable: true
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
  *                       type: integer
  *                     totalPages:
  *                       type: integer

@@ -7,6 +7,7 @@ import EmailService from "./email.service";
 import { UserRole, VerificationStatus, OrderStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { SmsService } from "./sms-service";
+import { PackGroup } from "./order.service";
 interface Point {
   latitude?: number;
   longitude?: number;
@@ -748,6 +749,7 @@ export class VendorService {
                 firstName: true,
                 lastName: true,
                 phone: true,
+                profilePhotoUrl: true,
               },
             },
           },
@@ -758,8 +760,14 @@ export class VendorService {
         prisma.order.count({ where: whereClause }),
       ]);
 
+      const formattedOrders = orders.map((order) => ({
+        ...order,
+        packsList: (order.items as unknown as PackGroup[]) || [],
+      }));
+
+      logger.info(`Fetched orders for vendor: ${vendorId}`);
       return {
-        orders,
+        orders: formattedOrders,
         pagination: {
           total,
           page,
