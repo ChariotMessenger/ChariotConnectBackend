@@ -472,43 +472,43 @@ export class VendorController {
     }
   }
   // Messaging
-  static async getMessages(req: AuthRequest, res: Response) {
-    try {
-      const conversations = await messageService.getUserConversations(
-        req.user!.id,
-        "VENDOR" as any,
-      );
+  // static async getMessages(req: AuthRequest, res: Response) {
+  //   try {
+  //     const conversations = await messageService.getUserConversations(
+  //       req.user!.id,
+  //       "VENDOR" as any,
+  //     );
 
-      res.status(200).json({
-        success: true,
-        data: conversations,
-      });
-    } catch (error) {
-      logger.error("Error in getMessages:", error);
-      throw error;
-    }
-  }
+  //     res.status(200).json({
+  //       success: true,
+  //       data: conversations,
+  //     });
+  //   } catch (error) {
+  //     logger.error("Error in getMessages:", error);
+  //     throw error;
+  //   }
+  // }
 
-  static async getRoomMessages(req: AuthRequest, res: Response) {
-    try {
-      const { roomId } = req.params;
-      const { limit = 50, offset = 0 } = req.query;
+  // static async getRoomMessages(req: AuthRequest, res: Response) {
+  //   try {
+  //     const { roomId } = req.params;
+  //     const { limit = 50, offset = 0 } = req.query;
 
-      const messages = await messageService.getRoomMessages(
-        roomId,
-        parseInt(limit as string),
-        parseInt(offset as string),
-      );
+  //     const messages = await messageService.getRoomMessages(
+  //       roomId,
+  //       parseInt(limit as string),
+  //       parseInt(offset as string),
+  //     );
 
-      res.status(200).json({
-        success: true,
-        data: messages,
-      });
-    } catch (error) {
-      logger.error("Error in getRoomMessages:", error);
-      throw error;
-    }
-  }
+  //     res.status(200).json({
+  //       success: true,
+  //       data: messages,
+  //     });
+  //   } catch (error) {
+  //     logger.error("Error in getRoomMessages:", error);
+  //     throw error;
+  //   }
+  // }
 
   // Reviews
   static async getVendorReviews(req: AuthRequest, res: Response) {

@@ -1,8 +1,9 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { logger } from "../utils/logger";
 import { messageService } from "../services/message.service";
+
 interface ConnectedUsers {
-  [userId: string]: string; // userId -> socketId
+  [userId: string]: string;
 }
 
 const connectedUsers: ConnectedUsers = {};
@@ -11,7 +12,6 @@ export const initializeSocketIO = (io: SocketIOServer) => {
   io.on("connection", (socket: Socket) => {
     logger.info(`Client connected: ${socket.id}`);
 
-    // User comes online
     socket.on("user:online", (data) => {
       const { userId, userType } = data;
       connectedUsers[userId] = socket.id;
@@ -19,50 +19,58 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       logger.info(`User ${userId} (${userType}) is online`);
     });
 
-    // Join message room
     socket.on("message:join-room", (data) => {
       const { roomId } = data;
       socket.join(`room:${roomId}`);
       logger.info(`Socket ${socket.id} joined room ${roomId}`);
     });
 
-    // Send message
     socket.on("message:send", async (data) => {
       try {
-        const { roomId, senderId, senderType, content } = data;
+        const { roomId, recipientId, senderId, senderType, content, sentByAi } =
+          data;
 
-        // Save message to database
         const message = await messageService.createMessage({
           roomId,
+          recipientId,
           senderId,
           senderType,
           content,
+          sentByAi,
         });
 
-        // Broadcast to room
-        io.to(`room:${roomId}`).emit("message:received", message);
-        logger.info(`Message sent in room ${roomId}`);
+        socket.join(`room:${message.roomId}`);
+
+        io.to(`room:${message.roomId}`).emit("message:received", message);
+        logger.info(`Message processed in room ${message.roomId}`);
       } catch (error) {
         logger.error("Error sending message:", error);
         socket.emit("error", { message: "Failed to send message" });
       }
     });
 
-    // Mark message as read
     socket.on("message:read", async (data) => {
       try {
-        const { messageId, roomId } = data;
-        await messageService.markMessageAsRead(messageId);
-        io.to(`room:${roomId}`).emit("message:status-updated", {
-          messageId,
-          status: "READ",
-        });
+        const { roomId, userId } = data;
+
+        const readData = await messageService.markRoomMessagesAsRead(
+          roomId,
+          userId,
+        );
+
+        if (readData.updatedIds.length > 0) {
+          io.to(`room:${roomId}`).emit("message:status-updated", {
+            roomId,
+            readAt: readData.readAt,
+            messageIds: readData.updatedIds,
+            status: "READ",
+          });
+        }
       } catch (error) {
-        logger.error("Error marking message as read:", error);
+        logger.error("Error marking messages as read:", error);
       }
     });
 
-    // User typing
     socket.on("message:typing", (data) => {
       const { roomId, userId } = data;
       socket.broadcast.to(`room:${roomId}`).emit("message:user-typing", {
@@ -70,7 +78,6 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       });
     });
 
-    // User stops typing
     socket.on("message:stop-typing", (data) => {
       const { roomId, userId } = data;
       socket.broadcast.to(`room:${roomId}`).emit("message:user-stop-typing", {
@@ -78,9 +85,7 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       });
     });
 
-    // Disconnect
     socket.on("disconnect", () => {
-      // Remove user from connected users
       Object.keys(connectedUsers).forEach((userId) => {
         if (connectedUsers[userId] === socket.id) {
           delete connectedUsers[userId];

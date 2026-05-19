@@ -1134,59 +1134,59 @@ protectedRouter.get(
   },
 );
 
-/**
- * @swagger
- * /vendors/messages:
- *   get:
- *     summary: Get Vendor Messages/Conversations
- *     tags:
- *       - Vendor Messaging
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Vendor messages retrieved
- */
-protectedRouter.get(
-  "/messages",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await vendorController.getMessages(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+// /**
+//  * @swagger
+//  * /vendors/messages:
+//  *   get:
+//  *     summary: Get Vendor Messages/Conversations
+//  *     tags:
+//  *       - Vendor Messaging
+//  *     security:
+//  *       - bearerAuth: []
+//  *     responses:
+//  *       200:
+//  *         description: Vendor messages retrieved
+//  */
+// protectedRouter.get(
+//   "/messages",
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       await vendorController.getMessages(req as any, res);
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+// );
 
-/**
- * @swagger
- * /vendors/messages/{roomId}:
- *   get:
- *     summary: Get Room Messages
- *     tags:
- *       - Vendor Messaging
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: roomId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Room messages retrieved
- */
-protectedRouter.get(
-  "/messages/:roomId",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await vendorController.getRoomMessages(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+// /**
+//  * @swagger
+//  * /vendors/messages/{roomId}:
+//  *   get:
+//  *     summary: Get Room Messages
+//  *     tags:
+//  *       - Vendor Messaging
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: path
+//  *         name: roomId
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *     responses:
+//  *       200:
+//  *         description: Room messages retrieved
+//  */
+// protectedRouter.get(
+//   "/messages/:roomId",
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       await vendorController.getRoomMessages(req as any, res);
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+// );
 
 /**
  * @swagger

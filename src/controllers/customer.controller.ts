@@ -403,20 +403,20 @@ export class CustomerController {
     }
   }
 
-  static async messageVendor(req: AuthRequest, res: Response) {
-    try {
-      const { vendorId } = req.body;
-      const room = await messageService.getOrCreateRoom(req.user!.id, vendorId);
+  // static async messageVendor(req: AuthRequest, res: Response) {
+  //   try {
+  //     const { vendorId } = req.body;
+  //     const room = await messageService.getOrCreateRoom(req.user!.id, vendorId);
 
-      res.status(200).json({
-        success: true,
-        data: room,
-      });
-    } catch (error) {
-      logger.error("Error in messageVendor:", error);
-      throw error;
-    }
-  }
+  //     res.status(200).json({
+  //       success: true,
+  //       data: room,
+  //     });
+  //   } catch (error) {
+  //     logger.error("Error in messageVendor:", error);
+  //     throw error;
+  //   }
+  // }
 
   static async getLocationHistory(req: AuthRequest, res: Response) {
     try {

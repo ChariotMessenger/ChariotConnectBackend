@@ -946,104 +946,104 @@ protectedRouter.post(
   },
 );
 
-/**
- * @swagger
- * /customers/messages/vendor:
- *   post:
- *     summary: Message a Vendor
- *     tags:
- *       - Customer Messaging
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - vendorId
- *             properties:
- *               vendorId:
- *                 type: string
- *     responses:
- *       200:
- *         description: Message room created/retrieved
- */
-protectedRouter.post(
-  "/messages/vendor",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await customerController.messageVendor(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+// /**
+//  * @swagger
+//  * /customers/messages/vendor:
+//  *   post:
+//  *     summary: Message a Vendor
+//  *     tags:
+//  *       - Customer Messaging
+//  *     security:
+//  *       - bearerAuth: []
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             required:
+//  *               - vendorId
+//  *             properties:
+//  *               vendorId:
+//  *                 type: string
+//  *     responses:
+//  *       200:
+//  *         description: Message room created/retrieved
+//  */
+// protectedRouter.post(
+//   "/messages/vendor",
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       await customerController.messageVendor(req as any, res);
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+// );
 
-/**
- * @swagger
- * /customers/messages/conversations:
- *   get:
- *     summary: Get Customer Conversations
- *     tags:
- *       - Customer Messaging
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Customer conversations retrieved
- */
-protectedRouter.get(
-  "/messages/conversations",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await customerController.getConversations(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+// /**
+//  * @swagger
+//  * /customers/messages/conversations:
+//  *   get:
+//  *     summary: Get Customer Conversations
+//  *     tags:
+//  *       - Customer Messaging
+//  *     security:
+//  *       - bearerAuth: []
+//  *     responses:
+//  *       200:
+//  *         description: Customer conversations retrieved
+//  */
+// protectedRouter.get(
+//   "/messages/conversations",
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       await customerController.getConversations(req as any, res);
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+// );
 
-/**
- * @swagger
- * /customers/messages/{roomId}:
- *   get:
- *     summary: Get Room Messages
- *     tags:
- *       - Customer Messaging
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: roomId
- *         required: true
- *         schema:
- *           type: string
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 50
- *       - in: query
- *         name: offset
- *         schema:
- *           type: integer
- *           default: 0
- *     responses:
- *       200:
- *         description: Room messages retrieved
- */
-protectedRouter.get(
-  "/messages/:roomId",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await customerController.getRoomMessages(req as any, res);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+// /**
+//  * @swagger
+//  * /customers/messages/{roomId}:
+//  *   get:
+//  *     summary: Get Room Messages
+//  *     tags:
+//  *       - Customer Messaging
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: path
+//  *         name: roomId
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *       - in: query
+//  *         name: limit
+//  *         schema:
+//  *           type: integer
+//  *           default: 50
+//  *       - in: query
+//  *         name: offset
+//  *         schema:
+//  *           type: integer
+//  *           default: 0
+//  *     responses:
+//  *       200:
+//  *         description: Room messages retrieved
+//  */
+// protectedRouter.get(
+//   "/messages/:roomId",
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       await customerController.getRoomMessages(req as any, res);
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+//);
 
 router.use("/", protectedRouter);
 

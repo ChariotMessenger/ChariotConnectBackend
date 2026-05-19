@@ -327,6 +327,12 @@ model Message {
   senderType UserRole
   content    String
   status     MessageStatus @default(SENT)
+  
+  isRead     Boolean       @default(false)
+  sentByAi   Boolean       @default(false)
+  sentAt     DateTime      @default(now())
+  readAt     DateTime?
+  
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   room       MessageRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
