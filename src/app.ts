@@ -18,6 +18,7 @@ import healthRoutes from "./routes/health.routes";
 import orderRoutes from "./routes/order.routes";
 import fakerRoutes from "./routes/faker.routes";
 import globalRoutes from "./routes/global.routes";
+import { messageRouter } from "./routes/message.routes";
 
 //Admin
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
@@ -131,7 +132,7 @@ app.use(`${apiPrefix}/vendors`, vendorRoutes);
 app.use(`${apiPrefix}/riders`, riderRoutes);
 app.use(`${apiPrefix}/orders`, orderRoutes);
 app.use(`${apiPrefix}/dev`, fakerRoutes);
-
+app.use(`${apiPrefix}/messages`, messageRouter);
 app.use(`${apiPrefix}/global`, globalRoutes);
 
 //Admin
