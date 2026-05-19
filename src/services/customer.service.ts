@@ -656,6 +656,118 @@ export class CustomerService {
       throw error;
     }
   }
+  static async saveLocation(
+    customerId: string,
+    data: {
+      name: string;
+      coordinates: [number, number];
+      address?: string;
+      shortAddress?: string;
+      placeId?: string;
+    },
+  ) {
+    try {
+      const [longitude, latitude] = data.coordinates;
+
+      const savedLocation = await prisma.savedLocation.upsert({
+        where: {
+          customerId_name: {
+            customerId,
+            name: data.name,
+          },
+        },
+        update: {
+          location: {
+            set: {
+              latitude,
+              longitude,
+              fullAddress: data.address,
+              shortAddress: data.shortAddress,
+              locationName: data.name,
+              placeId: data.placeId,
+              tag: data.name.toLowerCase(),
+            },
+          },
+          address: data.address,
+        },
+        create: {
+          customerId,
+          name: data.name,
+          location: {
+            latitude,
+            longitude,
+            fullAddress: data.address,
+            shortAddress: data.shortAddress,
+            locationName: data.name,
+            placeId: data.placeId,
+            tag: data.name.toLowerCase(),
+          },
+          address: data.address,
+        },
+      });
+
+      logger.info(`Saved location '${data.name}' for customer: ${customerId}`);
+      return savedLocation;
+    } catch (error) {
+      logger.error("Error saving customer location:", error);
+      throw error;
+    }
+  }
+
+  static async getSavedLocations(
+    customerId: string,
+    limit: number = 20,
+    page: number = 1,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
+
+      const [locations, total] = await Promise.all([
+        prisma.savedLocation.findMany({
+          where: { customerId },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.savedLocation.count({
+          where: { customerId },
+        }),
+      ]);
+
+      logger.info(`Fetched saved locations for customer: ${customerId}`);
+      return {
+        locations,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching saved locations:", error);
+      throw error;
+    }
+  }
+
+  static async deleteSavedLocation(customerId: string, locationId: string) {
+    try {
+      await prisma.savedLocation.delete({
+        where: {
+          id: locationId,
+          customerId,
+        },
+      });
+
+      logger.info(
+        `Deleted saved location ${locationId} for customer: ${customerId}`,
+      );
+      return { success: true };
+    } catch (error) {
+      logger.error("Error deleting saved location:", error);
+      throw error;
+    }
+  }
   static async updateProfilePhoto(customerId: string, photoUrl: string) {
     try {
       const customer = await prisma.customer.update({

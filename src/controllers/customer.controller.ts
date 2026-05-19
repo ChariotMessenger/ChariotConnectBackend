@@ -454,7 +454,68 @@ export class CustomerController {
       throw error;
     }
   }
+  static async saveLocation(req: AuthRequest, res: Response) {
+    try {
+      const { name, coordinates, address, shortAddress, placeId } = req.body;
 
+      const savedLocation = await customerService.saveLocation(req.user!.id, {
+        name,
+        coordinates,
+        address,
+        shortAddress,
+        placeId,
+      });
+
+      res.status(201).json({
+        success: true,
+        data: savedLocation,
+      });
+    } catch (error) {
+      logger.error("Error in saveLocation controller:", error);
+      throw error;
+    }
+  }
+
+  static async getSavedLocations(req: AuthRequest, res: Response) {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const page = parseInt(req.query.page as string) || 1;
+
+      const result = await customerService.getSavedLocations(
+        req.user!.id,
+        limit,
+        page,
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result.locations,
+        meta: result.meta,
+      });
+    } catch (error) {
+      logger.error("Error in getSavedLocations controller:", error);
+      throw error;
+    }
+  }
+
+  static async deleteSavedLocation(req: AuthRequest, res: Response) {
+    try {
+      const { locationId } = req.params;
+
+      const result = await customerService.deleteSavedLocation(
+        req.user!.id,
+        locationId,
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Saved location deleted successfully",
+      });
+    } catch (error) {
+      logger.error("Error in deleteSavedLocation controller:", error);
+      throw error;
+    }
+  }
   static async getRoomMessages(req: AuthRequest, res: Response) {
     try {
       const { roomId } = req.params;

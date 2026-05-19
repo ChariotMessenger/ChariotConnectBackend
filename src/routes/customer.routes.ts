@@ -538,6 +538,138 @@ protectedRouter.post(
 );
 /**
  * @swagger
+ * /customers/saved-locations:
+ *   post:
+ *     summary: Save a new location
+ *     description: Add or update a named saved location (e.g., Home, Work) for the authenticated customer
+ *     tags:
+ *       - Customer Location
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - coordinates
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Work
+ *               coordinates:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 minItems: 2
+ *                 maxItems: 2
+ *                 example: [3.3792, 6.5244]
+ *               address:
+ *                 type: string
+ *                 example: "31 Commercial Ave, Sabo yaba, Lagos"
+ *               shortAddress:
+ *                 type: string
+ *                 example: "Sabo, Yaba"
+ *               placeId:
+ *                 type: string
+ *                 example: "ChIJbU_XNqqvOxARwM0h_8q29Zg"
+ *     responses:
+ *       201:
+ *         description: Location saved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+protectedRouter.post(
+  "/saved-locations",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.saveLocation(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /customers/saved-locations:
+ *   get:
+ *     summary: Get saved locations
+ *     description: Retrieve a paginated list of named saved locations for the authenticated customer
+ *     tags:
+ *       - Customer Location
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Saved locations retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+protectedRouter.get(
+  "/saved-locations",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.getSavedLocations(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /customers/saved-locations/{locationId}:
+ *   delete:
+ *     summary: Delete a saved location
+ *     description: Permanently remove a specific saved location by its ID
+ *     tags:
+ *       - Customer Location
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: locationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the saved location document
+ *     responses:
+ *       200:
+ *         description: Saved location deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Location not found
+ */
+protectedRouter.delete(
+  "/saved-locations/:locationId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.deleteSavedLocation(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
  * /customers/location-history:
  *   get:
  *     summary: Get Customer Location History

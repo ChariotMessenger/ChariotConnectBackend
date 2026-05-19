@@ -68,7 +68,19 @@ model LocationHistory {
   @@index([customerId, capturedAt])
   @@index([riderId, capturedAt])
 }
+model SavedLocation {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   // e.g., "Home", "Work", "Gym", "School"
+  location    Point
+  address     String?  // Human-readable address string
+  customerId  String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  customer    Customer @relation("CustomerSavedLocations", fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, name]) // Prevents a single customer from duplicating location names
+}
 model Customer {
   id                     String            @id @default(auto()) @map("_id") @db.ObjectId
   firstName              String
@@ -94,6 +106,7 @@ model Customer {
   messageRooms           MessageRoom[]     @relation("CustomerRooms")
   orders                 Order[]           @relation("CustomerOrders")
 locationHistory        LocationHistory[] @relation("CustomerLocationHistory")
+savedLocations         SavedLocation[]   @relation("CustomerSavedLocations")
   @@index([country])
 }
 
