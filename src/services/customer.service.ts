@@ -8,6 +8,17 @@ import { UserRole, OrderStatus, VerificationStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { SmsService } from "./sms-service";
 import { PackGroup } from "./order.service";
+
+interface Point {
+  latitude?: number | null;
+  longitude?: number | null;
+  locationName?: string | null;
+  fullAddress?: string | null;
+  shortAddress?: string | null;
+  placeId?: string | null;
+  tag?: string | null;
+}
+
 export class CustomerService {
   static async registerStep1(data: {
     firstName: string;
@@ -656,64 +667,47 @@ export class CustomerService {
       throw error;
     }
   }
-  static async saveLocation(
-    customerId: string,
-    data: {
-      name: string;
-      coordinates: [number, number];
-      address?: string;
-      shortAddress?: string;
-      placeId?: string;
-    },
-  ) {
+
+  static async saveLocation(customerId: string, data: Point) {
     try {
-      const [longitude, latitude] = data.coordinates;
+      const locationName = data.locationName || "Other";
+
+      const locationPayload = {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        locationName,
+        fullAddress: data.fullAddress,
+        shortAddress: data.shortAddress,
+        placeId: data.placeId,
+        tag: data.tag || locationName.toLowerCase(),
+      };
 
       const savedLocation = await prisma.savedLocation.upsert({
         where: {
           customerId_name: {
             customerId,
-            name: data.name,
+            name: locationName,
           },
         },
         update: {
           location: {
-            set: {
-              latitude,
-              longitude,
-              fullAddress: data.address,
-              shortAddress: data.shortAddress,
-              locationName: data.name,
-              placeId: data.placeId,
-              tag: data.name.toLowerCase(),
-            },
+            set: locationPayload,
           },
-          address: data.address,
+          address: data.fullAddress,
         },
         create: {
           customerId,
-          name: data.name,
-          location: {
-            latitude,
-            longitude,
-            fullAddress: data.address,
-            shortAddress: data.shortAddress,
-            locationName: data.name,
-            placeId: data.placeId,
-            tag: data.name.toLowerCase(),
-          },
-          address: data.address,
+          name: locationName,
+          location: locationPayload,
+          address: data.fullAddress,
         },
       });
 
-      logger.info(`Saved location '${data.name}' for customer: ${customerId}`);
       return savedLocation;
     } catch (error) {
-      logger.error("Error saving customer location:", error);
       throw error;
     }
   }
-
   static async getSavedLocations(
     customerId: string,
     limit: number = 20,

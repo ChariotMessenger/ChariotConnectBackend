@@ -345,6 +345,7 @@ model Message {
   sentByAi   Boolean       @default(false)
   sentAt     DateTime      @default(now())
   readAt     DateTime?
+  orderId    String?       @db.ObjectId
   
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt

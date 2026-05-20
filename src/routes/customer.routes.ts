@@ -552,21 +552,17 @@ protectedRouter.post(
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - coordinates
  *             properties:
- *               name:
+ *               latitude:
+ *                 type: number
+ *                 example: 6.5244
+ *               longitude:
+ *                 type: number
+ *                 example: 3.3792
+ *               locationName:
  *                 type: string
  *                 example: Work
- *               coordinates:
- *                 type: array
- *                 items:
- *                   type: number
- *                 minItems: 2
- *                 maxItems: 2
- *                 example: [3.3792, 6.5244]
- *               address:
+ *               fullAddress:
  *                 type: string
  *                 example: "31 Commercial Ave, Sabo yaba, Lagos"
  *               shortAddress:
@@ -575,6 +571,9 @@ protectedRouter.post(
  *               placeId:
  *                 type: string
  *                 example: "ChIJbU_XNqqvOxARwM0h_8q29Zg"
+ *               tag:
+ *                 type: string
+ *                 example: work
  *     responses:
  *       201:
  *         description: Location saved successfully

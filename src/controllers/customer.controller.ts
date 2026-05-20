@@ -456,14 +456,24 @@ export class CustomerController {
   }
   static async saveLocation(req: AuthRequest, res: Response) {
     try {
-      const { name, coordinates, address, shortAddress, placeId } = req.body;
-
-      const savedLocation = await customerService.saveLocation(req.user!.id, {
-        name,
-        coordinates,
-        address,
+      const {
+        latitude,
+        longitude,
+        locationName,
+        fullAddress,
         shortAddress,
         placeId,
+        tag,
+      } = req.body;
+
+      const savedLocation = await customerService.saveLocation(req.user!.id, {
+        latitude,
+        longitude,
+        locationName,
+        fullAddress,
+        shortAddress,
+        placeId,
+        tag,
       });
 
       res.status(201).json({
@@ -471,8 +481,11 @@ export class CustomerController {
         data: savedLocation,
       });
     } catch (error) {
-      logger.error("Error in saveLocation controller:", error);
-      throw error;
+      res.status(400).json({
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to save location",
+      });
     }
   }
 
