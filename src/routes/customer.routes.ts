@@ -940,7 +940,83 @@ protectedRouter.post(
     }
   },
 );
-
+/**
+ * @swagger
+ * /customers/vendors/{id}:
+ *   get:
+ *     summary: Fetch Vendor by ID
+ *     description: Retrieve a single verified vendor by their unique ID, with optional inline filtering for their catalog items.
+ *     tags:
+ *       - Customer Operations
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique vendor database ID
+ *         example: "654c1a2b3c4d5e6f7a8b9c0d"
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Optional term to filter catalog items by name
+ *         example: "rice"
+ *     responses:
+ *       200:
+ *         description: Vendor retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 vendor:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     businessName:
+ *                       type: string
+ *                     businessType:
+ *                       type: string
+ *                     vendorServiceType:
+ *                       type: string
+ *                     profilePhotoUrl:
+ *                       type: string
+ *                     brandLogoUrl:
+ *                       type: string
+ *                     coverPhotoUrl:
+ *                       type: string
+ *                     bio:
+ *                       type: string
+ *                     rank:
+ *                       type: number
+ *                     businessAddress:
+ *                       $ref: '#/components/schemas/Point'
+ *                     productCategories:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     catalogItems:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ */
+protectedRouter.get(
+  "/vendors/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.fetchVendorById(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 /**
  * @swagger
  * /customers/favorites:

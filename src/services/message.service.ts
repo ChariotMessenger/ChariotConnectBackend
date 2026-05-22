@@ -114,14 +114,59 @@ export const messageService = {
   },
 
   async getUserConversations(userId: string, role: "VENDOR" | "CUSTOMER") {
-    return await prisma.messageRoom.findMany({
+    const rooms = await prisma.messageRoom.findMany({
       where: role === "VENDOR" ? { vendorId: userId } : { customerId: userId },
       include: {
+        customer: {
+          select: {
+            firstName: true,
+            lastName: true,
+            profilePhotoUrl: true,
+          },
+        },
+        vendor: {
+          select: {
+            businessName: true,
+            brandLogoUrl: true,
+            coverPhotoUrl: true,
+          },
+        },
         messages: {
           take: 1,
           orderBy: { createdAt: "desc" },
         },
       },
+    });
+
+    const roomIds = rooms.map((room) => room.id);
+
+    const unreadCounts = await prisma.message.groupBy({
+      by: ["roomId"],
+      where: {
+        roomId: { in: roomIds },
+        isRead: false,
+        senderId: { not: userId },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const unreadCountMap = new Map(
+      unreadCounts.map((item) => [item.roomId, item._count.id]),
+    );
+
+    return rooms.map((room) => {
+      const { customer, vendor, ...roomData } = room;
+      return {
+        ...roomData,
+        customerName: `${customer.firstName} ${customer.lastName}`,
+        customerProfileUrl: customer.profilePhotoUrl,
+        vendorBusinessName: vendor.businessName,
+        vendorBrandLogoUrl: vendor.brandLogoUrl,
+        vendorCoverPhotoUrl: vendor.coverPhotoUrl,
+        unreadCount: unreadCountMap.get(room.id) || 0,
+      };
     });
   },
 };

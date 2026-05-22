@@ -313,6 +313,36 @@ export class CustomerController {
       });
     }
   }
+  static async fetchVendorById(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { search } = req.query;
+
+      if (!id) {
+        throw new CustomError(
+          "Vendor ID is required",
+          400,
+          "VENDOR_ID_REQUIRED",
+        );
+      }
+
+      const vendor = await vendorService.getVendorById(id, {
+        search: search?.toString(),
+      });
+
+      res.status(200).json({
+        success: true,
+        vendor,
+      });
+    } catch (error: any) {
+      logger.error(`Error in fetchVendorById for ID ${req.params.id}:`, error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+        errorCode: error.errorCode || "INTERNAL_ERROR",
+      });
+    }
+  }
   static async getOrders(req: AuthRequest, res: Response) {
     try {
       const status = req.query.status as OrderStatus;

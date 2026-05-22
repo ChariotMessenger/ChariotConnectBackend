@@ -907,6 +907,67 @@ export class VendorService {
       throw error;
     }
   }
+  static async getVendorById(id: string, params?: { search?: string }) {
+    try {
+      const search = params?.search;
+
+      const vendor = await prisma.vendor.findFirst({
+        where: {
+          id,
+          verified: true,
+          verificationStatus: "VERIFIED",
+        },
+        select: {
+          id: true,
+          businessName: true,
+          businessType: true,
+          vendorServiceType: true,
+          businessAddress: true,
+          phone: true,
+          profilePhotoUrl: true,
+          currency: true,
+          createdAt: true,
+          brandLogoUrl: true,
+          coverPhotoUrl: true,
+          country: true,
+          vendorWorkPeriod: true,
+          bio: true,
+          rank: true,
+          productCategories: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          catalogItems: {
+            where: {
+              available: true,
+              ...(search
+                ? { name: { contains: search, mode: "insensitive" } }
+                : {}),
+            },
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              imageUrl: true,
+              description: true,
+              categoryId: true,
+            },
+          },
+        },
+      });
+
+      if (!vendor) {
+        throw new Error("Vendor not found or not verified");
+      }
+
+      return vendor;
+    } catch (error) {
+      logger.error(`Error fetching vendor with ID ${id}:`, error);
+      throw error;
+    }
+  }
 }
 
 export const vendorService = VendorService;
