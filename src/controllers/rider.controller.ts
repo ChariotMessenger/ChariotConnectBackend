@@ -48,10 +48,7 @@ export class RiderController {
         verifyIdentityUrl,
       });
 
-      res.status(201).json({
-        success: true,
-        message: "Rider registered successfully. Documents are under review.",
-      });
+      res.status(201).json(rider);
     } catch (error) {
       throw error;
     }

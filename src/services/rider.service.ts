@@ -76,40 +76,71 @@ export class RiderService {
   }
 
   static async finalizeRegistration(data: any) {
-    const normalizedEmail = data.email.trim().toLowerCase();
+    try {
+      const normalizedEmail = data.email.trim().toLowerCase();
 
-    const existingRider = await prisma.rider.findFirst({
-      where: { OR: [{ email: normalizedEmail }, { phone: data.phone }] },
-    });
+      const existingRider = await prisma.rider.findFirst({
+        where: {
+          OR: [{ email: normalizedEmail }, { phone: data.phone }],
+        },
+      });
 
-    if (existingRider) {
-      throw new CustomError(
-        "Email or phone already registered",
-        400,
-        "RIDER_EXISTS",
+      if (existingRider) {
+        if (existingRider.email === normalizedEmail) {
+          throw new CustomError(
+            "Email already registered",
+            400,
+            "EMAIL_EXISTS",
+          );
+        }
+        if (existingRider.phone === data.phone) {
+          throw new CustomError(
+            "Phone number already registered",
+            400,
+            "PHONE_EXISTS",
+          );
+        }
+      }
+
+      const otp = await createOTPVerification(normalizedEmail, UserRole.RIDER);
+
+      await EmailService.sendOTPEmail(
+        normalizedEmail,
+        otp.code,
+        data.firstName,
       );
+
+      const hashedPassword = await hashPassword(data.password);
+      const secureData = { ...data, password: hashedPassword };
+
+      await prisma.pendingRider.upsert({
+        where: { email: normalizedEmail },
+        update: {
+          registrationData: secureData,
+          phone: data.phone,
+        },
+        create: {
+          email: normalizedEmail,
+          phone: data.phone,
+          registrationData: secureData,
+        },
+      });
+
+      logger.info(
+        `Rider registration finalized and OTP initiated for ${normalizedEmail}`,
+      );
+
+      return {
+        success: true,
+        message: "OTP sent to email. Please verify to complete registration.",
+        email: data.email,
+        otpExpiry: otp.expiresAt,
+        registrationData: data,
+      };
+    } catch (error) {
+      logger.error("Error in rider finalize registration:", error);
+      throw error;
     }
-
-    const hashedPassword = await hashPassword(data.password);
-    const secureData = { ...data, password: hashedPassword };
-
-    await prisma.pendingRider.upsert({
-      where: { email: normalizedEmail },
-      update: {
-        registrationData: secureData,
-        phone: data.phone,
-      },
-      create: {
-        email: normalizedEmail,
-        phone: data.phone,
-        registrationData: secureData,
-      },
-    });
-
-    return {
-      success: true,
-      message: "OTP sent. Please verify to complete registration.",
-    };
   }
 
   static async getBanksByCountry(country: string) {

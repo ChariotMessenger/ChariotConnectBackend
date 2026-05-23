@@ -81,6 +81,7 @@ model SavedLocation {
 
   @@unique([customerId, name]) // Prevents a single customer from duplicating location names
 }
+
 model Customer {
   id                     String            @id @default(auto()) @map("_id") @db.ObjectId
   firstName              String
