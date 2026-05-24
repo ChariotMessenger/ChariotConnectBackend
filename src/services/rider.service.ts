@@ -183,18 +183,43 @@ export class RiderService {
         );
       }
 
-      const target = email || phoneNumber!;
       const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
+      const target = normalizedEmail || phoneNumber!;
+
+      let firstName = "Rider";
+      let riderId: string | undefined = undefined;
 
       const rider = await prisma.rider.findFirst({
-        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
+        where: normalizedEmail
+          ? { email: normalizedEmail }
+          : { phone: phoneNumber },
       });
 
-      if (!rider) {
-        throw new CustomError("Rider not found", 404, "RIDER_NOT_FOUND");
+      if (rider) {
+        firstName = rider.firstName;
+        riderId = rider.id;
+      } else {
+        const pendingRider = await prisma.pendingRider.findFirst({
+          where: normalizedEmail
+            ? { email: normalizedEmail }
+            : { phone: phoneNumber },
+        });
+
+        if (!pendingRider) {
+          throw new CustomError(
+            "Rider registration session not found",
+            404,
+            "RIDER_NOT_FOUND",
+          );
+        }
+
+        const regData = pendingRider.registrationData as any;
+        if (regData && regData.firstName) {
+          firstName = regData.firstName;
+        }
       }
 
-      const otp = await createOTPVerification(target, UserRole.RIDER, rider.id);
+      const otp = await createOTPVerification(target, UserRole.RIDER, riderId);
 
       if (phoneNumber) {
         await SmsService.sendSms({
@@ -205,8 +230,8 @@ export class RiderService {
         });
         logger.info(`OTP resent to rider phone: ${phoneNumber}`);
       } else {
-        await EmailService.sendOTPEmail(email!, otp.code, rider.firstName);
-        logger.info(`OTP resent to rider email: ${email}`);
+        await EmailService.sendOTPEmail(normalizedEmail!, otp.code, firstName);
+        logger.info(`OTP resent to rider email: ${normalizedEmail}`);
       }
 
       return {
@@ -236,7 +261,8 @@ export class RiderService {
         );
       }
 
-      const target = email || phoneNumber!;
+      const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
+      const target = normalizedEmail || phoneNumber!;
       const verifiedOtp = await verifyOTP(target, otp);
 
       if (!verifiedOtp) {
@@ -244,7 +270,9 @@ export class RiderService {
       }
 
       const pending = await prisma.pendingRider.findFirst({
-        where: email ? { email } : { phone: phoneNumber },
+        where: normalizedEmail
+          ? { email: normalizedEmail }
+          : { phone: phoneNumber },
       });
 
       if (!pending) {
@@ -305,7 +333,6 @@ export class RiderService {
       throw error;
     }
   }
-
   static async loginStep1(email: string) {
     try {
       // Check if rider exists
