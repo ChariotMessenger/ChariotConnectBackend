@@ -11,7 +11,7 @@ import UploadService from "../services/upload.service";
 import { logger } from "../utils/logger";
 import { CustomError } from "../middlewares/errorHandler";
 import { OrderStatus } from "@prisma/client";
-
+export type OrderFilterStatus = OrderStatus | "ACTIVE";
 export class CustomerController {
   static async registerStep1(req: AuthRequest, res: Response) {
     try {
@@ -343,9 +343,10 @@ export class CustomerController {
       });
     }
   }
+
   static async getOrders(req: AuthRequest, res: Response) {
     try {
-      const status = req.query.status as OrderStatus;
+      const status = req.query.status as OrderFilterStatus;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
@@ -366,7 +367,6 @@ export class CustomerController {
         .json({ success: false, message: error.message });
     }
   }
-
   static async addFavorite(req: AuthRequest, res: Response) {
     try {
       const { vendorId } = req.body;

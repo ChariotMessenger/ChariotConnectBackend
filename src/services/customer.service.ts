@@ -8,7 +8,7 @@ import { UserRole, OrderStatus, VerificationStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { SmsService } from "./sms-service";
 import { PackGroup } from "./order.service";
-
+import { OrderFilterStatus } from "../controllers/customer.controller";
 interface Point {
   latitude?: number | null;
   longitude?: number | null;
@@ -502,18 +502,27 @@ export class CustomerService {
   }
   static async getCustomerOrders(
     customerId: string,
-    status?: OrderStatus,
+    status?: OrderFilterStatus,
     page: number = 1,
     limit: number = 10,
   ) {
     try {
       const skip = (page - 1) * limit;
 
+      let statusCondition: any = undefined;
+      if (status === "ACTIVE") {
+        statusCondition = {
+          notIn: ["DELIVERED", "CANCELLED"] as OrderStatus[],
+        };
+      } else if (status) {
+        statusCondition = status;
+      }
+
       const [orders, total] = await prisma.$transaction([
         prisma.order.findMany({
           where: {
             customerId,
-            ...(status && { status }),
+            ...(statusCondition && { status: statusCondition }),
           },
           include: {
             vendor: {
@@ -535,7 +544,7 @@ export class CustomerService {
         prisma.order.count({
           where: {
             customerId,
-            ...(status && { status }),
+            ...(statusCondition && { status: statusCondition }),
           },
         }),
       ]);
