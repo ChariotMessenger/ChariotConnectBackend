@@ -7,8 +7,11 @@ interface ConnectedUsers {
 }
 
 const connectedUsers: ConnectedUsers = {};
+let ioInstance: SocketIOServer | null = null;
 
 export const initializeSocketIO = (io: SocketIOServer) => {
+  ioInstance = io;
+
   io.on("connection", (socket: Socket) => {
     logger.info(`Client connected: ${socket.id}`);
 
@@ -17,6 +20,14 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       connectedUsers[userId] = socket.id;
       socket.join(`user:${userId}`);
       logger.info(`User ${userId} (${userType}) is online`);
+    });
+
+    socket.on("order:join-room", (data) => {
+      const { orderId } = data;
+      socket.join(`order:${orderId}`);
+      logger.info(
+        `Socket ${socket.id} joined tracking room for order ${orderId}`,
+      );
     });
 
     socket.on("message:join-room", (data) => {
@@ -100,3 +111,25 @@ export const initializeSocketIO = (io: SocketIOServer) => {
 };
 
 export const getConnectedUsers = () => connectedUsers;
+
+export const emitToUser = (userId: string, eventName: string, data: any) => {
+  if (ioInstance) {
+    ioInstance.to(`user:${userId}`).emit(eventName, data);
+  }
+};
+
+export const emitToOrderRoom = (
+  orderId: string,
+  eventName: string,
+  data: any,
+) => {
+  if (ioInstance) {
+    ioInstance.to(`order:${orderId}`).emit(eventName, data);
+  }
+};
+
+export const emitToAllRiders = (eventName: string, data: any) => {
+  if (ioInstance) {
+    ioInstance.emit(eventName, data);
+  }
+};

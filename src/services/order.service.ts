@@ -2,6 +2,7 @@ import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
+import { emitToUser, emitToOrderRoom, emitToAllRiders } from "../config/socket";
 import axios from "axios";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
@@ -75,6 +76,7 @@ export class OrderService {
       });
 
       logger.info(`Order created successfully with grouped packs: ${order.id}`);
+      emitToUser(data.vendorId, "order:new-incoming", order);
       return order;
     } catch (error) {
       logger.error("Error creating order with packs list:", error);
@@ -93,6 +95,7 @@ export class OrderService {
         select: {
           id: true,
           customerId: true,
+          vendorId: true,
           status: true,
         },
       });
@@ -134,6 +137,8 @@ export class OrderService {
       });
 
       logger.info(`Order updated successfully by customer: ${orderId}`);
+      emitToUser(order.vendorId, "order:modified", updatedOrder);
+      emitToOrderRoom(orderId, "order:updated", updatedOrder);
       return updatedOrder;
     } catch (error) {
       logger.error("Error updating order:", error);
@@ -156,10 +161,19 @@ export class OrderService {
         "ORDER_NOT_FOUND",
       );
 
-    return await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: { status },
     });
+
+    emitToUser(order.customerId, "order:status-changed", updatedOrder);
+    emitToOrderRoom(orderId, "order:updated", updatedOrder);
+
+    if (status === OrderStatus.AWAITING_PAYMENT) {
+      emitToUser(order.customerId, "order:ready-for-payment", updatedOrder);
+    }
+
+    return updatedOrder;
   }
 
   static async initializePayment(orderId: string, email: string) {
@@ -244,6 +258,7 @@ export class OrderService {
       };
     }
   }
+
   static async verifyPayment(reference: string, provider: string) {
     let isPaid = false;
     let orderId = "";
@@ -269,7 +284,7 @@ export class OrderService {
     }
 
     if (isPaid) {
-      return await prisma.$transaction([
+      const [transaction, order] = await prisma.$transaction([
         prisma.transaction.update({
           where: { reference },
           data: { status: PaymentStatus.SUCCESS },
@@ -279,31 +294,54 @@ export class OrderService {
           data: { status: OrderStatus.PAID },
         }),
       ]);
+
+      emitToUser(order.vendorId, "order:payment-received", order);
+      emitToOrderRoom(orderId, "order:updated", order);
+      emitToAllRiders("delivery-job:available", order);
+
+      return [transaction, order];
     }
     throw new CustomError("Payment not verified", 400, "PAYMENT_FAILED");
   }
 
   static async riderAcceptJob(orderId: string, riderId: string) {
-    return await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: { riderId, status: OrderStatus.RIDER_ACCEPTED },
     });
+
+    emitToUser(updatedOrder.customerId, "order:rider-assigned", updatedOrder);
+    emitToUser(updatedOrder.vendorId, "order:rider-assigned", updatedOrder);
+    emitToOrderRoom(orderId, "order:updated", updatedOrder);
+
+    return updatedOrder;
   }
 
   static async riderConfirmPickup(orderId: string, riderId: string) {
-    return await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id: orderId, riderId },
       data: {
         status: OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER,
         pickupAt: new Date(),
       },
     });
+
+    emitToUser(updatedOrder.customerId, "order:en-route", updatedOrder);
+    emitToOrderRoom(orderId, "order:updated", updatedOrder);
+
+    return updatedOrder;
   }
 
   static async riderFinalizeDelivery(orderId: string, riderId: string) {
-    return await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id: orderId, riderId },
       data: { status: OrderStatus.DELIVERED, deliveredAt: new Date() },
     });
+
+    emitToUser(updatedOrder.customerId, "order:delivered", updatedOrder);
+    emitToUser(updatedOrder.vendorId, "order:delivered", updatedOrder);
+    emitToOrderRoom(orderId, "order:updated", updatedOrder);
+
+    return updatedOrder;
   }
 }
