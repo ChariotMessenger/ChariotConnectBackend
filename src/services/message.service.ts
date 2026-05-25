@@ -105,11 +105,58 @@ export const messageService = {
   },
 
   async getRoomMessages(roomId: string, limit: number, offset: number) {
-    return await prisma.message.findMany({
+    const messages = await prisma.message.findMany({
       where: { roomId },
       take: limit,
       skip: offset,
       orderBy: { createdAt: "desc" },
+    });
+
+    const senderIds = [...new Set(messages.map((m) => m.senderId))];
+
+    const [customers, vendors] = await Promise.all([
+      prisma.customer.findMany({
+        where: { id: { in: senderIds } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          profilePhotoUrl: true,
+        },
+      }),
+      prisma.vendor.findMany({
+        where: { id: { in: senderIds } },
+        select: {
+          id: true,
+          businessName: true,
+          brandLogoUrl: true,
+          coverPhotoUrl: true,
+        },
+      }),
+    ]);
+
+    const customerMap = new Map(customers.map((c) => [c.id, c]));
+    const vendorMap = new Map(vendors.map((v) => [v.id, v]));
+
+    return messages.map((message) => {
+      const customer = customerMap.get(message.senderId);
+      const vendor = vendorMap.get(message.senderId);
+
+      return {
+        ...message,
+        senderName:
+          message.senderType === "CUSTOMER"
+            ? customer
+              ? `${customer.firstName} ${customer.lastName}`
+              : "Deleted User"
+            : vendor
+              ? vendor.businessName
+              : "Unknown Vendor",
+        senderProfileUrl:
+          message.senderType === "CUSTOMER"
+            ? customer?.profilePhotoUrl || null
+            : vendor?.brandLogoUrl || null,
+      };
     });
   },
 
@@ -117,20 +164,6 @@ export const messageService = {
     const rooms = await prisma.messageRoom.findMany({
       where: role === "VENDOR" ? { vendorId: userId } : { customerId: userId },
       include: {
-        customer: {
-          select: {
-            firstName: true,
-            lastName: true,
-            profilePhotoUrl: true,
-          },
-        },
-        vendor: {
-          select: {
-            businessName: true,
-            brandLogoUrl: true,
-            coverPhotoUrl: true,
-          },
-        },
         messages: {
           take: 1,
           orderBy: { createdAt: "desc" },
@@ -139,32 +172,63 @@ export const messageService = {
     });
 
     const roomIds = rooms.map((room) => room.id);
+    const customerIds = [...new Set(rooms.map((room) => room.customerId))];
+    const vendorIds = [...new Set(rooms.map((room) => room.vendorId))];
 
-    const unreadCounts = await prisma.message.groupBy({
-      by: ["roomId"],
-      where: {
-        roomId: { in: roomIds },
-        isRead: false,
-        senderId: { not: userId },
-      },
-      _count: {
-        id: true,
-      },
-    });
+    const [customers, vendors, unreadCounts] = await Promise.all([
+      prisma.customer.findMany({
+        where: { id: { in: customerIds } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          profilePhotoUrl: true,
+        },
+      }),
+      prisma.vendor.findMany({
+        where: { id: { in: vendorIds } },
+        select: {
+          id: true,
+          businessName: true,
+          brandLogoUrl: true,
+          coverPhotoUrl: true,
+        },
+      }),
+      prisma.message.groupBy({
+        by: ["roomId"],
+        where: {
+          roomId: { in: roomIds },
+          isRead: false,
+          senderId: { not: userId },
+        },
+        _count: { id: true },
+      }),
+    ]);
 
+    const customerMap = new Map(customers.map((c) => [c.id, c]));
+    const vendorMap = new Map(vendors.map((v) => [v.id, v]));
     const unreadCountMap = new Map(
       unreadCounts.map((item) => [item.roomId, item._count.id]),
     );
 
     return rooms.map((room) => {
-      const { customer, vendor, ...roomData } = room;
+      const customer = customerMap.get(room.customerId);
+      const vendor = vendorMap.get(room.vendorId);
+
       return {
-        ...roomData,
-        customerName: `${customer.firstName} ${customer.lastName}`,
-        customerProfileUrl: customer.profilePhotoUrl,
-        vendorBusinessName: vendor.businessName,
-        vendorBrandLogoUrl: vendor.brandLogoUrl,
-        vendorCoverPhotoUrl: vendor.coverPhotoUrl,
+        id: room.id,
+        customerId: room.customerId,
+        vendorId: room.vendorId,
+        messages: room.messages,
+        createdAt: room.createdAt,
+        updatedAt: room.updatedAt,
+        customerName: customer
+          ? `${customer.firstName} ${customer.lastName}`
+          : "Deleted User",
+        customerProfileUrl: customer?.profilePhotoUrl || null,
+        vendorBusinessName: vendor?.businessName || "Unknown Vendor",
+        vendorBrandLogoUrl: vendor?.brandLogoUrl || null,
+        vendorCoverPhotoUrl: vendor?.coverPhotoUrl || null,
         unreadCount: unreadCountMap.get(room.id) || 0,
       };
     });
