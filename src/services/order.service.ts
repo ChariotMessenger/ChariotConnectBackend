@@ -77,6 +77,47 @@ export class OrderService {
 
       logger.info(`Order created successfully with grouped packs: ${order.id}`);
       emitToUser(data.vendorId, "order:new-incoming", order);
+
+      try {
+        const itemCount = data.packsList.reduce(
+          (sum, pack) => sum + (pack.itemList?.length || 0),
+          0,
+        );
+        const systemMessageContent = `Hello! I just placed a new order containing ${itemCount} items (${order.currency} ${order.totalAmount.toLocaleString()}). Please review and approve it.`;
+
+        await prisma.message.create({
+          data: {
+            roomId: (
+              await prisma.messageRoom.upsert({
+                where: {
+                  customerId_vendorId: {
+                    customerId: data.customerId,
+                    vendorId: data.vendorId,
+                  },
+                },
+                update: {},
+                create: {
+                  customerId: data.customerId,
+                  vendorId: data.vendorId,
+                },
+              })
+            ).id,
+            senderId: data.customerId,
+            senderType: "CUSTOMER",
+            content: systemMessageContent,
+            sentByAi: false,
+            isRead: false,
+            sentAt: new Date(),
+            orderId: order.id,
+          },
+        });
+      } catch (msgError) {
+        logger.error(
+          "Failed to send order initialization chat message:",
+          msgError,
+        );
+      }
+
       return order;
     } catch (error) {
       logger.error("Error creating order with packs list:", error);
