@@ -85,23 +85,23 @@ export class OrderService {
         );
         const systemMessageContent = `Hello! I just placed a new order containing ${itemCount} items (${order.currency} ${order.totalAmount.toLocaleString()}). Please review and approve it.`;
 
-        await prisma.message.create({
+        const room = await prisma.messageRoom.upsert({
+          where: {
+            customerId_vendorId: {
+              customerId: data.customerId,
+              vendorId: data.vendorId,
+            },
+          },
+          update: {},
+          create: {
+            customerId: data.customerId,
+            vendorId: data.vendorId,
+          },
+        });
+
+        const message = await prisma.message.create({
           data: {
-            roomId: (
-              await prisma.messageRoom.upsert({
-                where: {
-                  customerId_vendorId: {
-                    customerId: data.customerId,
-                    vendorId: data.vendorId,
-                  },
-                },
-                update: {},
-                create: {
-                  customerId: data.customerId,
-                  vendorId: data.vendorId,
-                },
-              })
-            ).id,
+            roomId: room.id,
             senderId: data.customerId,
             senderType: "CUSTOMER",
             content: systemMessageContent,
@@ -111,6 +111,8 @@ export class OrderService {
             orderId: order.id,
           },
         });
+
+        emitToUser(data.vendorId, "message:received", message);
       } catch (msgError) {
         logger.error(
           "Failed to send order initialization chat message:",

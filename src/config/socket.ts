@@ -38,8 +38,15 @@ export const initializeSocketIO = (io: SocketIOServer) => {
 
     socket.on("message:send", async (data) => {
       try {
-        const { roomId, recipientId, senderId, senderType, content, sentByAi } =
-          data;
+        const {
+          roomId,
+          recipientId,
+          senderId,
+          orderId,
+          senderType,
+          content,
+          sentByAi,
+        } = data;
 
         const message = await messageService.createMessage({
           roomId,
