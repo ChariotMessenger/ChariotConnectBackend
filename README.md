@@ -1,35 +1,35 @@
-# Chariot Connect - Multi-Platform Backend API
+  # Chariot Connect - Multi-Platform Backend API
 
-A comprehensive Node.js/Express backend for managing Customers, Vendors, and Riders in the Chariot Connect ecosystem.
+  A comprehensive Node.js/Express backend for managing Customers, Vendors, and Riders in the Chariot Connect ecosystem.
 
-## Features
+  ## Features
 
-- **Multi-User Architecture**: Separate authentication flows for Customers, Vendors, and Riders
-- **Real-Time Messaging**: Socket.IO integration for real-time vendor-customer communication
-- **OTP Authentication**: Secure email-based OTP verification
-- **File Upload Management**: Cloudinary integration for profile photos and documents
-- **Order Management**: Complete order lifecycle (create, accept, reject, complete)
-- **Review & Rating System**: Customers can review and rate vendors
-- **Favorites System**: Customers can mark vendors as favorites
-- **Swagger Documentation**: Complete API documentation
-- **Comprehensive Logging**: Winston logger with file and console output
-- **Security**: Helmet middleware, password hashing, JWT tokens
-- **Database**: MongoDB with Prisma ORM
+  - **Multi-User Architecture**: Separate authentication flows for Customers, Vendors, and Riders
+  - **Real-Time Messaging**: Socket.IO integration for real-time vendor-customer communication
+  - **OTP Authentication**: Secure email-based OTP verification
+  - **File Upload Management**: Cloudinary integration for profile photos and documents
+  - **Order Management**: Complete order lifecycle (create, accept, reject, complete)
+  - **Review & Rating System**: Customers can review and rate vendors
+  - **Favorites System**: Customers can mark vendors as favorites
+  - **Swagger Documentation**: Complete API documentation
+  - **Comprehensive Logging**: Winston logger with file and console output
+  - **Security**: Helmet middleware, password hashing, JWT tokens
+  - **Database**: MongoDB with Prisma ORM
 
-## Tech Stack
+  ## Tech Stack
 
-- **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js
-- **Database**: MongoDB + Prisma ORM
-- **Authentication**: JWT + OTP
-- **Real-Time**: Socket.IO
-- **File Upload**: Cloudinary
-- **Email**: Nodemailer (Gmail SMTP)
-- **Logging**: Winston
-- **Documentation**: Swagger/OpenAPI
-- **Security**: Helmet, bcryptjs
+  - **Runtime**: Node.js with TypeScript
+  - **Framework**: Express.js
+  - **Database**: MongoDB + Prisma ORM
+  - **Authentication**: JWT + OTP
+  - **Real-Time**: Socket.IO
+  - **File Upload**: Cloudinary
+  - **Email**: Nodemailer (Gmail SMTP)
+  - **Logging**: Winston
+  - **Documentation**: Swagger/OpenAPI
+  - **Security**: Helmet, bcryptjs
 
-## Project Structure
+  ## Project Structure
 
 ```
 src/

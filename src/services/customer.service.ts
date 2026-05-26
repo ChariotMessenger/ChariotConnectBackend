@@ -572,6 +572,13 @@ export class CustomerService {
   static async updateProfile(customerId: string, data: any) {
     try {
       const updatedCustomer = await prisma.$transaction(async (tx) => {
+        let receiveMarketingEmailsValue: boolean | undefined = undefined;
+        if (data.receiveMarketingEmails !== undefined) {
+          receiveMarketingEmailsValue =
+            data.receiveMarketingEmails === true ||
+            data.receiveMarketingEmails === "true";
+        }
+
         const customer = await tx.customer.update({
           where: { id: customerId },
           data: {
@@ -579,11 +586,9 @@ export class CustomerService {
             lastName: data.lastName || undefined,
             phone: data.phone || undefined,
             gender: data.gender || undefined,
+            birthday: data.birthday ? new Date(data.birthday) : undefined,
             country: data.country || undefined,
-            receiveMarketingEmails:
-              data.receiveMarketingEmails !== undefined
-                ? data.receiveMarketingEmails
-                : undefined,
+            receiveMarketingEmails: receiveMarketingEmailsValue,
             currentLocation: data.currentLocation
               ? {
                   set: {
@@ -604,9 +609,11 @@ export class CustomerService {
             lastName: true,
             gender: true,
             country: true,
+            birthday: true,
             email: true,
             phone: true,
             profilePhotoUrl: true,
+            receiveMarketingEmails: true,
             currentLocation: true,
           },
         });
@@ -691,20 +698,8 @@ export class CustomerService {
         tag: data.tag || locationName.toLowerCase(),
       };
 
-      const savedLocation = await prisma.savedLocation.upsert({
-        where: {
-          customerId_name: {
-            customerId,
-            name: locationName,
-          },
-        },
-        update: {
-          location: {
-            set: locationPayload,
-          },
-          address: data.fullAddress,
-        },
-        create: {
+      const savedLocation = await prisma.savedLocation.create({
+        data: {
           customerId,
           name: locationName,
           location: locationPayload,
