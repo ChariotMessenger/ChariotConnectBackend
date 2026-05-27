@@ -117,7 +117,12 @@ export class CustomerService {
       const normalizedEmail = email?.trim().toLowerCase();
 
       const customer = await prisma.customer.findFirst({
-        where: email ? { email: normalizedEmail } : { phone: phoneNumber },
+        where: {
+          OR: [
+            { email: normalizedEmail || undefined },
+            { phone: phoneNumber || undefined },
+          ],
+        },
       });
 
       if (!customer) {
@@ -686,7 +691,20 @@ export class CustomerService {
 
   static async saveLocation(customerId: string, data: Point) {
     try {
-      const locationName = data.locationName || "Other";
+      const baseName = data.locationName || "Other";
+
+      const existingLocations = await prisma.savedLocation.findMany({
+        where: {
+          customerId,
+          name: { startsWith: baseName },
+        },
+        select: { name: true },
+      });
+
+      let locationName = baseName;
+      if (existingLocations.length > 0) {
+        locationName = `${baseName} ${existingLocations.length + 1}`;
+      }
 
       const locationPayload = {
         latitude: data.latitude,
@@ -695,7 +713,7 @@ export class CustomerService {
         fullAddress: data.fullAddress,
         shortAddress: data.shortAddress,
         placeId: data.placeId,
-        tag: data.tag || locationName.toLowerCase(),
+        tag: data.tag || baseName.toLowerCase(),
       };
 
       const savedLocation = await prisma.savedLocation.create({
