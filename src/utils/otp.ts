@@ -1,7 +1,7 @@
 import { prisma } from "../config/database";
 import { logger } from "./logger";
 import { UserRole } from "@prisma/client";
-
+import { CustomError } from "../utils/custom-error";
 export const generateOTP = (): string => {
   return Math.floor(1000 + Math.random() * 9000).toString();
 };
@@ -39,19 +39,25 @@ export const verifyOTP = async (email: string, code: string) => {
       where: {
         email,
         code,
-        verified: false,
       },
     });
 
     if (!otp) {
-      return null;
+      throw new CustomError("Invalid OTP code", 400, "INVALID_OTP");
+    }
+
+    if (otp.verified) {
+      throw new CustomError(
+        "OTP has already been used",
+        400,
+        "OTP_ALREADY_USED",
+      );
     }
 
     if (new Date() > otp.expiresAt) {
-      return null;
+      throw new CustomError("OTP has expired", 400, "EXPIRED_OTP");
     }
 
-    // Mark as verified
     await prisma.oTPVerification.update({
       where: { id: otp.id },
       data: { verified: true },

@@ -266,7 +266,25 @@ export class RiderService {
       const verifiedOtp = await verifyOTP(target, otp);
 
       if (!verifiedOtp) {
-        throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
+        const existingOtp = await prisma.oTPVerification.findFirst({
+          where: { email: target, code: otp },
+        });
+
+        if (!existingOtp) {
+          throw new CustomError("Invalid OTP code", 400, "INVALID_OTP");
+        }
+
+        if (existingOtp.verified) {
+          throw new CustomError(
+            "OTP has already been used",
+            400,
+            "OTP_ALREADY_USED",
+          );
+        }
+
+        if (new Date() > existingOtp.expiresAt) {
+          throw new CustomError("OTP has expired", 400, "EXPIRED_OTP");
+        }
       }
 
       const pending = await prisma.pendingRider.findFirst({
