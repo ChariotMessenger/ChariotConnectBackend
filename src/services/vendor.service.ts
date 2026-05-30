@@ -731,7 +731,7 @@ export class VendorService {
         ...(status && { status }),
       };
 
-      const [orders, total] = await prisma.$transaction([
+      const [orders, total, statusGroupCounts] = await prisma.$transaction([
         prisma.order.findMany({
           where: whereClause,
           include: {
@@ -758,7 +758,35 @@ export class VendorService {
           take: limit,
         }),
         prisma.order.count({ where: whereClause }),
+        prisma.order.groupBy({
+          by: ["status"],
+          where: { vendorId },
+          _count: { status: true },
+        }),
       ]);
+
+      const countsMap = statusGroupCounts.reduce(
+        (acc, current) => {
+          acc[current.status] = current._count.status;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const statusCounts = {
+        WAITING_FOR_APPROVAL: countsMap["WAITING_FOR_APPROVAL"] || 0,
+        AWAITING_PAYMENT: countsMap["AWAITING_PAYMENT"] || 0,
+        PAID: countsMap["PAID"] || 0,
+        VENDOR_PACKING: countsMap["VENDOR_PACKING"] || 0,
+        AWAITING_PICK_UP: countsMap["AWAITING_PICK_UP"] || 0,
+        RIDER_ACCEPTED: countsMap["RIDER_ACCEPTED"] || 0,
+        RIDER_EN_ROUTE_TO_VENDOR: countsMap["RIDER_EN_ROUTE_TO_VENDOR"] || 0,
+        RIDER_EN_ROUTE_TO_CUSTOMER:
+          countsMap["RIDER_EN_ROUTE_TO_CUSTOMER"] || 0,
+        DELIVERED: countsMap["DELIVERED"] || 0,
+        CANCELLED: countsMap["CANCELLED"] || 0,
+        REJECTED: countsMap["REJECTED"] || 0,
+      };
 
       const formattedOrders = orders.map((order) => ({
         ...order,
@@ -768,6 +796,7 @@ export class VendorService {
       logger.info(`Fetched orders for vendor: ${vendorId}`);
       return {
         orders: formattedOrders,
+        statusCounts,
         pagination: {
           total,
           page,

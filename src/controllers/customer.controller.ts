@@ -367,6 +367,24 @@ export class CustomerController {
         .json({ success: false, message: error.message });
     }
   }
+  static async getOrderById(req: AuthRequest, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const result = await customerService.getCustomerOrderById(
+        orderId,
+        req.user!.id,
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      res
+        .status(error.statusCode || 500)
+        .json({ success: false, message: error.message });
+    }
+  }
   static async addFavorite(req: AuthRequest, res: Response) {
     try {
       const { vendorId } = req.body;

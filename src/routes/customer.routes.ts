@@ -854,7 +854,120 @@ protectedRouter.get(
     }
   },
 );
-
+/**
+ * @swagger
+ * /customers/orders/{orderId}:
+ *   get:
+ *     summary: Get a single customer order by ID
+ *     tags:
+ *       - Customer Operations
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         description: The unique identifier of the order
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     totalAmount:
+ *                       type: number
+ *                     status:
+ *                       type: string
+ *                     currency:
+ *                       type: string
+ *                     notes:
+ *                       type: string
+ *                       nullable: true
+ *                     pickupLocation:
+ *                       $ref: '#/components/schemas/Point'
+ *                     deliveryLocation:
+ *                       $ref: '#/components/schemas/Point'
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     vendor:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         businessName:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         profilePhotoUrl:
+ *                           type: string
+ *                           nullable: true
+ *                     rider:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         firstName:
+ *                           type: string
+ *                         lastName:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         profilePhotoUrl:
+ *                           type: string
+ *                           nullable: true
+ *                     packsList:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           packLabel:
+ *                             type: string
+ *                           itemList:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 productId:
+ *                                   type: string
+ *                                 itemName:
+ *                                   type: string
+ *                                 productImageUrl:
+ *                                   type: string
+ *                                   nullable: true
+ *                                 price:
+ *                                   type: number
+ *                                 quantity:
+ *                                   type: integer
+ *                                 description:
+ *                                   type: string
+ *                                   nullable: true
+ *       404:
+ *         description: Order not found or access denied
+ */
+protectedRouter.get(
+  "/orders/:orderId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.getOrderById(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 /**
  * @swagger
  * /customers/vendors:

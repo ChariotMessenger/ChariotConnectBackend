@@ -574,6 +574,43 @@ export class CustomerService {
       throw error;
     }
   }
+
+  static async getCustomerOrderById(orderId: string, customerId: string) {
+    try {
+      const order = await prisma.order.findFirst({
+        where: {
+          id: orderId,
+          customerId,
+        },
+        include: {
+          vendor: {
+            select: {
+              id: true,
+              businessName: true,
+              phone: true,
+              profilePhotoUrl: true,
+            },
+          },
+          rider: {
+            select: { firstName: true, lastName: true, phone: true },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new Error("Order not found or access denied");
+      }
+
+      return {
+        ...order,
+        packsList: (order.items as unknown as PackGroup[]) || [],
+      };
+    } catch (error) {
+      logger.error(`Error fetching customer order ${orderId}:`, error);
+      throw error;
+    }
+  }
+
   static async updateProfile(customerId: string, data: any) {
     try {
       const updatedCustomer = await prisma.$transaction(async (tx) => {
