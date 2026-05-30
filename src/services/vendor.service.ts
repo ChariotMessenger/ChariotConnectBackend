@@ -765,9 +765,11 @@ export class VendorService {
         }),
       ]);
 
-      const countsMap = statusGroupCounts.reduce(
+      const countsMap = (statusGroupCounts as any[]).reduce(
         (acc, current) => {
-          acc[current.status] = current._count.status;
+          if (current?._count) {
+            acc[current.status] = current._count.status;
+          }
           return acc;
         },
         {} as Record<string, number>,
