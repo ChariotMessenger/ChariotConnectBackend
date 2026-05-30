@@ -762,7 +762,7 @@ export class VendorService {
           by: ["status"],
           where: { vendorId },
           _count: { status: true },
-        }),
+        } as any),
       ]);
 
       const countsMap = (statusGroupCounts as any[]).reduce(
