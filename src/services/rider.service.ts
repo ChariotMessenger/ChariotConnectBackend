@@ -311,6 +311,13 @@ export class RiderService {
 
       const regData = pending.registrationData as any;
 
+      let formattedHomeAddress = undefined;
+      if (regData.riderHomeAddress) {
+        formattedHomeAddress =
+          typeof regData.riderHomeAddress === "string"
+            ? JSON.parse(regData.riderHomeAddress)
+            : regData.riderHomeAddress;
+      }
       const newRider = await prisma.$transaction(async (tx) => {
         const rider = await tx.rider.create({
           data: {
@@ -326,7 +333,7 @@ export class RiderService {
             areaOfWork: regData.areaOfWork,
             drivingLicenseUrl: regData.drivingLicenseUrl,
             ninNumber: regData.ninNumber,
-            riderHomeAddress: regData.riderHomeAddress,
+            riderHomeAddress: formattedHomeAddress,
             idCardUrl: regData.idCardUrl,
             bikePlateNumber: regData.bikePlateNumber,
             guarantorName: regData.guarantorName,
