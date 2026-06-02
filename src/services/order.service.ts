@@ -3,6 +3,7 @@ import { logger } from "../utils/logger";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { emitToUser, emitToOrderRoom, emitToAllRiders } from "../config/socket";
+import crypto from "crypto";
 import axios from "axios";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
@@ -26,16 +27,20 @@ interface CreateOrderInput {
   vendorId: string;
   customerId: string;
   packsList: PackGroup[];
-  totalAmount: number;
+  productPrice: number;
   deliveryLocation: any;
+  estDeliveryTime: string;
   notes?: string;
+  deliveryFee: number;
 }
 
 interface UpdateOrderInput {
   packsList?: PackGroup[];
-  totalAmount?: number;
+  productPrice?: number;
   deliveryLocation?: any;
   notes?: string;
+  estDeliveryTime?: string;
+  deliveryFee?: number;
 }
 
 export class OrderService {
@@ -61,17 +66,55 @@ export class OrderService {
         );
       }
 
+      const pricingConfig = await prisma.pricingConfiguration.findFirst({
+        orderBy: { updatedAt: "desc" },
+      });
+
+      if (!pricingConfig) {
+        throw new CustomError(
+          "System pricing configuration missing",
+          500,
+          "CONFIG_ERROR",
+        );
+      }
+
+      const orderProtectionFee = pricingConfig.orderProtectionFee;
+      const orderProcessingFee = pricingConfig.orderProcessingFee;
+
+      const totalAmountToPay =
+        data.productPrice + data.deliveryFee + orderProtectionFee;
+      const vendorNet = data.productPrice - orderProcessingFee;
+
+      const customerSecretKey = crypto
+        .randomBytes(4)
+        .toString("hex")
+        .toUpperCase();
+      const riderSecretKey = crypto
+        .randomBytes(4)
+        .toString("hex")
+        .toUpperCase();
+
       const order = await prisma.order.create({
         data: {
           vendorId: data.vendorId,
           customerId: data.customerId,
           items: data.packsList as any,
-          totalAmount: data.totalAmount,
+          totalAmount: totalAmountToPay,
           currency: vendor.currency,
           notes: data.notes,
           status: OrderStatus.WAITING_FOR_APPROVAL,
           deliveryLocation: data.deliveryLocation,
           pickupLocation: vendor.businessAddress as any,
+          estDeliveryTime: data.estDeliveryTime,
+          customerSecretKey,
+          riderSecretKey,
+          productPrice: data.productPrice,
+          deliveryFee: data.deliveryFee,
+          protectionFee: orderProtectionFee,
+          vendorMaintenanceFee: orderProcessingFee,
+          vendorNet: vendorNet,
+          settlementStatus: "PENDING",
+          payoutStatus: "PENDING",
         },
       });
 
@@ -135,12 +178,6 @@ export class OrderService {
     try {
       const order = await prisma.order.findUnique({
         where: { id: orderId },
-        select: {
-          id: true,
-          customerId: true,
-          vendorId: true,
-          status: true,
-        },
       });
 
       if (!order) {
@@ -168,23 +205,95 @@ export class OrderService {
         );
       }
 
+      const updatedProductPrice =
+        data.productPrice !== undefined
+          ? data.productPrice
+          : order.productPrice;
+      const updatedDeliveryFee =
+        data.deliveryFee !== undefined ? data.deliveryFee : order.deliveryFee;
+
+      const pricingConfig = await prisma.pricingConfiguration.findFirst({
+        orderBy: { updatedAt: "desc" },
+      });
+
+      const protectionFee = pricingConfig
+        ? pricingConfig.orderProtectionFee
+        : order.protectionFee;
+      const processingFee = pricingConfig
+        ? pricingConfig.orderProcessingFee
+        : order.vendorMaintenanceFee;
+
+      const totalAmountToPay =
+        updatedProductPrice + updatedDeliveryFee + protectionFee;
+      const vendorNet = updatedProductPrice - processingFee;
+
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: {
           items: data.packsList ? (data.packsList as any) : undefined,
-          totalAmount:
-            data.totalAmount !== undefined ? data.totalAmount : undefined,
+          productPrice: updatedProductPrice,
+          deliveryFee: updatedDeliveryFee,
+          protectionFee: protectionFee,
+          vendorMaintenanceFee: processingFee,
+          vendorNet: vendorNet,
+          totalAmount: totalAmountToPay,
           deliveryLocation: data.deliveryLocation || undefined,
           notes: data.notes || undefined,
+          estDeliveryTime: data.estDeliveryTime || undefined,
         },
       });
 
       logger.info(`Order updated successfully by customer: ${orderId}`);
-      emitToUser(order.vendorId, "order:modified", updatedOrder);
+      emitToUser(updatedOrder.vendorId, "order:modified", updatedOrder);
       emitToOrderRoom(orderId, "order:updated", updatedOrder);
       return updatedOrder;
     } catch (error) {
       logger.error("Error updating order:", error);
+      throw error;
+    }
+  }
+
+  static async customerCancelOrder(orderId: string, customerId: string) {
+    try {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!order) {
+        throw new CustomError("Order not found", 404, "ORDER_NOT_FOUND");
+      }
+
+      if (order.customerId !== customerId) {
+        throw new CustomError(
+          "Only the customer can cancel this order",
+          403,
+          "UNAUTHORIZED",
+        );
+      }
+
+      const allowedStatuses: OrderStatus[] = [
+        OrderStatus.WAITING_FOR_APPROVAL,
+        OrderStatus.AWAITING_PAYMENT,
+      ];
+
+      if (!allowedStatuses.includes(order.status)) {
+        throw new CustomError(
+          `Cannot cancel order from status ${order.status}`,
+          400,
+          "INVALID_STATUS",
+        );
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.CANCELLED },
+      });
+
+      emitToUser(order.vendorId, "order:status-changed", updatedOrder);
+      emitToOrderRoom(orderId, "order:updated", updatedOrder);
+      return updatedOrder;
+    } catch (error) {
+      logger.error("Error cancelling order:", error);
       throw error;
     }
   }
@@ -197,12 +306,37 @@ export class OrderService {
     const order = await prisma.order.findFirst({
       where: { id: orderId, vendorId },
     });
-    if (!order)
+    if (!order) {
       throw new CustomError(
         "Unauthorized or not found",
         404,
         "ORDER_NOT_FOUND",
       );
+    }
+
+    const allowedVendorTransitions: OrderStatus[] = [
+      OrderStatus.WAITING_FOR_APPROVAL,
+      OrderStatus.AWAITING_PAYMENT,
+    ];
+
+    if (!allowedVendorTransitions.includes(order.status)) {
+      throw new CustomError(
+        `Vendor cannot change status when order is ${order.status}`,
+        400,
+        "INVALID_STATUS",
+      );
+    }
+
+    if (
+      status !== OrderStatus.AWAITING_PAYMENT &&
+      status !== OrderStatus.REJECTED
+    ) {
+      throw new CustomError(
+        "Vendor can only action order to AWAITING_PAYMENT or REJECTED from here",
+        400,
+        "INVALID_STATUS",
+      );
+    }
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
@@ -217,6 +351,44 @@ export class OrderService {
     }
 
     return updatedOrder;
+  }
+
+  static async vendorPackOrder(orderId: string, vendorId: string) {
+    try {
+      const order = await prisma.order.findFirst({
+        where: { id: orderId, vendorId },
+      });
+
+      if (!order) {
+        throw new CustomError(
+          "Order not found or unauthorized",
+          404,
+          "ORDER_NOT_FOUND",
+        );
+      }
+
+      if (order.status !== OrderStatus.PAID) {
+        throw new CustomError(
+          "Order must be PAID before packing",
+          400,
+          "INVALID_STATUS",
+        );
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.ORDER_PACKED },
+      });
+
+      emitToUser(order.customerId, "order:status-changed", updatedOrder);
+      emitToOrderRoom(orderId, "order:updated", updatedOrder);
+      emitToAllRiders("delivery-job:available", updatedOrder);
+
+      return updatedOrder;
+    } catch (error) {
+      logger.error("Error packing order:", error);
+      throw error;
+    }
   }
 
   static async initializePayment(orderId: string, email: string) {
@@ -340,7 +512,6 @@ export class OrderService {
 
       emitToUser(order.vendorId, "order:payment-received", order);
       emitToOrderRoom(orderId, "order:updated", order);
-      emitToAllRiders("delivery-job:available", order);
 
       return [transaction, order];
     }
@@ -348,9 +519,38 @@ export class OrderService {
   }
 
   static async riderAcceptJob(orderId: string, riderId: string) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new CustomError("Order not found", 404, "ORDER_NOT_FOUND");
+    }
+
+    if (order.status !== OrderStatus.ORDER_PACKED) {
+      throw new CustomError(
+        "Riders can only fetch jobs from ORDER_PACKED status",
+        400,
+        "INVALID_STATUS",
+      );
+    }
+
+    const pricingConfig = await prisma.pricingConfiguration.findFirst({
+      orderBy: { updatedAt: "desc" },
+    });
+
+    const deliveryCut = pricingConfig ? pricingConfig.deliveryCut : 20.0;
+    const riderMaintenanceFee = deliveryCut;
+    const riderAmountToReceive = order.deliveryFee - riderMaintenanceFee;
+
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: { riderId, status: OrderStatus.RIDER_ACCEPTED },
+      data: {
+        riderId,
+        status: OrderStatus.RIDER_EN_ROUTE_TO_VENDOR,
+        riderMaintenanceFee,
+        riderNet: riderAmountToReceive,
+      },
     });
 
     emitToUser(updatedOrder.customerId, "order:rider-assigned", updatedOrder);
@@ -360,9 +560,84 @@ export class OrderService {
     return updatedOrder;
   }
 
-  static async riderConfirmPickup(orderId: string, riderId: string) {
+  static async riderUndoJob(orderId: string, riderId: string) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new CustomError("Order not found", 404, "ORDER_NOT_FOUND");
+    }
+
+    if (order.riderId !== riderId) {
+      throw new CustomError(
+        "Unauthorized to undo this job",
+        403,
+        "UNAUTHORIZED",
+      );
+    }
+
+    if (order.status !== OrderStatus.RIDER_EN_ROUTE_TO_VENDOR) {
+      throw new CustomError(
+        "Cannot undo job after vendor verification or status progression",
+        400,
+        "UNDO_NOT_ALLOWED",
+      );
+    }
+
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId, riderId },
+      where: { id: orderId },
+      data: {
+        riderId: null,
+        status: OrderStatus.ORDER_PACKED,
+        riderMaintenanceFee: 0,
+        riderNet: 0,
+      },
+    });
+
+    emitToUser(updatedOrder.customerId, "order:rider-unassigned", updatedOrder);
+    emitToUser(updatedOrder.vendorId, "order:rider-unassigned", updatedOrder);
+    emitToOrderRoom(orderId, "order:updated", updatedOrder);
+    emitToAllRiders("delivery-job:available", updatedOrder);
+
+    return updatedOrder;
+  }
+
+  static async vendorVerifyRiderKey(
+    orderId: string,
+    vendorId: string,
+    secretKey: string,
+  ) {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, vendorId },
+    });
+
+    if (!order) {
+      throw new CustomError(
+        "Order not found or unauthorized",
+        404,
+        "ORDER_NOT_FOUND",
+      );
+    }
+
+    if (order.status !== OrderStatus.RIDER_EN_ROUTE_TO_VENDOR) {
+      throw new CustomError(
+        "Order status must be RIDER_EN_ROUTE_TO_VENDOR to perform this key verification",
+        400,
+        "INVALID_STATUS",
+      );
+    }
+
+    if (order.riderSecretKey !== secretKey) {
+      throw new CustomError(
+        "Invalid rider secret key verification failed",
+        400,
+        "INVALID_KEY",
+      );
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
       data: {
         status: OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER,
         pickupAt: new Date(),
@@ -375,9 +650,41 @@ export class OrderService {
     return updatedOrder;
   }
 
-  static async riderFinalizeDelivery(orderId: string, riderId: string) {
-    const updatedOrder = await prisma.order.update({
+  static async riderVerifyCustomerKeyAndDeliver(
+    orderId: string,
+    riderId: string,
+    secretKey: string,
+  ) {
+    const order = await prisma.order.findFirst({
       where: { id: orderId, riderId },
+    });
+
+    if (!order) {
+      throw new CustomError(
+        "Order not found or unauthorized rider access",
+        404,
+        "ORDER_NOT_FOUND",
+      );
+    }
+
+    if (order.status !== OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER) {
+      throw new CustomError(
+        "Order status must be RIDER_EN_ROUTE_TO_CUSTOMER to perform final delivery verification",
+        400,
+        "INVALID_STATUS",
+      );
+    }
+
+    if (order.customerSecretKey !== secretKey) {
+      throw new CustomError(
+        "Invalid customer secret key verification failed",
+        400,
+        "INVALID_KEY",
+      );
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
       data: { status: OrderStatus.DELIVERED, deliveredAt: new Date() },
     });
 
@@ -385,6 +692,48 @@ export class OrderService {
     emitToUser(updatedOrder.vendorId, "order:delivered", updatedOrder);
     emitToOrderRoom(orderId, "order:updated", updatedOrder);
 
+    return updatedOrder;
+  }
+
+  static async updateRiderLocation(
+    orderId: string,
+    riderId: string,
+    locationData: any,
+  ) {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, riderId },
+    });
+
+    if (!order) {
+      throw new CustomError(
+        "Active order assignment context not found for this rider identity",
+        404,
+        "ORDER_NOT_FOUND",
+      );
+    }
+
+    const nonActiveStatuses: OrderStatus[] = [
+      OrderStatus.DELIVERED,
+      OrderStatus.CANCELLED,
+      OrderStatus.REJECTED,
+    ];
+
+    if (nonActiveStatuses.includes(order.status)) {
+      throw new CustomError(
+        "Cannot process active location streams on a closed terminal order node instance",
+        400,
+        "ORDER_INACTIVE",
+      );
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        riderLocation: locationData,
+      },
+    });
+
+    emitToOrderRoom(orderId, "rider:location-updated", updatedOrder);
     return updatedOrder;
   }
 }

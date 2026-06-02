@@ -3,7 +3,6 @@ import { OrderController } from "../controllers/order.controller";
 import { authMiddleware } from "../middlewares/auth";
 
 const router = Router();
-
 /**
  * @swagger
  * tags:
@@ -16,7 +15,8 @@ const router = Router();
  * /orders:
  *   post:
  *     summary: Create a new order (Customer)
- *     tags: [Orders]
+ *     tags:
+ *       - Orders
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -27,15 +27,21 @@ const router = Router();
  *             type: object
  *             required:
  *               - vendorId
- *               - totalAmount
+ *               - productPrice
+ *               - deliveryFee
  *               - deliveryLocation
+ *               - estDeliveryTime
  *               - packsList
  *             properties:
  *               vendorId:
  *                 type: string
- *               totalAmount:
+ *               productPrice:
+ *                 type: number
+ *               deliveryFee:
  *                 type: number
  *               notes:
+ *                 type: string
+ *               estDeliveryTime:
  *                 type: string
  *               deliveryLocation:
  *                 type: object
@@ -84,7 +90,8 @@ router.post("/", authMiddleware, OrderController.createOrder);
  * /orders/{orderId}:
  *   put:
  *     summary: Update an existing order before payment (Customer)
- *     tags: [Orders]
+ *     tags:
+ *       - Orders
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -101,9 +108,13 @@ router.post("/", authMiddleware, OrderController.createOrder);
  *           schema:
  *             type: object
  *             properties:
- *               totalAmount:
+ *               productPrice:
+ *                 type: number
+ *               deliveryFee:
  *                 type: number
  *               notes:
+ *                 type: string
+ *               estDeliveryTime:
  *                 type: string
  *               deliveryLocation:
  *                 type: object
@@ -154,10 +165,36 @@ router.put("/:orderId", authMiddleware, OrderController.updateOrder);
 
 /**
  * @swagger
+ * /orders/{orderId}/cancel:
+ *   post:
+ *     summary: Cancel a pending order (Customer)
+ *     tags:
+ *       - Orders
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order cancelled successfully
+ */
+router.post(
+  "/:orderId/cancel",
+  authMiddleware,
+  OrderController.customerCancelOrder,
+);
+
+/**
+ * @swagger
  * /orders/{orderId}/status:
  *   patch:
- *     summary: Update order status (Vendor/Rider)
- *     tags: [Orders]
+ *     summary: Update order status (Vendor)
+ *     tags:
+ *       - Orders
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -177,8 +214,6 @@ router.put("/:orderId", authMiddleware, OrderController.updateOrder);
  *                 type: string
  *                 enum:
  *                   - AWAITING_PAYMENT
- *                   - VENDOR_PACKING
- *                   - AWAITING_PICK_UP
  *                   - REJECTED
  *     responses:
  *       200:
@@ -192,10 +227,32 @@ router.patch(
 
 /**
  * @swagger
+ * /orders/{orderId}/pack:
+ *   post:
+ *     summary: Move order from PAID to ORDER_PACKED and alert riders (Vendor)
+ *     tags:
+ *       - Orders
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order marked as packed and open for delivery dispatch
+ */
+router.post("/:orderId/pack", authMiddleware, OrderController.vendorPackOrder);
+
+/**
+ * @swagger
  * /orders/payment/initiate:
  *   post:
  *     summary: Initiate payment via Paystack (NGN) or PawaPay (RWF)
- *     tags: [Orders]
+ *     tags:
+ *       - Orders
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -218,13 +275,13 @@ router.post(
   authMiddleware,
   OrderController.initiatePayment,
 );
-
 /**
  * @swagger
  * /orders/payment/verify:
  *   get:
  *     summary: Verify payment status
- *     tags: [Orders]
+ *     tags:
+ *       - Orders
  *     parameters:
  *       - in: query
  *         name: reference
@@ -250,7 +307,8 @@ router.get("/payment/verify", OrderController.verifyPayment);
  * /orders/{orderId}/accept-job:
  *   post:
  *     summary: Rider accepts an order for delivery
- *     tags: [Orders]
+ *     tags:
+ *       - Orders
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -271,10 +329,11 @@ router.post(
 
 /**
  * @swagger
- * /orders/{orderId}/pickup:
+ * /orders/{orderId}/undo-job:
  *   post:
- *     summary: Rider confirms pickup from vendor
- *     tags: [Orders]
+ *     summary: Rider cancels their accepted job tracking assignment
+ *     tags:
+ *       - Orders
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -285,16 +344,53 @@ router.post(
  *           type: string
  *     responses:
  *       200:
- *         description: Pickup confirmed and pickupAt timestamp set
+ *         description: Job unassigned and order placed back into pooling nodes
  */
-router.post("/:orderId/pickup", authMiddleware, OrderController.riderPickup);
+router.post("/:orderId/undo-job", authMiddleware, OrderController.riderUndoJob);
 
 /**
  * @swagger
- * /orders/deliver:
+ * /orders/{orderId}/verify-rider:
  *   post:
- *     summary: Finalize delivery (Rider enters Order ID)
- *     tags: [Orders]
+ *     summary: Vendor verifies rider verification key at pickup terminal point
+ *     tags:
+ *       - Orders
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - secretKey
+ *             properties:
+ *               secretKey:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Rider key authenticated. Order progressed to en-route to customer terminal.
+ */
+router.post(
+  "/:orderId/verify-rider",
+  authMiddleware,
+  OrderController.vendorVerifyRiderKey,
+);
+
+/**
+ * @swagger
+ * /orders/verify-customer:
+ *   post:
+ *     summary: Rider verifies customer security verification key to finalize trip execution node
+ *     tags:
+ *       - Orders
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -305,13 +401,56 @@ router.post("/:orderId/pickup", authMiddleware, OrderController.riderPickup);
  *             type: object
  *             required:
  *               - orderId
+ *               - secretKey
  *             properties:
  *               orderId:
  *                 type: string
+ *               secretKey:
+ *                 type: string
  *     responses:
  *       200:
- *         description: Order marked as DELIVERED and deliveredAt timestamp set
+ *         description: Key authenticated. Status resolved to DELIVERED.
  */
-router.post("/deliver", authMiddleware, OrderController.riderDeliver);
+router.post(
+  "/verify-customer",
+  authMiddleware,
+  OrderController.riderVerifyCustomerKeyAndDeliver,
+);
+
+/**
+ * @swagger
+ * /orders/{orderId}/location:
+ *   patch:
+ *     summary: Broadcast live coordinate streams of ongoing transit paths
+ *     tags:
+ *       - Orders
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - locationData
+ *             properties:
+ *               locationData:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Coordinate updates ingested successfully
+ */
+router.patch(
+  "/:orderId/location",
+  authMiddleware,
+  OrderController.updateRiderLocation,
+);
 
 export default router;

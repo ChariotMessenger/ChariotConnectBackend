@@ -23,10 +23,8 @@ enum VerificationStatus {
 enum OrderStatus {
   WAITING_FOR_APPROVAL
   AWAITING_PAYMENT
-  PAID                         
-  VENDOR_PACKING               
-  AWAITING_PICK_UP             
-  RIDER_ACCEPTED              
+  PAID
+  ORDER_PACKED
   RIDER_EN_ROUTE_TO_VENDOR
   RIDER_EN_ROUTE_TO_CUSTOMER
   DELIVERED
@@ -207,39 +205,47 @@ model PendingRider {
   createdAt        DateTime @default(now())
 }
 model Order {
-  id               String      @id @default(auto()) @map("_id") @db.ObjectId
-  vendorId         String      @db.ObjectId
-  customerId       String      @db.ObjectId
-  riderId          String?     @db.ObjectId
-  items            Json
-  totalAmount      Float
-  currency         String
-  status           OrderStatus @default(WAITING_FOR_APPROVAL)
-  notes            String?
-  deliveryLocation Point?
-  pickupLocation   Point?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  id                    String      @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId              String      @db.ObjectId
+  customerId            String      @db.ObjectId
+  riderId               String?     @db.ObjectId
+  items                 Json
+  totalAmount           Float
+  currency              String
+  status                OrderStatus @default(WAITING_FOR_APPROVAL)
+  notes                 String?
+  deliveryLocation      Point?
+  pickupLocation        Point?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
+  estDeliveryTime       String
+  riderSecretKey        String
+  customerSecretKey     String
+  productPrice          Float
+  deliveryFee           Float
+  protectionFee         Float
+  vendorMaintenanceFee  Float
+  riderMaintenanceFee   Float       @default(0)
+  vendorNet             Float       @default(0)
+  riderNet              Float       @default(0)
+  settlementStatus      String      @default("PENDING")
+  payoutStatus          String      @default("PENDING")
 
-  vendorNet        Float     @default(0)        // What the vendor earns after your commission
-  deliveryFee      Float     @default(0)        // What the rider earns for the trip
-  settlementStatus String    @default("PENDING") // PENDING or PAID (to Vendor)
-  payoutStatus     String    @default("PENDING")
-
-  pickupAt         DateTime?     
-  deliveredAt      DateTime?
-  transactions Transaction[]
-  vendor       Vendor        @relation("VendorOrders", fields: [vendorId], references: [id], onDelete: Cascade)
-  customer     Customer      @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Cascade)
-  rider        Rider?        @relation("RiderOrders", fields: [riderId], references: [id])
+  pickupAt              DateTime?     
+  deliveredAt           DateTime?
+  riderLocation         Json?
+  
+  transactions          Transaction[]
+  vendor                Vendor        @relation("VendorOrders", fields: [vendorId], references: [id], onDelete: Cascade)
+  customer              Customer      @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Cascade)
+  rider                 Rider?        @relation("RiderOrders", fields: [riderId], references: [id])
 
   @@index([vendorId])
   @@index([customerId])
   @@index([riderId])
   @@index([status])
 }
-
 model OTPVerification {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   code         String
