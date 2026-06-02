@@ -936,8 +936,22 @@ export class RiderService {
         prisma.order.findMany({
           where: whereClause,
           include: {
-            vendor: { select: { businessName: true, phone: true } },
-            customer: { select: { name: true, phone: true } },
+            vendor: {
+              select: {
+                businessName: true,
+                phone: true,
+                brandLogoUrl: true,
+                coverPhotoUrl: true,
+              },
+            },
+            customer: {
+              select: {
+                firstName: true,
+                lastName: true,
+                phone: true,
+                profilePhotoUrl: true,
+              },
+            },
           },
           orderBy: { updatedAt: "desc" },
           skip,
