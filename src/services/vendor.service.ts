@@ -779,9 +779,7 @@ export class VendorService {
         WAITING_FOR_APPROVAL: countsMap["WAITING_FOR_APPROVAL"] || 0,
         AWAITING_PAYMENT: countsMap["AWAITING_PAYMENT"] || 0,
         PAID: countsMap["PAID"] || 0,
-        VENDOR_PACKING: countsMap["VENDOR_PACKING"] || 0,
-        AWAITING_PICK_UP: countsMap["AWAITING_PICK_UP"] || 0,
-        RIDER_ACCEPTED: countsMap["RIDER_ACCEPTED"] || 0,
+        ORDER_PACKED: countsMap["ORDER_PACKED"] || 0,
         RIDER_EN_ROUTE_TO_VENDOR: countsMap["RIDER_EN_ROUTE_TO_VENDOR"] || 0,
         RIDER_EN_ROUTE_TO_CUSTOMER:
           countsMap["RIDER_EN_ROUTE_TO_CUSTOMER"] || 0,
