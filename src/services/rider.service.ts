@@ -865,7 +865,7 @@ export class RiderService {
 
       const orders = await prisma.order.findMany({
         where: {
-          status: OrderStatus.AWAITING_PICK_UP,
+          status: OrderStatus.ORDER_PACKED,
           riderId: null,
           pickupLocation: {
             is: {
@@ -888,11 +888,12 @@ export class RiderService {
       throw error;
     }
   }
+
   static async goOffline(riderId: string) {
     try {
       const rider = await prisma.rider.update({
         where: { id: riderId },
-        data: { onlineStatus: OnlineStatus.OFFLINE },
+        data: { onlineStatus: "OFFLINE" },
       });
 
       logger.info(`Rider ${riderId} is now offline`);
@@ -903,6 +904,64 @@ export class RiderService {
     }
   }
 
+  static async getRiderOrders(
+    riderId: string,
+    statusType?: "ACTIVE" | "COMPLETED" | "CANCELLED",
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
+
+      let statusFilter: any = {};
+      if (statusType === "ACTIVE") {
+        statusFilter = {
+          in: [
+            OrderStatus.RIDER_EN_ROUTE_TO_VENDOR,
+            OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER,
+          ],
+        };
+      } else if (statusType === "COMPLETED") {
+        statusFilter = OrderStatus.DELIVERED;
+      } else if (statusType === "CANCELLED") {
+        statusFilter = OrderStatus.CANCELLED;
+      }
+
+      const whereClause = {
+        riderId,
+        ...(statusType ? { status: statusFilter } : {}),
+      };
+
+      const [orders, totalCount] = await prisma.$transaction([
+        prisma.order.findMany({
+          where: whereClause,
+          include: {
+            vendor: { select: { businessName: true, phone: true } },
+            customer: { select: { name: true, phone: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.order.count({
+          where: whereClause,
+        }),
+      ]);
+
+      return {
+        orders,
+        meta: {
+          totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+      };
+    } catch (error) {
+      logger.error("Error fetching rider orders dashboard context:", error);
+      throw error;
+    }
+  }
   static async getOnlineRiders(state: string) {
     try {
       const riders = await prisma.rider.findMany({

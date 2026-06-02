@@ -471,6 +471,7 @@ router.delete(
     }
   },
 );
+
 /**
  * @swagger
  * /riders/location-history:
@@ -809,6 +810,40 @@ protectedRouter.post(
  *                             type: string
  */
 router.get("/nearby-jobs", authMiddleware, riderController.getNearbyJobs);
+/**
+ * @swagger
+ * /riders/orders:
+ *   get:
+ *     summary: Get paginated tracking context arrays for rider dashboard node
+ *     tags:
+ *       - Orders
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: statusType
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - ACTIVE
+ *             - COMPLETED
+ *             - CANCELLED
+ *         description: Filter status structural type
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Returns payload list data with tracking counts metadata
+ */
+router.get("/riders/orders", authMiddleware, riderController.getRiderOrders);
 // /**
 //  * @swagger
 //  * /riders/online:

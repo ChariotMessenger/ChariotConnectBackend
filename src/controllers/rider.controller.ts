@@ -383,7 +383,34 @@ export class RiderController {
       return res.status(500).json({ message: "Internal server error" });
     }
   }
+  static async getRiderOrders(req: AuthRequest, res: Response) {
+    try {
+      const statusType = req.query.statusType as
+        | "ACTIVE"
+        | "COMPLETED"
+        | "CANCELLED"
+        | undefined;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
 
+      const result = await riderService.getRiderOrders(
+        req.user!.id,
+        statusType,
+        page,
+        limit,
+      );
+
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
   static async getOnlineRiders(req: AuthRequest, res: Response) {
     try {
       const { state } = req.query;
