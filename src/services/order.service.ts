@@ -27,7 +27,6 @@ interface CreateOrderInput {
   vendorId: string;
   customerId: string;
   packsList: PackGroup[];
-  productPrice: number;
   deliveryLocation: any;
   estDeliveryTime: string;
   notes?: string;
@@ -36,7 +35,6 @@ interface CreateOrderInput {
 
 interface UpdateOrderInput {
   packsList?: PackGroup[];
-  productPrice?: number;
   deliveryLocation?: any;
   notes?: string;
   estDeliveryTime?: string;
@@ -44,6 +42,15 @@ interface UpdateOrderInput {
 }
 
 export class OrderService {
+  private static calculateProductPrice(packsList: PackGroup[]): number {
+    return packsList.reduce((total, pack) => {
+      const packSum = (pack.itemList || []).reduce((packTotal, item) => {
+        return packTotal + item.price * item.quantity;
+      }, 0);
+      return total + packSum;
+    }, 0);
+  }
+
   static async createOrder(data: CreateOrderInput) {
     try {
       const vendor = await prisma.vendor.findUnique({
@@ -66,6 +73,8 @@ export class OrderService {
         );
       }
 
+      const calculatedProductPrice = this.calculateProductPrice(data.packsList);
+
       const pricingConfig = await prisma.pricingConfiguration.findFirst({
         orderBy: { updatedAt: "desc" },
       });
@@ -82,8 +91,8 @@ export class OrderService {
       const orderProcessingFee = pricingConfig.orderProcessingFee;
 
       const totalAmountToPay =
-        data.productPrice + data.deliveryFee + orderProtectionFee;
-      const vendorNet = data.productPrice - orderProcessingFee;
+        calculatedProductPrice + data.deliveryFee + orderProtectionFee;
+      const vendorNet = calculatedProductPrice - orderProcessingFee;
 
       const customerSecretKey = crypto
         .randomBytes(4)
@@ -108,7 +117,7 @@ export class OrderService {
           estDeliveryTime: data.estDeliveryTime,
           customerSecretKey,
           riderSecretKey,
-          productPrice: data.productPrice,
+          productPrice: calculatedProductPrice,
           deliveryFee: data.deliveryFee,
           protectionFee: orderProtectionFee,
           vendorMaintenanceFee: orderProcessingFee,
@@ -205,10 +214,10 @@ export class OrderService {
         );
       }
 
-      const updatedProductPrice =
-        data.productPrice !== undefined
-          ? data.productPrice
-          : order.productPrice;
+      const updatedProductPrice = data.packsList
+        ? this.calculateProductPrice(data.packsList)
+        : order.productPrice;
+
       const updatedDeliveryFee =
         data.deliveryFee !== undefined ? data.deliveryFee : order.deliveryFee;
 
