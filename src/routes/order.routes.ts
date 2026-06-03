@@ -27,15 +27,12 @@ const router = Router();
  *             type: object
  *             required:
  *               - vendorId
- *               - deliveryFee
  *               - deliveryLocation
  *               - estDeliveryTime
  *               - packsList
  *             properties:
  *               vendorId:
  *                 type: string
- *               deliveryFee:
- *                 type: number
  *               notes:
  *                 type: string
  *               estDeliveryTime:
@@ -105,8 +102,6 @@ router.post("/", authMiddleware, OrderController.createOrder);
  *           schema:
  *             type: object
  *             properties:
- *               deliveryFee:
- *                 type: number
  *               notes:
  *                 type: string
  *               estDeliveryTime:

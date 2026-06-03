@@ -30,7 +30,6 @@ interface CreateOrderInput {
   deliveryLocation: any;
   estDeliveryTime: string;
   notes?: string;
-  deliveryFee: number;
 }
 
 interface UpdateOrderInput {
@@ -38,7 +37,6 @@ interface UpdateOrderInput {
   deliveryLocation?: any;
   notes?: string;
   estDeliveryTime?: string;
-  deliveryFee?: number;
 }
 
 export class OrderService {
@@ -89,9 +87,10 @@ export class OrderService {
 
       const orderProtectionFee = pricingConfig.orderProtectionFee;
       const orderProcessingFee = pricingConfig.orderProcessingFee;
+      const systemDeliveryFee = pricingConfig.deliveryCut;
 
       const totalAmountToPay =
-        calculatedProductPrice + data.deliveryFee + orderProtectionFee;
+        calculatedProductPrice + systemDeliveryFee + orderProtectionFee;
       const vendorNet = calculatedProductPrice - orderProcessingFee;
 
       const customerSecretKey = crypto
@@ -118,7 +117,7 @@ export class OrderService {
           customerSecretKey,
           riderSecretKey,
           productPrice: calculatedProductPrice,
-          deliveryFee: data.deliveryFee,
+          deliveryFee: systemDeliveryFee,
           protectionFee: orderProtectionFee,
           vendorMaintenanceFee: orderProcessingFee,
           vendorNet: vendorNet,
@@ -218,9 +217,6 @@ export class OrderService {
         ? this.calculateProductPrice(data.packsList)
         : order.productPrice;
 
-      const updatedDeliveryFee =
-        data.deliveryFee !== undefined ? data.deliveryFee : order.deliveryFee;
-
       const pricingConfig = await prisma.pricingConfiguration.findFirst({
         orderBy: { updatedAt: "desc" },
       });
@@ -231,9 +227,12 @@ export class OrderService {
       const processingFee = pricingConfig
         ? pricingConfig.orderProcessingFee
         : order.vendorMaintenanceFee;
+      const deliveryFee = pricingConfig
+        ? pricingConfig.deliveryCut
+        : order.deliveryFee;
 
       const totalAmountToPay =
-        updatedProductPrice + updatedDeliveryFee + protectionFee;
+        updatedProductPrice + deliveryFee + protectionFee;
       const vendorNet = updatedProductPrice - processingFee;
 
       const updatedOrder = await prisma.order.update({
@@ -241,7 +240,7 @@ export class OrderService {
         data: {
           items: data.packsList ? (data.packsList as any) : undefined,
           productPrice: updatedProductPrice,
-          deliveryFee: updatedDeliveryFee,
+          deliveryFee: deliveryFee,
           protectionFee: protectionFee,
           vendorMaintenanceFee: processingFee,
           vendorNet: vendorNet,
