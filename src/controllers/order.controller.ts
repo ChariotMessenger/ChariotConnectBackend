@@ -47,7 +47,17 @@ export class OrderController {
         .json({ success: false, message: error.message });
     }
   }
-
+  static async vendorRejectOrder(req: AuthRequest, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const order = await OrderService.vendorRejectOrder(orderId, req.user!.id);
+      res.status(200).json({ success: true, order });
+    } catch (error: any) {
+      res
+        .status(error.statusCode || 500)
+        .json({ success: false, message: error.message });
+    }
+  }
   static async vendorUpdateStatus(req: AuthRequest, res: Response) {
     try {
       const order = await OrderService.vendorUpdateStatus(

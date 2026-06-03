@@ -12,6 +12,9 @@
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "keywords": [
     "admin",
     "api",

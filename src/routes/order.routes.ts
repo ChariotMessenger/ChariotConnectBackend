@@ -177,7 +177,48 @@ router.post(
   authMiddleware,
   OrderController.customerCancelOrder,
 );
-
+/**
+ * @swagger
+ * /orders/{orderId}/reject:
+ *   post:
+ *     summary: Reject a pending order (Vendor)
+ *     tags:
+ *       - Orders
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         description: The ID of the order to reject
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order rejected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Order rejected successfully
+ *       400:
+ *         description: Order cannot be rejected from its current status
+ *       404:
+ *         description: Order not found or unauthorized vendor access
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+  "/:orderId/reject",
+  authMiddleware,
+  OrderController.vendorRejectOrder,
+);
 /**
  * @swagger
  * /orders/{orderId}/status:

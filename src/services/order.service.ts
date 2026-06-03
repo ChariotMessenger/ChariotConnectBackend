@@ -361,6 +361,47 @@ export class OrderService {
     return updatedOrder;
   }
 
+  static async vendorRejectOrder(orderId: string, vendorId: string) {
+    try {
+      const order = await prisma.order.findFirst({
+        where: { id: orderId, vendorId },
+      });
+
+      if (!order) {
+        throw new CustomError(
+          "Order not found or unauthorized vendor access",
+          404,
+          "ORDER_NOT_FOUND",
+        );
+      }
+
+      const allowedStatuses: OrderStatus[] = [
+        OrderStatus.WAITING_FOR_APPROVAL,
+        OrderStatus.AWAITING_PAYMENT,
+      ];
+
+      if (!allowedStatuses.includes(order.status)) {
+        throw new CustomError(
+          `Cannot reject order because it is already ${order.status}`,
+          400,
+          "INVALID_STATUS",
+        );
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.REJECTED },
+      });
+
+      emitToUser(order.customerId, "order:status-changed", updatedOrder);
+      emitToOrderRoom(orderId, "order:updated", updatedOrder);
+
+      return updatedOrder;
+    } catch (error) {
+      logger.error("Error rejecting order by vendor:", error);
+      throw error;
+    }
+  }
   static async vendorPackOrder(orderId: string, vendorId: string) {
     try {
       const order = await prisma.order.findFirst({
