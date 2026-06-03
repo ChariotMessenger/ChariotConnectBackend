@@ -14,7 +14,7 @@ import { hashPassword, comparePassword } from "../utils/password";
 import { SmsService } from "./sms-service";
 import UploadService from "./upload.service";
 import axios from "axios";
-
+import { PackGroup } from "./order.service";
 interface Point {
   latitude?: number;
   longitude?: number;
@@ -882,7 +882,12 @@ export class RiderService {
         take: limit,
       });
 
-      return orders;
+      const formattedOrders = orders.map((order) => ({
+        ...order,
+        packsList: (order.items as unknown as PackGroup[]) || [],
+      }));
+
+      return formattedOrders;
     } catch (error) {
       logger.error("Error fetching nearby orders:", error);
       throw error;
@@ -962,8 +967,13 @@ export class RiderService {
         }),
       ]);
 
+      const formattedOrders = orders.map((order) => ({
+        ...order,
+        packsList: (order.items as unknown as PackGroup[]) || [],
+      }));
+
       return {
-        orders,
+        orders: formattedOrders,
         meta: {
           totalCount,
           page,
