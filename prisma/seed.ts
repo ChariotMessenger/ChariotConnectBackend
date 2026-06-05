@@ -4,6 +4,10 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  const deleteOrders = await prisma.order.deleteMany({});
+  console.log(`Successfully cleared ${deleteOrders.count} order records.`);
+
+  /*
   await prisma.pricingConfiguration.create({
     data: {
       deliveryCut: 1500.0,
@@ -11,6 +15,7 @@ async function main() {
       orderProcessingFee: 150.0,
     },
   });
+  */
 }
 
 main()

@@ -40,6 +40,27 @@ interface UpdateOrderInput {
 }
 
 export class OrderService {
+  private static orderIncludeOptions = {
+    vendor: {
+      select: {
+        id: true,
+        businessAddress: true,
+        currency: true,
+      },
+    },
+    customer: {
+      select: {
+        id: true,
+        phone: true,
+      },
+    },
+    rider: {
+      select: {
+        id: true,
+      },
+    },
+  };
+
   private static calculateProductPrice(packsList: PackGroup[]): number {
     return packsList.reduce((total, pack) => {
       const packSum = (pack.itemList || []).reduce((packTotal, item) => {
@@ -133,6 +154,7 @@ export class OrderService {
           settlementStatus: "PENDING",
           payoutStatus: "PENDING",
         },
+        include: this.orderIncludeOptions,
       });
 
       logger.info(`Order created successfully with grouped packs: ${order.id}`);
@@ -260,6 +282,7 @@ export class OrderService {
           notes: data.notes || undefined,
           estDeliveryTime: data.estDeliveryTime || undefined,
         },
+        include: this.orderIncludeOptions,
       });
 
       logger.info(`Order updated successfully by customer: ${orderId}`);
@@ -308,6 +331,7 @@ export class OrderService {
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.CANCELLED },
+        include: this.orderIncludeOptions,
       });
 
       const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -363,6 +387,7 @@ export class OrderService {
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: { status },
+      include: this.orderIncludeOptions,
     });
 
     const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -410,6 +435,7 @@ export class OrderService {
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.REJECTED },
+        include: this.orderIncludeOptions,
       });
 
       const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -448,6 +474,7 @@ export class OrderService {
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.ORDER_PACKED },
+        include: this.orderIncludeOptions,
       });
 
       const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -578,6 +605,7 @@ export class OrderService {
         prisma.order.update({
           where: { id: orderId },
           data: { status: OrderStatus.PAID },
+          include: this.orderIncludeOptions,
         }),
       ]);
 
@@ -623,6 +651,7 @@ export class OrderService {
         riderMaintenanceFee,
         riderNet: riderAmountToReceive,
       },
+      include: this.orderIncludeOptions,
     });
 
     const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -674,6 +703,7 @@ export class OrderService {
         riderMaintenanceFee: 0,
         riderNet: 0,
       },
+      include: this.orderIncludeOptions,
     });
 
     const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -732,6 +762,7 @@ export class OrderService {
         status: OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER,
         pickupAt: new Date(),
       },
+      include: this.orderIncludeOptions,
     });
 
     const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -777,6 +808,7 @@ export class OrderService {
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: { status: OrderStatus.DELIVERED, deliveredAt: new Date() },
+      include: this.orderIncludeOptions,
     });
 
     const formattedResponse = this.formatOrderResponse(updatedOrder);
@@ -823,6 +855,7 @@ export class OrderService {
       data: {
         riderLocation: locationData,
       },
+      include: this.orderIncludeOptions,
     });
 
     const formattedResponse = this.formatOrderResponse(updatedOrder);

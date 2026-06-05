@@ -15,6 +15,7 @@ import { SmsService } from "./sms-service";
 import UploadService from "./upload.service";
 import axios from "axios";
 import { PackGroup } from "./order.service";
+
 interface Point {
   latitude?: number;
   longitude?: number;
@@ -145,12 +146,11 @@ export class RiderService {
 
   static async getBanksByCountry(country: string) {
     try {
-      // Paystack uses country codes (e.g., 'nigeria', 'ghana')
       const response = await axios.get(`${this.PAYSTACK_URL}/bank`, {
         params: { country: country.toLowerCase() },
         headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
       });
-      return response.data.data; // Returns { name, code, type, etc. }
+      return response.data.data;
     } catch (error) {
       logger.error("Paystack Get Banks Error:", error);
       throw new CustomError("Failed to fetch banks", 500);
@@ -163,7 +163,6 @@ export class RiderService {
         params: { account_number: accountNumber, bank_code: bankCode },
         headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
       });
-      // Returns { account_number, account_name, bank_id }
       return response.data.data;
     } catch (error) {
       logger.error("Paystack Resolve Account Error:", error);
@@ -366,9 +365,9 @@ export class RiderService {
       throw error;
     }
   }
+
   static async loginStep1(email: string) {
     try {
-      // Check if rider exists
       const rider = await prisma.rider.findUnique({
         where: { email },
       });
@@ -377,10 +376,8 @@ export class RiderService {
         throw new CustomError("Email not found", 404, "EMAIL_NOT_FOUND");
       }
 
-      // Create OTP
       const otp = await createOTPVerification(email, UserRole.RIDER, rider.id);
 
-      // Send OTP to email
       await EmailService.sendOTPEmail(email, otp.code, rider.firstName);
 
       logger.info(`Rider login OTP sent to ${email}`);
@@ -399,14 +396,12 @@ export class RiderService {
 
   static async loginStep2(email: string, otp: string) {
     try {
-      // Verify OTP
       const verifiedOtp = await verifyOTP(email, otp);
 
       if (!verifiedOtp) {
         throw new CustomError("Invalid or expired OTP", 400, "INVALID_OTP");
       }
 
-      // Get rider
       const rider = await prisma.rider.findUnique({
         where: { email },
       });
@@ -415,7 +410,6 @@ export class RiderService {
         throw new CustomError("Rider not found", 404, "RIDER_NOT_FOUND");
       }
 
-      // Check if rider is verified
       if (!rider.verified) {
         return {
           success: false,
@@ -425,7 +419,6 @@ export class RiderService {
         };
       }
 
-      // Generate token
       const token = generateToken({
         id: rider.id,
         email: rider.email,
@@ -455,6 +448,7 @@ export class RiderService {
       throw error;
     }
   }
+
   static async loginWithPassword(data: {
     identifier: string;
     password: string;
@@ -490,14 +484,6 @@ export class RiderService {
           "INVALID_CREDENTIALS",
         );
       }
-
-      // if (!rider.verified) {
-      //   throw new CustomError(
-      //     "Your account is pending verification. Access denied.",
-      //     403,
-      //     "ACCOUNT_NOT_VERIFIED",
-      //   );
-      // }
 
       const token = generateToken({
         id: rider.id,
@@ -668,6 +654,7 @@ export class RiderService {
       throw error;
     }
   }
+
   static async getProfile(riderId: string) {
     try {
       const rider = await prisma.rider.findUnique({
@@ -783,6 +770,7 @@ export class RiderService {
       throw error;
     }
   }
+
   static async updateProfilePhoto(riderId: string, photoUrl: string) {
     try {
       const rider = await prisma.rider.update({
@@ -855,6 +843,7 @@ export class RiderService {
     radiusInKm: number = 5,
     page: number = 1,
     limit: number = 10,
+    requestingRiderId?: string,
   ) {
     try {
       const kmPerDegree = 111;
@@ -875,19 +864,76 @@ export class RiderService {
           },
         },
         include: {
-          vendor: { select: { businessName: true, phone: true } },
+          vendor: true,
+          customer: true,
+          rider: true,
         },
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       });
 
-      const formattedOrders = orders.map((order) => ({
-        ...order,
-        packsList: (order.items as unknown as PackGroup[]) || [],
-      }));
+      return orders.map((order: any) => {
+        const isContextRider =
+          requestingRiderId && order.rider?.id === requestingRiderId;
+        const mappedRiderLocation =
+          order.rider?.currentLocation || order.rider?.riderHomeAddress;
 
-      return formattedOrders;
+        return {
+          id: order.id,
+          status: order.status,
+          pickupLocation: order.pickupLocation,
+          deliveryLocation: order.deliveryLocation,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          packsList: (order.items as unknown as PackGroup[]) || [],
+          vendor: order.vendor
+            ? {
+                vendorId: order.vendor.id,
+                businessName: order.vendor.businessName,
+                brabdLogoUrl: order.vendor.brandLogoUrl,
+                coverPhotoUrl: order.vendor.coverPhotoUrl,
+                vendorMaintenanceFee: undefined,
+                totalAmountToRecive: undefined,
+              }
+            : null,
+          customer: order.customer
+            ? {
+                customerId: order.customer.id,
+                firstName: order.customer.firstName,
+                lastName: order.customer.lastName,
+                profilePhotoUrl: order.customer.profilePhotoUrl,
+                deliveryFee: undefined,
+                protectionFee: undefined,
+                totalAmountToPay: undefined,
+              }
+            : null,
+          rider: order.rider
+            ? {
+                riderId: order.rider.id,
+                firstName: order.rider.firstName,
+                lastName: order.rider.lastName,
+                phone: order.rider.phone,
+                profilePhotoUrl: order.rider.profilePhotoUrl,
+                riderMaintenanceFee: undefined,
+                totalAmountToRecive: isContextRider
+                  ? order.riderMaintenanceFee
+                  : undefined,
+                riderLocation: mappedRiderLocation
+                  ? {
+                      tag: mappedRiderLocation.tag || "Home",
+                      shortAddress:
+                        mappedRiderLocation.shortAddress || "Unknown",
+                      fullAddress: mappedRiderLocation.fullAddress || "Unknown",
+                      latitude: mappedRiderLocation.latitude || 0,
+                      longitude: mappedRiderLocation.longitude || 0,
+                      placeId: mappedRiderLocation.placeId || "",
+                    }
+                  : null,
+              }
+            : null,
+        };
+      });
     } catch (error) {
       logger.error("Error fetching nearby orders:", error);
       throw error;
@@ -941,22 +987,9 @@ export class RiderService {
         prisma.order.findMany({
           where: whereClause,
           include: {
-            vendor: {
-              select: {
-                businessName: true,
-                phone: true,
-                brandLogoUrl: true,
-                coverPhotoUrl: true,
-              },
-            },
-            customer: {
-              select: {
-                firstName: true,
-                lastName: true,
-                phone: true,
-                profilePhotoUrl: true,
-              },
-            },
+            vendor: true,
+            customer: true,
+            rider: true,
           },
           orderBy: { updatedAt: "desc" },
           skip,
@@ -967,10 +1000,63 @@ export class RiderService {
         }),
       ]);
 
-      const formattedOrders = orders.map((order) => ({
-        ...order,
-        packsList: (order.items as unknown as PackGroup[]) || [],
-      }));
+      const formattedOrders = orders.map((order: any) => {
+        const mappedRiderLocation =
+          order.rider?.currentLocation || order.rider?.riderHomeAddress;
+
+        return {
+          id: order.id,
+          status: order.status,
+          pickupLocation: order.pickupLocation,
+          deliveryLocation: order.deliveryLocation,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          packsList: (order.items as unknown as PackGroup[]) || [],
+          vendor: order.vendor
+            ? {
+                vendorId: order.vendor.id,
+                businessName: order.vendor.businessName,
+                brabdLogoUrl: order.vendor.brandLogoUrl,
+                coverPhotoUrl: order.vendor.coverPhotoUrl,
+                vendorMaintenanceFee: undefined,
+                totalAmountToRecive: undefined,
+              }
+            : null,
+          customer: order.customer
+            ? {
+                customerId: order.customer.id,
+                firstName: order.customer.firstName,
+                lastName: order.customer.lastName,
+                profilePhotoUrl: order.customer.profilePhotoUrl,
+                deliveryFee: undefined,
+                protectionFee: undefined,
+                totalAmountToPay: undefined,
+              }
+            : null,
+          rider: order.rider
+            ? {
+                riderId: order.rider.id,
+                firstName: order.rider.firstName,
+                lastName: order.rider.lastName,
+                phone: order.rider.phone,
+                profilePhotoUrl: order.rider.profilePhotoUrl,
+                riderMaintenanceFee: undefined,
+                totalAmountToRecive: order.totalAmountToReceive || 500.0,
+                riderLocation: mappedRiderLocation
+                  ? {
+                      tag: mappedRiderLocation.tag || "Home",
+                      shortAddress:
+                        mappedRiderLocation.shortAddress || "Unknown",
+                      fullAddress: mappedRiderLocation.fullAddress || "Unknown",
+                      latitude: mappedRiderLocation.latitude || 0,
+                      longitude: mappedRiderLocation.longitude || 0,
+                      placeId: mappedRiderLocation.placeId || "",
+                    }
+                  : null,
+              }
+            : null,
+        };
+      });
 
       return {
         orders: formattedOrders,
@@ -986,6 +1072,7 @@ export class RiderService {
       throw error;
     }
   }
+
   static async getOnlineRiders(state: string) {
     try {
       const riders = await prisma.rider.findMany({
