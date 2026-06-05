@@ -19,6 +19,7 @@ import orderRoutes from "./routes/order.routes";
 import fakerRoutes from "./routes/faker.routes";
 import globalRoutes from "./routes/global.routes";
 import { messageRouter } from "./routes/message.routes";
+import { paymentWebhookRouter } from "./routes/payment.webhook.routes";
 
 //Admin
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
@@ -134,7 +135,7 @@ app.use(`${apiPrefix}/orders`, orderRoutes);
 app.use(`${apiPrefix}/dev`, fakerRoutes);
 app.use(`${apiPrefix}/messages`, messageRouter);
 app.use(`${apiPrefix}/global`, globalRoutes);
-
+app.use(`${apiPrefix}`, paymentWebhookRouter);
 //Admin
 app.use(`${apiPrefix}/admins`, adminManagementRoutes);
 app.use(`${apiPrefix}/admin/auth`, adminAuthRoutes);
