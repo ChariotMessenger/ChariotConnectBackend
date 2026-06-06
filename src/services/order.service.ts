@@ -38,25 +38,35 @@ interface UpdateOrderInput {
   notes?: string;
   estDeliveryTime?: string;
 }
-
 export class OrderService {
   private static orderIncludeOptions = {
     vendor: {
       select: {
         id: true,
-        businessAddress: true,
+        businessName: true,
+        phone: true,
+        brandLogoUrl: true,
+        coverPhotoUrl: true,
         currency: true,
+        businessAddress: true,
       },
     },
     customer: {
       select: {
         id: true,
+        firstName: true,
+        lastName: true,
         phone: true,
+        profilePhotoUrl: true,
       },
     },
     rider: {
       select: {
         id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        profilePhotoUrl: true,
       },
     },
   };
@@ -70,13 +80,74 @@ export class OrderService {
     }, 0);
   }
 
-  private static formatOrderResponse(order: any) {
+  private static formatOrderResponse(order: any, requestedByUserId?: string) {
     if (!order) return order;
-    const { items, ...rest } = order;
-    return {
-      ...rest,
-      packsList: (items as unknown as PackGroup[]) || [],
+
+    const isCustomer =
+      requestedByUserId && order.customerId === requestedByUserId;
+    const isVendor = requestedByUserId && order.vendorId === requestedByUserId;
+    const isRider = requestedByUserId && order.riderId === requestedByUserId;
+
+    const formatted: Record<string, any> = {
+      id: order.id,
+      currency: order.currency,
+      status: order.status,
+      notes: order.notes || "",
+      deliveryLocation: order.deliveryLocation || {},
+      pickupLocation: order.pickupLocation || {},
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      estDeliveryTime: order.estDeliveryTime || "",
+      riderSecretKey: isRider ? order.riderSecretKey : "",
+      customerSecretKey: isCustomer ? order.customerSecretKey : "",
+      vendorNet: order.vendorNet,
+      settlementStatus: order.settlementStatus || "PENDING",
+      payoutStatus: order.payoutStatus || "PENDING",
+      pickupAt: order.pickupAt || null,
+      deliveredAt: order.deliveredAt || null,
+      productPrice: !isRider ? order.productPrice : undefined,
+      packsList: (order.items as unknown as PackGroup[]) || [],
     };
+
+    if (order.vendor) {
+      formatted.vendor = {
+        vendorId: order.vendor.id,
+        businessName: order.vendor.businessName || "",
+        phone: !isCustomer ? order.vendor.phone || "" : undefined,
+        brandLogoUrl: order.vendor.brandLogoUrl || "",
+        coverPhotoUrl: order.vendor.coverPhotoUrl || "",
+        vendorMaintenanceFee: isVendor ? order.vendorMaintenanceFee : undefined,
+        totalAmountToReceive: isVendor ? order.vendorNet : undefined,
+      };
+    }
+
+    if (order.customer) {
+      formatted.customer = {
+        customerId: order.customer.id,
+        firstName: order.customer.firstName || "",
+        lastName: order.customer.lastName || "",
+        phone: !isVendor ? order.customer.phone || "" : undefined,
+        profilePhotoUrl: order.customer.profilePhotoUrl || "",
+        deliveryFee: isCustomer ? order.deliveryFee : undefined,
+        protectionFee: isCustomer ? order.protectionFee : undefined,
+        totalAmountToPay: isCustomer ? order.totalAmount : undefined,
+      };
+    }
+
+    if (order.rider) {
+      formatted.rider = {
+        riderId: order.rider.id,
+        firstName: order.rider.firstName || "",
+        lastName: order.rider.lastName || "",
+        phone: order.rider.phone || "",
+        profilePhotoUrl: order.rider.profilePhotoUrl || "",
+        riderMaintenanceFee: isRider ? order.riderMaintenanceFee : undefined,
+        totalAmountToReceive: isRider ? order.riderNet : undefined,
+        riderLocation: order.riderLocation || {},
+      };
+    }
+
+    return formatted;
   }
 
   static async createOrder(data: CreateOrderInput) {
@@ -159,8 +230,15 @@ export class OrderService {
 
       logger.info(`Order created successfully with grouped packs: ${order.id}`);
 
-      const formattedResponse = this.formatOrderResponse(order);
-      emitToUser(data.vendorId, "order:new-incoming", formattedResponse);
+      const formattedResponse = this.formatOrderResponse(
+        order,
+        data.customerId,
+      );
+      emitToUser(
+        data.vendorId,
+        "order:new-incoming",
+        this.formatOrderResponse(order, data.vendorId),
+      );
 
       try {
         const itemCount = data.packsList.reduce(
@@ -287,10 +365,17 @@ export class OrderService {
 
       logger.info(`Order updated successfully by customer: ${orderId}`);
 
-      const formattedResponse = this.formatOrderResponse(updatedOrder);
-      emitToUser(updatedOrder.vendorId, "order:modified", formattedResponse);
-      emitToOrderRoom(orderId, "order:updated", formattedResponse);
-      return formattedResponse;
+      emitToUser(
+        updatedOrder.vendorId,
+        "order:modified",
+        this.formatOrderResponse(updatedOrder, updatedOrder.vendorId),
+      );
+      emitToOrderRoom(
+        orderId,
+        "order:updated",
+        this.formatOrderResponse(updatedOrder),
+      );
+      return this.formatOrderResponse(updatedOrder, customerId);
     } catch (error) {
       logger.error("Error updating order:", error);
       throw error;
@@ -334,10 +419,17 @@ export class OrderService {
         include: this.orderIncludeOptions,
       });
 
-      const formattedResponse = this.formatOrderResponse(updatedOrder);
-      emitToUser(order.vendorId, "order:status-changed", formattedResponse);
-      emitToOrderRoom(orderId, "order:updated", formattedResponse);
-      return formattedResponse;
+      emitToUser(
+        order.vendorId,
+        "order:status-changed",
+        this.formatOrderResponse(updatedOrder, order.vendorId),
+      );
+      emitToOrderRoom(
+        orderId,
+        "order:updated",
+        this.formatOrderResponse(updatedOrder),
+      );
+      return this.formatOrderResponse(updatedOrder, customerId);
     } catch (error) {
       logger.error("Error cancelling order:", error);
       throw error;
@@ -390,19 +482,26 @@ export class OrderService {
       include: this.orderIncludeOptions,
     });
 
-    const formattedResponse = this.formatOrderResponse(updatedOrder);
-    emitToUser(order.customerId, "order:status-changed", formattedResponse);
-    emitToOrderRoom(orderId, "order:updated", formattedResponse);
+    emitToUser(
+      order.customerId,
+      "order:status-changed",
+      this.formatOrderResponse(updatedOrder, order.customerId),
+    );
+    emitToOrderRoom(
+      orderId,
+      "order:updated",
+      this.formatOrderResponse(updatedOrder),
+    );
 
     if (status === OrderStatus.AWAITING_PAYMENT) {
       emitToUser(
         order.customerId,
         "order:ready-for-payment",
-        formattedResponse,
+        this.formatOrderResponse(updatedOrder, order.customerId),
       );
     }
 
-    return formattedResponse;
+    return this.formatOrderResponse(updatedOrder, vendorId);
   }
 
   static async vendorRejectOrder(orderId: string, vendorId: string) {
@@ -438,11 +537,18 @@ export class OrderService {
         include: this.orderIncludeOptions,
       });
 
-      const formattedResponse = this.formatOrderResponse(updatedOrder);
-      emitToUser(order.customerId, "order:status-changed", formattedResponse);
-      emitToOrderRoom(orderId, "order:updated", formattedResponse);
+      emitToUser(
+        order.customerId,
+        "order:status-changed",
+        this.formatOrderResponse(updatedOrder, order.customerId),
+      );
+      emitToOrderRoom(
+        orderId,
+        "order:updated",
+        this.formatOrderResponse(updatedOrder),
+      );
 
-      return formattedResponse;
+      return this.formatOrderResponse(updatedOrder, vendorId);
     } catch (error) {
       logger.error("Error rejecting order by vendor:", error);
       throw error;
@@ -477,12 +583,22 @@ export class OrderService {
         include: this.orderIncludeOptions,
       });
 
-      const formattedResponse = this.formatOrderResponse(updatedOrder);
-      emitToUser(order.customerId, "order:status-changed", formattedResponse);
-      emitToOrderRoom(orderId, "order:updated", formattedResponse);
-      emitToAllRiders("delivery-job:available", formattedResponse);
+      emitToUser(
+        order.customerId,
+        "order:status-changed",
+        this.formatOrderResponse(updatedOrder, order.customerId),
+      );
+      emitToOrderRoom(
+        orderId,
+        "order:updated",
+        this.formatOrderResponse(updatedOrder),
+      );
+      emitToAllRiders(
+        "delivery-job:available",
+        this.formatOrderResponse(updatedOrder),
+      );
 
-      return formattedResponse;
+      return this.formatOrderResponse(updatedOrder, vendorId);
     } catch (error) {
       logger.error("Error packing order:", error);
       throw error;
@@ -609,11 +725,18 @@ export class OrderService {
         }),
       ]);
 
-      const formattedResponse = this.formatOrderResponse(order);
-      emitToUser(order.vendorId, "order:payment-received", formattedResponse);
-      emitToOrderRoom(orderId, "order:updated", formattedResponse);
+      emitToUser(
+        order.vendorId,
+        "order:payment-received",
+        this.formatOrderResponse(order, order.vendorId),
+      );
+      emitToOrderRoom(
+        orderId,
+        "order:updated",
+        this.formatOrderResponse(order),
+      );
 
-      return [transaction, formattedResponse];
+      return [transaction, this.formatOrderResponse(order, order.customerId)];
     }
     throw new CustomError("Payment not verified", 400, "PAYMENT_FAILED");
   }
@@ -654,20 +777,23 @@ export class OrderService {
       include: this.orderIncludeOptions,
     });
 
-    const formattedResponse = this.formatOrderResponse(updatedOrder);
     emitToUser(
       updatedOrder.customerId,
       "order:rider-assigned",
-      formattedResponse,
+      this.formatOrderResponse(updatedOrder, updatedOrder.customerId),
     );
     emitToUser(
       updatedOrder.vendorId,
       "order:rider-assigned",
-      formattedResponse,
+      this.formatOrderResponse(updatedOrder, updatedOrder.vendorId),
     );
-    emitToOrderRoom(orderId, "order:updated", formattedResponse);
+    emitToOrderRoom(
+      orderId,
+      "order:updated",
+      this.formatOrderResponse(updatedOrder),
+    );
 
-    return formattedResponse;
+    return this.formatOrderResponse(updatedOrder, riderId);
   }
 
   static async riderUndoJob(orderId: string, riderId: string) {
@@ -706,21 +832,27 @@ export class OrderService {
       include: this.orderIncludeOptions,
     });
 
-    const formattedResponse = this.formatOrderResponse(updatedOrder);
     emitToUser(
       updatedOrder.customerId,
       "order:rider-unassigned",
-      formattedResponse,
+      this.formatOrderResponse(updatedOrder, updatedOrder.customerId),
     );
     emitToUser(
       updatedOrder.vendorId,
       "order:rider-unassigned",
-      formattedResponse,
+      this.formatOrderResponse(updatedOrder, updatedOrder.vendorId),
     );
-    emitToOrderRoom(orderId, "order:updated", formattedResponse);
-    emitToAllRiders("delivery-job:available", formattedResponse);
+    emitToOrderRoom(
+      orderId,
+      "order:updated",
+      this.formatOrderResponse(updatedOrder),
+    );
+    emitToAllRiders(
+      "delivery-job:available",
+      this.formatOrderResponse(updatedOrder),
+    );
 
-    return formattedResponse;
+    return this.formatOrderResponse(updatedOrder, riderId);
   }
 
   static async vendorVerifyRiderKey(
@@ -765,11 +897,18 @@ export class OrderService {
       include: this.orderIncludeOptions,
     });
 
-    const formattedResponse = this.formatOrderResponse(updatedOrder);
-    emitToUser(updatedOrder.customerId, "order:en-route", formattedResponse);
-    emitToOrderRoom(orderId, "order:updated", formattedResponse);
+    emitToUser(
+      updatedOrder.customerId,
+      "order:en-route",
+      this.formatOrderResponse(updatedOrder, updatedOrder.customerId),
+    );
+    emitToOrderRoom(
+      orderId,
+      "order:updated",
+      this.formatOrderResponse(updatedOrder),
+    );
 
-    return formattedResponse;
+    return this.formatOrderResponse(updatedOrder, vendorId);
   }
 
   static async riderVerifyCustomerKeyAndDeliver(
@@ -811,12 +950,23 @@ export class OrderService {
       include: this.orderIncludeOptions,
     });
 
-    const formattedResponse = this.formatOrderResponse(updatedOrder);
-    emitToUser(updatedOrder.customerId, "order:delivered", formattedResponse);
-    emitToUser(updatedOrder.vendorId, "order:delivered", formattedResponse);
-    emitToOrderRoom(orderId, "order:updated", formattedResponse);
+    emitToUser(
+      updatedOrder.customerId,
+      "order:delivered",
+      this.formatOrderResponse(updatedOrder, updatedOrder.customerId),
+    );
+    emitToUser(
+      updatedOrder.vendorId,
+      "order:delivered",
+      this.formatOrderResponse(updatedOrder, updatedOrder.vendorId),
+    );
+    emitToOrderRoom(
+      orderId,
+      "order:updated",
+      this.formatOrderResponse(updatedOrder),
+    );
 
-    return formattedResponse;
+    return this.formatOrderResponse(updatedOrder, riderId);
   }
 
   static async updateRiderLocation(
@@ -860,6 +1010,6 @@ export class OrderService {
 
     const formattedResponse = this.formatOrderResponse(updatedOrder);
     emitToOrderRoom(orderId, "rider:location-updated", formattedResponse);
-    return formattedResponse;
+    return this.formatOrderResponse(updatedOrder, riderId);
   }
 }
