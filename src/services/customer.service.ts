@@ -507,7 +507,7 @@ export class CustomerService {
   }
   static async getCustomerOrders(
     customerId: string,
-    status?: OrderFilterStatus,
+    status?: "ACTIVE" | "DELIVERED" | "CANCELLED_AND_REJECTED",
     page: number = 1,
     limit: number = 10,
   ) {
@@ -517,10 +517,21 @@ export class CustomerService {
       let statusCondition: any = undefined;
       if (status === "ACTIVE") {
         statusCondition = {
-          notIn: ["DELIVERED", "CANCELLED"] as OrderStatus[],
+          in: [
+            "WAITING_FOR_APPROVAL",
+            "AWAITING_PAYMENT",
+            "PAID",
+            "ORDER_PACKED",
+            "RIDER_EN_ROUTE_TO_VENDOR",
+            "RIDER_EN_ROUTE_TO_CUSTOMER",
+          ],
         };
-      } else if (status) {
-        statusCondition = status;
+      } else if (status === "DELIVERED") {
+        statusCondition = "DELIVERED";
+      } else if (status === "CANCELLED_AND_REJECTED") {
+        statusCondition = {
+          in: ["CANCELLED", "REJECTED"],
+        };
       }
 
       const [orders, total] = await prisma.$transaction([

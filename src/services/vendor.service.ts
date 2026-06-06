@@ -720,15 +720,44 @@ export class VendorService {
   }
   static async getVendorOrders(
     vendorId: string,
-    status?: OrderStatus,
+    status?:
+      | "WAITING_FOR_APPROVAL"
+      | "AWAITING_PAYMENT"
+      | "PAID"
+      | "AWAITING_PICK_UP"
+      | "IN_TRANSIT"
+      | "DELIVERED"
+      | "CANCELLED_AND_REJECTED",
     page: number = 1,
     limit: number = 10,
   ) {
     try {
       const skip = (page - 1) * limit;
+
+      let statusCondition: any = undefined;
+      if (status === "WAITING_FOR_APPROVAL") {
+        statusCondition = "WAITING_FOR_APPROVAL";
+      } else if (status === "AWAITING_PAYMENT") {
+        statusCondition = "AWAITING_PAYMENT";
+      } else if (status === "PAID") {
+        statusCondition = "PAID";
+      } else if (status === "AWAITING_PICK_UP") {
+        statusCondition = "ORDER_PACKED";
+      } else if (status === "IN_TRANSIT") {
+        statusCondition = {
+          in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
+        };
+      } else if (status === "DELIVERED") {
+        statusCondition = "DELIVERED";
+      } else if (status === "CANCELLED_AND_REJECTED") {
+        statusCondition = {
+          in: ["CANCELLED", "REJECTED"],
+        };
+      }
+
       const whereClause = {
         vendorId,
-        ...(status && { status }),
+        ...(statusCondition && { status: statusCondition }),
       };
 
       const [orders, total, statusGroupCounts] = await prisma.$transaction([

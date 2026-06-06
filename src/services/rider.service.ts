@@ -957,25 +957,22 @@ export class RiderService {
 
   static async getRiderOrders(
     riderId: string,
-    statusType?: "ACTIVE" | "COMPLETED" | "CANCELLED",
+    statusType?: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED",
     page: number = 1,
     limit: number = 10,
   ) {
     try {
       const skip = (page - 1) * limit;
 
-      let statusFilter: any = {};
-      if (statusType === "ACTIVE") {
+      let statusFilter: any = undefined;
+      if (statusType === "AVAILABLE_JOBS") {
+        statusFilter = "ORDER_PACKED";
+      } else if (statusType === "ACTIVE") {
         statusFilter = {
-          in: [
-            OrderStatus.RIDER_EN_ROUTE_TO_VENDOR,
-            OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER,
-          ],
+          in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
         };
-      } else if (statusType === "COMPLETED") {
-        statusFilter = OrderStatus.DELIVERED;
-      } else if (statusType === "CANCELLED") {
-        statusFilter = OrderStatus.CANCELLED;
+      } else if (statusType === "DELIVERED") {
+        statusFilter = "DELIVERED";
       }
 
       const whereClause = {
