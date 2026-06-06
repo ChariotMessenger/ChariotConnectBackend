@@ -346,7 +346,11 @@ export class CustomerController {
 
   static async getOrders(req: AuthRequest, res: Response) {
     try {
-      const status = req.query.status as OrderFilterStatus;
+      const status = req.query.status as
+        | "ACTIVE"
+        | "DELIVERED"
+        | "CANCELLED_AND_REJECTED"
+        | undefined;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 

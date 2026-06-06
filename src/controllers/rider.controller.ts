@@ -385,11 +385,18 @@ export class RiderController {
   }
   static async getRiderOrders(req: AuthRequest, res: Response) {
     try {
-      const statusType = req.query.statusType as
-        | "ACTIVE"
-        | "COMPLETED"
-        | "CANCELLED"
-        | undefined;
+      const incomingStatus = req.query.statusType as string | undefined;
+
+      let statusType: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED" | undefined =
+        undefined;
+      if (incomingStatus === "COMPLETED") {
+        statusType = "DELIVERED";
+      } else if (incomingStatus === "ACTIVE") {
+        statusType = "ACTIVE";
+      } else if (incomingStatus === "AVAILABLE_JOBS") {
+        statusType = "AVAILABLE_JOBS";
+      }
+
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 

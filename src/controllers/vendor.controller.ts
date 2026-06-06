@@ -448,7 +448,15 @@ export class VendorController {
   static async getOrders(req: AuthRequest, res: Response) {
     try {
       const vendorId = req.user!.id;
-      const status = req.query.status as OrderStatus;
+      const status = req.query.status as
+        | "WAITING_FOR_APPROVAL"
+        | "AWAITING_PAYMENT"
+        | "PAID"
+        | "AWAITING_PICK_UP"
+        | "IN_TRANSIT"
+        | "DELIVERED"
+        | "CANCELLED_AND_REJECTED"
+        | undefined;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
