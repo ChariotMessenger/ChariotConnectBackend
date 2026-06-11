@@ -8,6 +8,7 @@ import { UserRole, VerificationStatus, OrderStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { SmsService } from "./sms-service";
 import { PackGroup } from "./order.service";
+import { formatOrderResponse } from "../utils/order-utils";
 interface Point {
   latitude?: number;
   longitude?: number;
@@ -764,23 +765,9 @@ export class VendorService {
         prisma.order.findMany({
           where: whereClause,
           include: {
-            customer: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                phone: true,
-                profilePhotoUrl: true,
-              },
-            },
-            rider: {
-              select: {
-                firstName: true,
-                lastName: true,
-                phone: true,
-                profilePhotoUrl: true,
-              },
-            },
+            vendor: true,
+            customer: true,
+            rider: true,
           },
           orderBy: { createdAt: "desc" },
           skip,
@@ -817,10 +804,9 @@ export class VendorService {
         REJECTED: countsMap["REJECTED"] || 0,
       };
 
-      const formattedOrders = orders.map((order) => ({
-        ...order,
-        packsList: (order.items as unknown as PackGroup[]) || [],
-      }));
+      const formattedOrders = orders.map((order) =>
+        formatOrderResponse(order, vendorId),
+      );
 
       logger.info(`Fetched orders for vendor: ${vendorId}`);
       return {

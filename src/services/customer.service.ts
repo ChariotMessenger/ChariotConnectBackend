@@ -9,6 +9,7 @@ import { CustomError } from "../middlewares/errorHandler";
 import { SmsService } from "./sms-service";
 import { PackGroup } from "./order.service";
 import { OrderFilterStatus } from "../controllers/customer.controller";
+import { formatOrderResponse } from "../utils/order-utils";
 interface Point {
   latitude?: number | null;
   longitude?: number | null;
@@ -541,17 +542,9 @@ export class CustomerService {
             ...(statusCondition && { status: statusCondition }),
           },
           include: {
-            vendor: {
-              select: {
-                id: true,
-                businessName: true,
-                phone: true,
-                profilePhotoUrl: true,
-              },
-            },
-            rider: {
-              select: { firstName: true, lastName: true, phone: true },
-            },
+            vendor: true,
+            customer: true,
+            rider: true,
           },
           orderBy: { createdAt: "desc" },
           skip,
@@ -565,10 +558,9 @@ export class CustomerService {
         }),
       ]);
 
-      const formattedOrders = orders.map((order) => ({
-        ...order,
-        packsList: (order.items as unknown as PackGroup[]) || [],
-      }));
+      const formattedOrders = orders.map((order) =>
+        formatOrderResponse(order, customerId),
+      );
 
       logger.info(`Fetched orders for customer: ${customerId}`);
       return {

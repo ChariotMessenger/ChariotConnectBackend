@@ -15,7 +15,7 @@ import { SmsService } from "./sms-service";
 import UploadService from "./upload.service";
 import axios from "axios";
 import { PackGroup } from "./order.service";
-
+import { formatOrderResponse } from "../utils/order-utils";
 interface Point {
   latitude?: number;
   longitude?: number;
@@ -997,63 +997,9 @@ export class RiderService {
         }),
       ]);
 
-      const formattedOrders = orders.map((order: any) => {
-        const mappedRiderLocation =
-          order.rider?.currentLocation || order.rider?.riderHomeAddress;
-
-        return {
-          id: order.id,
-          status: order.status,
-          pickupLocation: order.pickupLocation,
-          deliveryLocation: order.deliveryLocation,
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt,
-          packsList: (order.items as unknown as PackGroup[]) || [],
-          vendor: order.vendor
-            ? {
-                vendorId: order.vendor.id,
-                businessName: order.vendor.businessName,
-                brabdLogoUrl: order.vendor.brandLogoUrl,
-                coverPhotoUrl: order.vendor.coverPhotoUrl,
-                vendorMaintenanceFee: undefined,
-                totalAmountToRecive: undefined,
-              }
-            : null,
-          customer: order.customer
-            ? {
-                customerId: order.customer.id,
-                firstName: order.customer.firstName,
-                lastName: order.customer.lastName,
-                profilePhotoUrl: order.customer.profilePhotoUrl,
-                deliveryFee: undefined,
-                protectionFee: undefined,
-                totalAmountToPay: undefined,
-              }
-            : null,
-          rider: order.rider
-            ? {
-                riderId: order.rider.id,
-                firstName: order.rider.firstName,
-                lastName: order.rider.lastName,
-                phone: order.rider.phone,
-                profilePhotoUrl: order.rider.profilePhotoUrl,
-                riderMaintenanceFee: undefined,
-                totalAmountToRecive: order.totalAmountToReceive || 500.0,
-                riderLocation: mappedRiderLocation
-                  ? {
-                      tag: mappedRiderLocation.tag || "Home",
-                      shortAddress:
-                        mappedRiderLocation.shortAddress || "Unknown",
-                      fullAddress: mappedRiderLocation.fullAddress || "Unknown",
-                      latitude: mappedRiderLocation.latitude || 0,
-                      longitude: mappedRiderLocation.longitude || 0,
-                      placeId: mappedRiderLocation.placeId || "",
-                    }
-                  : null,
-              }
-            : null,
-        };
-      });
+      const formattedOrders = orders.map((order: any) =>
+        formatOrderResponse(order, riderId),
+      );
 
       return {
         orders: formattedOrders,
@@ -1069,7 +1015,6 @@ export class RiderService {
       throw error;
     }
   }
-
   static async getOnlineRiders(state: string) {
     try {
       const riders = await prisma.rider.findMany({
