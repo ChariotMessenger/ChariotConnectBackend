@@ -32,6 +32,7 @@ import adminDashboardRouter from "./routes/admin/admin.dashboard.routes";
 // Config
 import { swaggerOptions } from "./config/swagger";
 import { logger } from "./utils/logger";
+import { adminPricingRouter } from "./routes/admin/admin.pricing.routes";
 
 const app: Express = express();
 
@@ -144,6 +145,7 @@ app.use(`${apiPrefix}/admin`, adminAnalyticsRoutes);
 app.use(`${apiPrefix}/admin/accounts`, accountRoutes);
 app.use(`${apiPrefix}/admin`, adminUserRoutes);
 app.use(`${apiPrefix}/admin`, adminDashboardRouter);
+app.use(`${apiPrefix}/admin/pricing`, adminPricingRouter);
 
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {
