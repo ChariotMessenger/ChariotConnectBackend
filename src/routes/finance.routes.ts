@@ -225,7 +225,6 @@ router.get(
 router.post(
   "/vendor/withdraw",
   authMiddleware,
-
   VendorFinancialController.requestWithdrawal,
 );
 
