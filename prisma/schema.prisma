@@ -149,6 +149,12 @@ model Vendor {
   bankName              String?
   accountNumber         String?
   accountName           String?
+
+  wallet                   Wallet?
+walletTransactions       WalletTransaction[]
+withdrawalRequests       WithdrawalRequest[]
+bankDetailsChanges       BankDetailsChangeRequest[]
+
   @@index([country])
   @@index([businessType])
 }
@@ -192,6 +198,11 @@ model Rider {
   otpVerifications      OTPVerification[]
   deliveries            Order[]            @relation("RiderOrders")
   locationHistory       LocationHistory[]  @relation("RiderLocationHistory")
+
+  wallet                   Wallet?
+walletTransactions       WalletTransaction[]
+withdrawalRequests       WithdrawalRequest[]
+bankDetailsChanges       BankDetailsChangeRequest[]
   @@index([country])
   @@index([state])
   @@index([onlineStatus])
@@ -421,4 +432,89 @@ model PricingConfiguration {
   orderProtectionFee  Float    @default(5.0)  
   orderProcessingFee  Float    @default(5.0)  
   updatedAt           DateTime @updatedAt
+}
+
+enum WalletTransactionType {
+  EARNING // Inflow from orders
+  WITHDRAWAL // Outflow to bank account
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Wallet {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId     String?  @unique @db.ObjectId
+  riderId      String?  @unique @db.ObjectId
+  balance      Float    @default(0.0)
+  currency     String   @default("NGN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vendor       Vendor?  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  rider        Rider?   @relation(fields: [riderId], references: [id], onDelete: Cascade)
+}
+
+model WalletTransaction {
+  id          String                @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId    String?               @db.ObjectId
+  riderId     String?               @db.ObjectId
+  orderId     String?               @db.ObjectId // Optional reference to marketplace orders
+  amount      Float
+  type        WalletTransactionType
+  status      PaymentStatus         @default(PENDING)
+  reference   String                @unique // System generated trace string
+  description String?
+  createdAt   DateTime              @default(now())
+
+  vendor      Vendor?               @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  rider       Rider?                @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([riderId])
+}
+
+model WithdrawalRequest {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId      String?          @db.ObjectId
+  riderId       String?          @db.ObjectId
+  amount        Float
+  currency      String
+  status        WithdrawalStatus @default(PENDING)
+  bankName      String
+  accountNumber String
+  accountName   String
+  reference     String           @unique
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  vendor        Vendor?          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  rider         Rider?           @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([riderId])
+}
+
+model BankDetailsChangeRequest {
+  id               String             @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId         String?            @db.ObjectId
+  riderId          String?            @db.ObjectId
+  oldBankName      String?
+  oldAccountNumber String?
+  oldAccountName   String?
+  newBankName      String
+  newAccountNumber String
+  newAccountName   String
+  status           VerificationStatus @default(PENDING)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  vendor           Vendor?            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  rider            Rider?             @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([riderId])
 }
