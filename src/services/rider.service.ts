@@ -1007,7 +1007,11 @@ export class RiderService {
                 is: null,
               },
               vendor: {
-                currentLocation: boundingBox,
+                is: {
+                  currentLocation: {
+                    is: boundingBox,
+                  },
+                },
               },
             },
           ];
