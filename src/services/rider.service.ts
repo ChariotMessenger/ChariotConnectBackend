@@ -991,10 +991,26 @@ export class RiderService {
           const lngDelta =
             radiusInKm / (kmPerDegree * Math.cos(lat * (Math.PI / 180)));
 
-          whereClause.vendor = {
+          const boundingBox = {
             latitude: { gte: lat - latDelta, lte: lat + latDelta },
             longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
           };
+
+          whereClause.OR = [
+            {
+              pickupLocation: {
+                is: boundingBox,
+              },
+            },
+            {
+              pickupLocation: {
+                is: null,
+              },
+              vendor: {
+                currentLocation: boundingBox,
+              },
+            },
+          ];
         }
       } else {
         whereClause.riderId = riderId;
