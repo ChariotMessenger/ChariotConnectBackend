@@ -400,11 +400,24 @@ export class RiderController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
+      const lat = req.query.lat
+        ? parseFloat(req.query.lat as string)
+        : undefined;
+      const lng = req.query.lng
+        ? parseFloat(req.query.lng as string)
+        : undefined;
+      const radiusInKm = req.query.radius
+        ? parseFloat(req.query.radius as string)
+        : undefined;
+
       const result = await riderService.getRiderOrders(
         req.user!.id,
         statusType,
         page,
         limit,
+        lat,
+        lng,
+        radiusInKm,
       );
 
       res.status(200).json({

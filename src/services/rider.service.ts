@@ -960,6 +960,9 @@ export class RiderService {
     statusType?: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED",
     page: number = 1,
     limit: number = 10,
+    lat?: number,
+    lng?: number,
+    radiusInKm: number = 5,
   ) {
     try {
       const skip = (page - 1) * limit;
@@ -975,10 +978,27 @@ export class RiderService {
         statusFilter = "DELIVERED";
       }
 
-      const whereClause = {
-        riderId,
+      let whereClause: any = {
         ...(statusType ? { status: statusFilter } : {}),
       };
+
+      if (statusType === "AVAILABLE_JOBS") {
+        whereClause.riderId = null;
+
+        if (lat !== undefined && lng !== undefined) {
+          const kmPerDegree = 111;
+          const latDelta = radiusInKm / kmPerDegree;
+          const lngDelta =
+            radiusInKm / (kmPerDegree * Math.cos(lat * (Math.PI / 180)));
+
+          whereClause.vendor = {
+            latitude: { gte: lat - latDelta, lte: lat + latDelta },
+            longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
+          };
+        }
+      } else {
+        whereClause.riderId = riderId;
+      }
 
       const [orders, totalCount] = await prisma.$transaction([
         prisma.order.findMany({
@@ -1015,6 +1035,7 @@ export class RiderService {
       throw error;
     }
   }
+
   static async getOnlineRiders(state: string) {
     try {
       const riders = await prisma.rider.findMany({
