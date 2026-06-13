@@ -998,7 +998,7 @@ export class RiderService {
 
         const nearbyVendors = await prisma.vendor.findMany({
           where: {
-            currentLocation: {
+            businessAddress: {
               is: boundingBox,
             },
           },
@@ -1062,6 +1062,7 @@ export class RiderService {
     throw error;
   }
 }
+
 
 
   static async getOnlineRiders(state: string) {
