@@ -383,104 +383,54 @@ export class RiderController {
       return res.status(500).json({ message: "Internal server error" });
     }
   }
- static async getRiderOrders(
-  riderId: string,
-  statusType?: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED",
-  page: number = 1,
-  limit: number = 10,
-  lat?: number,
-  lng?: number,
-  radiusInKm: number = 5,
-) {
-  try {
-    const skip = (page - 1) * limit;
+  static async getRiderOrders(req: AuthRequest, res: Response) {
+    try {
+      const incomingStatus = req.query.statusType as string | undefined;
 
-    let statusFilter: any = undefined;
-    if (statusType === "AVAILABLE_JOBS") {
-      statusFilter = "ORDER_PACKED";
-    } else if (statusType === "ACTIVE") {
-      statusFilter = {
-        in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
-      };
-    } else if (statusType === "DELIVERED") {
-      statusFilter = "DELIVERED";
-    }
-
-    let whereClause: any = {
-      ...(statusType ? { status: statusFilter } : {}),
-    };
-
-    if (statusType === "AVAILABLE_JOBS") {
-      whereClause.riderId = null;
-
-      if (lat !== undefined && lng !== undefined) {
-        const kmPerDegree = 111;
-        const latDelta = radiusInKm / kmPerDegree;
-        const lngDelta =
-          radiusInKm / (kmPerDegree * Math.cos(lat * (Math.PI / 180)));
-
-        const boundingBox = {
-          latitude: { gte: lat - latDelta, lte: lat + latDelta },
-          longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
-        };
-
-        whereClause.OR = [
-          {
-            pickupLocation: {
-              is: boundingBox,
-            },
-          },
-          {
-            pickupLocation: {
-              is: null,
-            },
-            vendor: {
-              currentLocation: {
-                is: boundingBox,
-              },
-            },
-          },
-        ];
+      let statusType: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED" | undefined =
+        undefined;
+      if (incomingStatus === "COMPLETED") {
+        statusType = "DELIVERED";
+      } else if (incomingStatus === "ACTIVE") {
+        statusType = "ACTIVE";
+      } else if (incomingStatus === "AVAILABLE_JOBS") {
+        statusType = "AVAILABLE_JOBS";
       }
-    } else {
-      whereClause.riderId = riderId;
-    }
 
-    const [orders, totalCount] = await prisma.$transaction([
-      prisma.order.findMany({
-        where: whereClause,
-        include: {
-          vendor: true,
-          customer: true,
-          rider: true,
-        },
-        orderBy: { updatedAt: "desc" },
-        skip,
-        take: limit,
-      }),
-      prisma.order.count({
-        where: whereClause,
-      }),
-    ]);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
 
-    const formattedOrders = orders.map((order: any) =>
-      formatOrderResponse(order, riderId),
-    );
+      const lat = req.query.lat
+        ? parseFloat(req.query.lat as string)
+        : undefined;
+      const lng = req.query.lng
+        ? parseFloat(req.query.lng as string)
+        : undefined;
+      const radiusInKm = req.query.radius
+        ? parseFloat(req.query.radius as string)
+        : undefined;
 
-    return {
-      orders: formattedOrders,
-      meta: {
-        totalCount,
+      const result = await riderService.getRiderOrders(
+        req.user!.id,
+        statusType,
         page,
         limit,
-        totalPages: Math.ceil(totalCount / limit),
-      },
-    };
-  } catch (error) {
-    logger.error("Error fetching rider orders dashboard context:", error);
-    throw error;
+        lat,
+        lng,
+        radiusInKm,
+      );
+
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
+    }
   }
-}
   static async getOnlineRiders(req: AuthRequest, res: Response) {
     try {
       const { state } = req.query;

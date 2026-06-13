@@ -1007,10 +1007,8 @@ export class RiderService {
                 is: null,
               },
               vendor: {
-                is: {
-                  currentLocation: {
-                    is: boundingBox,
-                  },
+                currentLocation: {
+                  is: boundingBox,
                 },
               },
             },
