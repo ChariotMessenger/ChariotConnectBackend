@@ -1004,17 +1004,18 @@ export class RiderService {
           },
         });
 
-        const totalCount = await prisma.order.count({
-          where: {
-            riderId: null,
-            status: statusFilter,
-            ...(lat !== undefined && lng !== undefined
-              ? {
-                  "pickupLocation.latitude": { not: null },
-                }
-              : {}),
-          },
+        const countPipeline: any[] = [
+          { $match: queryFilter },
+          { $count: "total" },
+        ];
+        const rawCountResult = await prisma.order.aggregateRaw({
+          pipeline: countPipeline,
         });
+
+        let totalCount = 0;
+        if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
+          totalCount = (rawCountResult[0] as any).total || 0;
+        }
 
         const orders = Array.isArray(rawOrders) ? rawOrders : [];
 
