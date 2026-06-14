@@ -956,89 +956,126 @@ export class RiderService {
   }
 
   static async getRiderOrders(
-  riderId: string,
-  statusType?: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED",
-  page: number = 1,
-  limit: number = 10,
-  lat?: number,
-  lng?: number,
-  radiusInKm: number = 5,
-) {
-  try {
-    const skip = (page - 1) * limit;
+    riderId: string,
+    statusType?: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED",
+    page: number = 1,
+    limit: number = 10,
+    lat?: number,
+    lng?: number,
+    radiusInKm: number = 10,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
 
-    let statusFilter: any = undefined;
-    if (statusType === "AVAILABLE_JOBS") {
-      statusFilter = "ORDER_PACKED";
-    } else if (statusType === "ACTIVE") {
-      statusFilter = {
-        in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
-      };
-    } else if (statusType === "DELIVERED") {
-      statusFilter = "DELIVERED";
-    }
+      let statusFilter: any = undefined;
+      if (statusType === "AVAILABLE_JOBS") {
+        statusFilter = "ORDER_PACKED";
+      } else if (statusType === "ACTIVE") {
+        statusFilter = {
+          in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
+        };
+      } else if (statusType === "DELIVERED") {
+        statusFilter = "DELIVERED";
+      }
 
-    let whereClause: any = {
-      ...(statusType ? { status: statusFilter } : {}),
-    };
+      if (statusType === "AVAILABLE_JOBS") {
+        const queryFilter: any = {
+          riderId: null,
+          status: statusFilter,
+        };
 
-    if (statusType === "AVAILABLE_JOBS") {
-      whereClause.riderId = null;
+        if (lat !== undefined && lng !== undefined) {
+          const earthRadiusInKm = 6371;
+          const radiusInRadians = radiusInKm / earthRadiusInKm;
 
-      if (lat !== undefined && lng !== undefined) {
-        const kmPerDegree = 111;
-        const latDelta = radiusInKm / kmPerDegree;
-        const lngDelta = radiusInKm / (kmPerDegree * Math.cos(lat * (Math.PI / 180)));
+          queryFilter["pickupLocation.longitude"] = {
+            $geoWithin: {
+              $centerSphere: [[lng, lat], radiusInRadians],
+            },
+          };
+        }
 
-        whereClause.pickupLocation = {
-          is: {
-            latitude: { gte: lat - latDelta, lte: lat + latDelta },
-            longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
+        const rawOrders = await prisma.order.findRaw({
+          filter: queryFilter,
+          options: {
+            skip,
+            limit,
+            sort: { updatedAt: -1 },
+          },
+        });
+
+        const totalCount = await prisma.order.count({
+          where: {
+            riderId: null,
+            status: statusFilter,
+            ...(lat !== undefined && lng !== undefined
+              ? {
+                  "pickupLocation.latitude": { not: null },
+                }
+              : {}),
+          },
+        });
+
+        const orders = Array.isArray(rawOrders) ? rawOrders : [];
+
+        const formattedOrders = orders.map((order: any) => {
+          if (order._id && order._id.$oid) {
+            order.id = order._id.$oid;
           }
+          return formatOrderResponse(order, riderId);
+        });
+
+        return {
+          orders: formattedOrders,
+          meta: {
+            totalCount,
+            page,
+            limit,
+            totalPages: Math.ceil(totalCount / limit),
+          },
         };
       }
-    } else {
-      whereClause.riderId = riderId;
-    }
 
-    const [orders, totalCount] = await prisma.$transaction([
-      prisma.order.findMany({
-        where: whereClause,
-        include: {
-          vendor: true,
-          customer: true,
-          rider: true,
+      let whereClause: any = {
+        ...(statusType ? { status: statusFilter } : {}),
+        riderId,
+      };
+
+      const [orders, totalCount] = await prisma.$transaction([
+        prisma.order.findMany({
+          where: whereClause,
+          include: {
+            vendor: true,
+            customer: true,
+            rider: true,
+          },
+          orderBy: { updatedAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.order.count({
+          where: whereClause,
+        }),
+      ]);
+
+      const formattedOrders = orders.map((order: any) =>
+        formatOrderResponse(order, riderId),
+      );
+
+      return {
+        orders: formattedOrders,
+        meta: {
+          totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
         },
-        orderBy: { updatedAt: "desc" },
-        skip,
-        take: limit,
-      }),
-      prisma.order.count({
-        where: whereClause,
-      }),
-    ]);
-
-    const formattedOrders = orders.map((order: any) =>
-      formatOrderResponse(order, riderId),
-    );
-
-    return {
-      orders: formattedOrders,
-      meta: {
-        totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit),
-      },
-    };
-  } catch (error) {
-    logger.error("Error fetching rider orders dashboard context:", error);
-    throw error;
+      };
+    } catch (error) {
+      logger.error("Error fetching rider orders dashboard context:", error);
+      throw error;
+    }
   }
-}
-
-
-
 
   static async getOnlineRiders(state: string) {
     try {
