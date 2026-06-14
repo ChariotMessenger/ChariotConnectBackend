@@ -984,17 +984,6 @@ export class RiderService {
           status: statusFilter,
         };
 
-        if (lat !== undefined && lng !== undefined) {
-          const earthRadiusInKm = 6371;
-          const radiusInRadians = radiusInKm / earthRadiusInKm;
-
-          queryFilter["pickupLocation.longitude"] = {
-            $geoWithin: {
-              $centerSphere: [[lng, lat], radiusInRadians],
-            },
-          };
-        }
-
         const rawOrders = await prisma.order.findRaw({
           filter: queryFilter,
           options: {
