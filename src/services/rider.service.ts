@@ -988,40 +988,14 @@ export class RiderService {
       if (lat !== undefined && lng !== undefined) {
         const kmPerDegree = 111;
         const latDelta = radiusInKm / kmPerDegree;
-        const lngDelta =
-          radiusInKm / (kmPerDegree * Math.cos(lat * (Math.PI / 180)));
+        const lngDelta = radiusInKm / (kmPerDegree * Math.cos(lat * (Math.PI / 180)));
 
-        const boundingBox = {
-          latitude: { gte: lat - latDelta, lte: lat + latDelta },
-          longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
+        whereClause.pickupLocation = {
+          is: {
+            latitude: { gte: lat - latDelta, lte: lat + latDelta },
+            longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
+          }
         };
-
-        const nearbyVendors = await prisma.vendor.findMany({
-          where: {
-            businessAddress: {
-              is: boundingBox,
-            },
-          },
-          select: { id: true },
-        });
-
-        const vendorIds = nearbyVendors.map((v: any) => v.id);
-
-        whereClause.OR = [
-          {
-            pickupLocation: {
-              is: boundingBox,
-            },
-          },
-          {
-            pickupLocation: {
-              is: null,
-            },
-            vendorId: {
-              in: vendorIds,
-            },
-          },
-        ];
       }
     } else {
       whereClause.riderId = riderId;
@@ -1062,6 +1036,7 @@ export class RiderService {
     throw error;
   }
 }
+
 
 
 
