@@ -19,35 +19,55 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       const { userId, userType } = data;
       connectedUsers[userId] = socket.id;
       socket.join(`user:${userId}`);
+
+      socket.data.userId = userId;
+      socket.data.userType = userType;
+
       logger.info(`User ${userId} (${userType}) is online`);
     });
 
     socket.on("order:join-room", (data) => {
-      const { orderId } = data;
-      socket.join(`order:${orderId}`);
+      const { orderId, userId } = data;
+      const roomName = `order:${orderId}`;
+
+      socket.join(roomName);
       logger.info(
         `Socket ${socket.id} joined tracking room for order ${orderId}`,
       );
+
+      socket.to(roomName).emit("order:user-joined", { orderId, userId });
     });
 
     socket.on("order:leave-room", (data) => {
-      const { orderId } = data;
-      socket.leave(`order:${orderId}`);
+      const { orderId, userId } = data;
+      const roomName = `order:${orderId}`;
+
+      socket.leave(roomName);
       logger.info(
         `Socket ${socket.id} left tracking room for order ${orderId}`,
       );
+
+      socket.to(roomName).emit("order:user-left", { orderId, userId });
     });
 
     socket.on("message:join-room", (data) => {
-      const { roomId } = data;
-      socket.join(`room:${roomId}`);
+      const { roomId, userId } = data;
+      const roomName = `room:${roomId}`;
+
+      socket.join(roomName);
       logger.info(`Socket ${socket.id} joined room ${roomId}`);
+
+      socket.to(roomName).emit("message:user-joined", { roomId, userId });
     });
 
     socket.on("message:leave-room", (data) => {
-      const { roomId } = data;
-      socket.leave(`room:${roomId}`);
+      const { roomId, userId } = data;
+      const roomName = `room:${roomId}`;
+
+      socket.leave(roomName);
       logger.info(`Socket ${socket.id} left room ${roomId}`);
+
+      socket.to(roomName).emit("message:user-left", { roomId, userId });
     });
 
     socket.on("message:send", async (data) => {
@@ -117,13 +137,27 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       });
     });
 
+    socket.on("disconnecting", () => {
+      const userId = socket.data.userId;
+      if (userId) {
+        socket.rooms.forEach((room) => {
+          if (room.startsWith("room:")) {
+            const roomId = room.replace("room:", "");
+            socket.to(room).emit("message:user-left", { roomId, userId });
+          } else if (room.startsWith("order:")) {
+            const orderId = room.replace("order:", "");
+            socket.to(room).emit("order:user-left", { orderId, userId });
+          }
+        });
+      }
+    });
+
     socket.on("disconnect", () => {
-      Object.keys(connectedUsers).forEach((userId) => {
-        if (connectedUsers[userId] === socket.id) {
-          delete connectedUsers[userId];
-          logger.info(`User ${userId} is offline`);
-        }
-      });
+      const userId = socket.data.userId;
+      if (userId && connectedUsers[userId] === socket.id) {
+        delete connectedUsers[userId];
+        logger.info(`User ${userId} is offline`);
+      }
       logger.info(`Client disconnected: ${socket.id}`);
     });
   });
