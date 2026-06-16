@@ -95,7 +95,6 @@ router.post(
   authMiddleware,
   RiderFinancialController.requestWithdrawal,
 );
-
 /**
  * @swagger
  * /finance/rider/bank-details:
@@ -116,6 +115,7 @@ router.post(
  *               - newBankName
  *               - newAccountNumber
  *               - newAccountName
+ *               - password
  *             properties:
  *               newBankName:
  *                 type: string
@@ -126,11 +126,17 @@ router.post(
  *               newAccountName:
  *                 type: string
  *                 example: Chukwuma Samuel
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "SecureP@ss123"
  *     responses:
  *       201:
  *         description: Profile variation queued for review.
  *       400:
- *         description: Duplicate pending variation request already active.
+ *         description: Duplicate pending variation request already active or password missing.
+ *       401:
+ *         description: Invalid password configuration credentials provided.
  */
 router.post(
   "/rider/bank-details",
@@ -227,7 +233,6 @@ router.post(
   authMiddleware,
   VendorFinancialController.requestWithdrawal,
 );
-
 /**
  * @swagger
  * /finance/vendor/bank-details:
@@ -248,6 +253,7 @@ router.post(
  *               - newBankName
  *               - newAccountNumber
  *               - newAccountName
+ *               - password
  *             properties:
  *               newBankName:
  *                 type: string
@@ -258,14 +264,21 @@ router.post(
  *               newAccountName:
  *                 type: string
  *                 example: Dootling Global Enterprise
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "SecureP@ss123"
  *     responses:
  *       201:
  *         description: Verification log entered into system queues.
+ *       400:
+ *         description: Duplicate pending variation request already active or password missing.
+ *       401:
+ *         description: Invalid password configuration credentials provided.
  */
 router.post(
   "/vendor/bank-details",
   authMiddleware,
-
   VendorFinancialController.updateBankDetails,
 );
 

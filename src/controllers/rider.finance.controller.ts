@@ -82,13 +82,15 @@ export class RiderFinancialController {
   ) {
     try {
       const riderId = req.user!.id;
-      const { newBankName, newAccountNumber, newAccountName } = req.body;
+      const { newBankName, newAccountNumber, newAccountName, password } =
+        req.body;
 
       const changeRequest =
         await RiderFinancialService.proposeBankDetailsChange(riderId, {
           newBankName,
           newAccountNumber,
           newAccountName,
+          password,
         });
 
       res.status(201).json({

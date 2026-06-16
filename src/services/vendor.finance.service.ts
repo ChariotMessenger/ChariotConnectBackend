@@ -8,6 +8,7 @@ import {
   VerificationStatus,
 } from "@prisma/client";
 import crypto from "crypto";
+import { comparePassword } from "../utils/password";
 
 export class VendorFinancialService {
   static async getTransactionHistory(
@@ -148,9 +149,18 @@ export class VendorFinancialService {
       newBankName: string;
       newAccountNumber: string;
       newAccountName: string;
+      password?: string;
     },
   ) {
     try {
+      if (!data.password) {
+        throw new CustomError(
+          "Password verification is required to update bank details.",
+          400,
+          "PASSWORD_REQUIRED",
+        );
+      }
+
       const activePendingRequest =
         await prisma.bankDetailsChangeRequest.findFirst({
           where: { vendorId, status: VerificationStatus.PENDING },
@@ -166,15 +176,41 @@ export class VendorFinancialService {
 
       const currentVendor = await prisma.vendor.findUnique({
         where: { id: vendorId },
-        select: { bankName: true, accountNumber: true, accountName: true },
+        select: {
+          bankName: true,
+          accountNumber: true,
+          accountName: true,
+          password: true,
+        },
       });
+
+      if (!currentVendor) {
+        throw new CustomError(
+          "Vendor profile not found.",
+          404,
+          "VENDOR_NOT_FOUND",
+        );
+      }
+
+      const isPasswordValid = await comparePassword(
+        data.password,
+        currentVendor.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new CustomError(
+          "Invalid password configuration credentials provided.",
+          401,
+          "INVALID_PASSWORD",
+        );
+      }
 
       return await prisma.bankDetailsChangeRequest.create({
         data: {
           vendorId,
-          oldBankName: currentVendor?.bankName,
-          oldAccountNumber: currentVendor?.accountNumber,
-          oldAccountName: currentVendor?.accountName,
+          oldBankName: currentVendor.bankName,
+          oldAccountNumber: currentVendor.accountNumber,
+          oldAccountName: currentVendor.accountName,
           newBankName: data.newBankName,
           newAccountNumber: data.newAccountNumber,
           newAccountName: data.newAccountName,

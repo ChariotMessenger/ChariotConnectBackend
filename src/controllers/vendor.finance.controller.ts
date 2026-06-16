@@ -82,13 +82,15 @@ export class VendorFinancialController {
   ) {
     try {
       const vendorId = req.user!.id;
-      const { newBankName, newAccountNumber, newAccountName } = req.body;
+      const { newBankName, newAccountNumber, newAccountName, password } =
+        req.body;
 
       const changeRequest =
         await VendorFinancialService.proposeBankDetailsChange(vendorId, {
           newBankName,
           newAccountNumber,
           newAccountName,
+          password,
         });
 
       res.status(201).json({

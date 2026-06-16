@@ -8,6 +8,7 @@ import {
   VerificationStatus,
 } from "@prisma/client";
 import crypto from "crypto";
+import { comparePassword } from "../utils/password";
 
 export class RiderFinancialService {
   static async getTransactionHistory(
@@ -148,9 +149,18 @@ export class RiderFinancialService {
       newBankName: string;
       newAccountNumber: string;
       newAccountName: string;
+      password?: string;
     },
   ) {
     try {
+      if (!data.password) {
+        throw new CustomError(
+          "Password verification is required to update bank details.",
+          400,
+          "PASSWORD_REQUIRED",
+        );
+      }
+
       const activePendingRequest =
         await prisma.bankDetailsChangeRequest.findFirst({
           where: { riderId, status: VerificationStatus.PENDING },
@@ -166,15 +176,41 @@ export class RiderFinancialService {
 
       const currentRider = await prisma.rider.findUnique({
         where: { id: riderId },
-        select: { bankName: true, accountNumber: true, accountName: true },
+        select: {
+          bankName: true,
+          accountNumber: true,
+          accountName: true,
+          password: true,
+        },
       });
+
+      if (!currentRider) {
+        throw new CustomError(
+          "Rider profile not found.",
+          404,
+          "RIDER_NOT_FOUND",
+        );
+      }
+
+      const isPasswordValid = await comparePassword(
+        data.password,
+        currentRider.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new CustomError(
+          "Invalid password configuration credentials provided.",
+          401,
+          "INVALID_PASSWORD",
+        );
+      }
 
       return await prisma.bankDetailsChangeRequest.create({
         data: {
           riderId,
-          oldBankName: currentRider?.bankName,
-          oldAccountNumber: currentRider?.accountNumber,
-          oldAccountName: currentRider?.accountName,
+          oldBankName: currentRider.bankName,
+          oldAccountNumber: currentRider.accountNumber,
+          oldAccountName: currentRider.accountName,
           newBankName: data.newBankName,
           newAccountNumber: data.newAccountNumber,
           newAccountName: data.newAccountName,
