@@ -30,10 +30,24 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       );
     });
 
+    socket.on("order:leave-room", (data) => {
+      const { orderId } = data;
+      socket.leave(`order:${orderId}`);
+      logger.info(
+        `Socket ${socket.id} left tracking room for order ${orderId}`,
+      );
+    });
+
     socket.on("message:join-room", (data) => {
       const { roomId } = data;
       socket.join(`room:${roomId}`);
       logger.info(`Socket ${socket.id} joined room ${roomId}`);
+    });
+
+    socket.on("message:leave-room", (data) => {
+      const { roomId } = data;
+      socket.leave(`room:${roomId}`);
+      logger.info(`Socket ${socket.id} left room ${roomId}`);
     });
 
     socket.on("message:send", async (data) => {
