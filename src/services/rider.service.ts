@@ -674,6 +674,8 @@ export class RiderService {
           bankName: true,
           currentLocation: true,
           accountName: true,
+          accountNumber: true,
+          riderHomeAddress: true,
           profilePhotoUrl: true,
           onlineStatus: true,
           verificationStatus: true,
