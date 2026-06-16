@@ -1012,6 +1012,63 @@ export class RiderService {
           if (order._id && order._id.$oid) {
             order.id = order._id.$oid;
           }
+
+          if (
+            order.createdAt &&
+            typeof order.createdAt === "object" &&
+            "$date" in order.createdAt
+          ) {
+            order.createdAt =
+              typeof order.createdAt.$date === "object" &&
+              order.createdAt.$date.$numberLong
+                ? new Date(
+                    Number(order.createdAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.createdAt.$date).toISOString();
+          }
+
+          if (
+            order.updatedAt &&
+            typeof order.updatedAt === "object" &&
+            "$date" in order.updatedAt
+          ) {
+            order.updatedAt =
+              typeof order.updatedAt.$date === "object" &&
+              order.updatedAt.$date.$numberLong
+                ? new Date(
+                    Number(order.updatedAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.updatedAt.$date).toISOString();
+          }
+
+          if (
+            order.pickupAt &&
+            typeof order.pickupAt === "object" &&
+            "$date" in order.pickupAt
+          ) {
+            order.pickupAt =
+              typeof order.pickupAt.$date === "object" &&
+              order.pickupAt.$date.$numberLong
+                ? new Date(
+                    Number(order.pickupAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.pickupAt.$date).toISOString();
+          }
+
+          if (
+            order.deliveredAt &&
+            typeof order.deliveredAt === "object" &&
+            "$date" in order.deliveredAt
+          ) {
+            order.deliveredAt =
+              typeof order.deliveredAt.$date === "object" &&
+              order.deliveredAt.$date.$numberLong
+                ? new Date(
+                    Number(order.deliveredAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.deliveredAt.$date).toISOString();
+          }
+
           return formatOrderResponse(order, riderId);
         });
 
@@ -1066,7 +1123,6 @@ export class RiderService {
       throw error;
     }
   }
-
   static async getOnlineRiders(state: string) {
     try {
       const riders = await prisma.rider.findMany({
