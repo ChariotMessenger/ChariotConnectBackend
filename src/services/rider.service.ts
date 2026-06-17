@@ -969,158 +969,123 @@ export class RiderService {
     try {
       const skip = (page - 1) * limit;
 
-      let statusFilter: any = undefined;
+      let queryFilter: any = {};
+
       if (statusType === "AVAILABLE_JOBS") {
-        statusFilter = "ORDER_PACKED";
+        queryFilter = {
+          riderId: null,
+          status: "ORDER_PACKED",
+        };
       } else if (statusType === "ACTIVE") {
-        statusFilter = {
-          in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
+        queryFilter = {
+          riderId: { $oid: riderId },
+          status: {
+            $in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
+          },
         };
       } else if (statusType === "DELIVERED") {
-        statusFilter = "DELIVERED";
+        queryFilter = {
+          riderId: { $oid: riderId },
+          status: "DELIVERED",
+        };
+      } else {
+        queryFilter = {
+          riderId: { $oid: riderId },
+          status: {
+            $in: [
+              "RIDER_EN_ROUTE_TO_VENDOR",
+              "RIDER_EN_ROUTE_TO_CUSTOMER",
+              "DELIVERED",
+            ],
+          },
+        };
       }
 
-      if (statusType === "AVAILABLE_JOBS") {
-        const queryFilter: any = {
-          riderId: null,
-          status: statusFilter,
-        };
+      const rawOrders = await prisma.order.findRaw({
+        filter: queryFilter,
+        options: {
+          skip,
+          limit,
+          sort: { updatedAt: -1 },
+        },
+      });
 
-        const rawOrders = await prisma.order.findRaw({
-          filter: queryFilter,
-          options: {
-            skip,
-            limit,
-            sort: { updatedAt: -1 },
-          },
-        });
+      const countPipeline: any[] = [
+        { $match: queryFilter },
+        { $count: "total" },
+      ];
+      const rawCountResult = await prisma.order.aggregateRaw({
+        pipeline: countPipeline,
+      });
 
-        const countPipeline: any[] = [
-          { $match: queryFilter },
-          { $count: "total" },
-        ];
-        const rawCountResult = await prisma.order.aggregateRaw({
-          pipeline: countPipeline,
-        });
+      let totalCount = 0;
+      if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
+        totalCount = (rawCountResult[0] as any).total || 0;
+      }
 
-        let totalCount = 0;
-        if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
-          totalCount = (rawCountResult[0] as any).total || 0;
+      const orders = Array.isArray(rawOrders) ? rawOrders : [];
+
+      const formattedOrders = orders.map((order: any) => {
+        if (order._id && order._id.$oid) {
+          order.id = order._id.$oid;
         }
 
-        const orders = Array.isArray(rawOrders) ? rawOrders : [];
+        if (
+          order.createdAt &&
+          typeof order.createdAt === "object" &&
+          "$date" in order.createdAt
+        ) {
+          order.createdAt =
+            typeof order.createdAt.$date === "object" &&
+            order.createdAt.$date.$numberLong
+              ? new Date(
+                  Number(order.createdAt.$date.$numberLong),
+                ).toISOString()
+              : new Date(order.createdAt.$date).toISOString();
+        }
 
-        const formattedOrders = orders.map((order: any) => {
-          if (order._id && order._id.$oid) {
-            order.id = order._id.$oid;
-          }
+        if (
+          order.updatedAt &&
+          typeof order.updatedAt === "object" &&
+          "$date" in order.updatedAt
+        ) {
+          order.updatedAt =
+            typeof order.updatedAt.$date === "object" &&
+            order.updatedAt.$date.$numberLong
+              ? new Date(
+                  Number(order.updatedAt.$date.$numberLong),
+                ).toISOString()
+              : new Date(order.updatedAt.$date).toISOString();
+        }
 
-          if (
-            order.createdAt &&
-            typeof order.createdAt === "object" &&
-            "$date" in order.createdAt
-          ) {
-            order.createdAt =
-              typeof order.createdAt.$date === "object" &&
-              order.createdAt.$date.$numberLong
-                ? new Date(
-                    Number(order.createdAt.$date.$numberLong),
-                  ).toISOString()
-                : new Date(order.createdAt.$date).toISOString();
-          }
+        if (
+          order.pickupAt &&
+          typeof order.pickupAt === "object" &&
+          "$date" in order.pickupAt
+        ) {
+          order.pickupAt =
+            typeof order.pickupAt.$date === "object" &&
+            order.pickupAt.$date.$numberLong
+              ? new Date(Number(order.pickupAt.$date.$numberLong)).toISOString()
+              : new Date(order.pickupAt.$date).toISOString();
+        }
 
-          if (
-            order.updatedAt &&
-            typeof order.updatedAt === "object" &&
-            "$date" in order.updatedAt
-          ) {
-            order.updatedAt =
-              typeof order.updatedAt.$date === "object" &&
-              order.updatedAt.$date.$numberLong
-                ? new Date(
-                    Number(order.updatedAt.$date.$numberLong),
-                  ).toISOString()
-                : new Date(order.updatedAt.$date).toISOString();
-          }
+        if (
+          order.deliveredAt &&
+          typeof order.deliveredAt === "object" &&
+          "$date" in order.deliveredAt
+        ) {
+          order.deliveredAt =
+            typeof order.deliveredAt.$date === "object" &&
+            order.deliveredAt.$date.$numberLong
+              ? new Date(
+                  Number(order.deliveredAt.$date.$numberLong),
+                ).toISOString()
+              : new Date(order.deliveredAt.$date).toISOString();
+        }
 
-          if (
-            order.pickupAt &&
-            typeof order.pickupAt === "object" &&
-            "$date" in order.pickupAt
-          ) {
-            order.pickupAt =
-              typeof order.pickupAt.$date === "object" &&
-              order.pickupAt.$date.$numberLong
-                ? new Date(
-                    Number(order.pickupAt.$date.$numberLong),
-                  ).toISOString()
-                : new Date(order.pickupAt.$date).toISOString();
-          }
-
-          if (
-            order.deliveredAt &&
-            typeof order.deliveredAt === "object" &&
-            "$date" in order.deliveredAt
-          ) {
-            order.deliveredAt =
-              typeof order.deliveredAt.$date === "object" &&
-              order.deliveredAt.$date.$numberLong
-                ? new Date(
-                    Number(order.deliveredAt.$date.$numberLong),
-                  ).toISOString()
-                : new Date(order.deliveredAt.$date).toISOString();
-          }
-
-          return formatOrderResponse(order, riderId);
-        });
-
-        return {
-          orders: formattedOrders,
-          meta: {
-            totalCount,
-            page,
-            limit,
-            totalPages: Math.ceil(totalCount / limit),
-          },
-        };
-      }
-
-      let whereClause: any = {
-        riderId,
-      };
-
-      if (statusType) {
-        whereClause.status = statusFilter;
-      } else {
-        whereClause.status = {
-          in: [
-            "RIDER_EN_ROUTE_TO_VENDOR",
-            "RIDER_EN_ROUTE_TO_CUSTOMER",
-            "DELIVERED",
-          ],
-        };
-      }
-
-      const [orders, totalCount] = await prisma.$transaction([
-        prisma.order.findMany({
-          where: whereClause,
-          include: {
-            vendor: true,
-            customer: true,
-            rider: true,
-          },
-          orderBy: { updatedAt: "desc" },
-          skip,
-          take: limit,
-        }),
-        prisma.order.count({
-          where: whereClause,
-        }),
-      ]);
-
-      const formattedOrders = orders.map((order: any) =>
-        formatOrderResponse(order, riderId),
-      );
+        return formatOrderResponse(order, riderId);
+      });
 
       return {
         orders: formattedOrders,

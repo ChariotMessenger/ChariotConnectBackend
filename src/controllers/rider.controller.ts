@@ -389,7 +389,7 @@ export class RiderController {
 
       let statusType: "AVAILABLE_JOBS" | "ACTIVE" | "DELIVERED" | undefined =
         undefined;
-      if (incomingStatus === "COMPLETED") {
+      if (incomingStatus === "DELIVERED") {
         statusType = "DELIVERED";
       } else if (incomingStatus === "ACTIVE") {
         statusType = "ACTIVE";
