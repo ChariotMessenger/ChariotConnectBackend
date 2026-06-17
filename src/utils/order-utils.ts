@@ -62,7 +62,7 @@ export function formatOrderResponse(order: any, requestedByUserId?: string) {
       profilePhotoUrl: order.rider.profilePhotoUrl || "",
       riderMaintenanceFee: isRider ? order.riderMaintenanceFee : undefined,
       totalAmountToReceive: isRider ? order.riderNet : undefined,
-      riderLocation: order.riderLocation || {},
+      riderLocation: order.riderLocation || null,
     };
   }
 
