@@ -535,12 +535,31 @@ export class CustomerService {
         };
       }
 
+      let whereClause: any = {
+        customerId,
+      };
+
+      if (status) {
+        whereClause.status = statusCondition;
+      } else {
+        whereClause.status = {
+          in: [
+            "WAITING_FOR_APPROVAL",
+            "AWAITING_PAYMENT",
+            "PAID",
+            "ORDER_PACKED",
+            "RIDER_EN_ROUTE_TO_VENDOR",
+            "RIDER_EN_ROUTE_TO_CUSTOMER",
+            "DELIVERED",
+            "CANCELLED",
+            "REJECTED",
+          ],
+        };
+      }
+
       const [orders, total] = await prisma.$transaction([
         prisma.order.findMany({
-          where: {
-            customerId,
-            ...(statusCondition && { status: statusCondition }),
-          },
+          where: whereClause,
           include: {
             vendor: true,
             customer: true,
@@ -551,10 +570,7 @@ export class CustomerService {
           take: limit,
         }),
         prisma.order.count({
-          where: {
-            customerId,
-            ...(statusCondition && { status: statusCondition }),
-          },
+          where: whereClause,
         }),
       ]);
 
@@ -577,7 +593,6 @@ export class CustomerService {
       throw error;
     }
   }
-
   static async getCustomerOrderById(orderId: string, customerId: string) {
     try {
       const order = await prisma.order.findFirst({

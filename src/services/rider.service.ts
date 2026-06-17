@@ -1086,9 +1086,20 @@ export class RiderService {
       }
 
       let whereClause: any = {
-        ...(statusType ? { status: statusFilter } : {}),
         riderId,
       };
+
+      if (statusType) {
+        whereClause.status = statusFilter;
+      } else {
+        whereClause.status = {
+          in: [
+            "RIDER_EN_ROUTE_TO_VENDOR",
+            "RIDER_EN_ROUTE_TO_CUSTOMER",
+            "DELIVERED",
+          ],
+        };
+      }
 
       const [orders, totalCount] = await prisma.$transaction([
         prisma.order.findMany({

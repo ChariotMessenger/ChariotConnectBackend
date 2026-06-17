@@ -812,7 +812,7 @@ protectedRouter.post(
 router.get("/nearby-jobs", authMiddleware, riderController.getNearbyJobs);
 /**
  * @swagger
- * /riders/orders:
+ * /riders/riders/orders:
  *   get:
  *     summary: Get paginated tracking context arrays for rider dashboard node
  *     tags:
@@ -826,7 +826,7 @@ router.get("/nearby-jobs", authMiddleware, riderController.getNearbyJobs);
  *           type: string
  *           enum:
  *             - ACTIVE
- *             - COMPLETED
+ *             - DELIVERED
  *             - CANCELLED
  *         description: Filter status structural type
  *       - in: query
