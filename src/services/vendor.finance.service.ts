@@ -11,6 +11,34 @@ import crypto from "crypto";
 import { comparePassword } from "../utils/password";
 
 export class VendorFinancialService {
+  static async getWalletBalance(vendorId: string) {
+    try {
+      const wallet = await prisma.wallet.findUnique({
+        where: { vendorId },
+        select: {
+          balance: true,
+          currency: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!wallet) {
+        throw new CustomError(
+          "Wallet account record not found for this vendor profile",
+          404,
+          "WALLET_NOT_FOUND",
+        );
+      }
+
+      return wallet;
+    } catch (error) {
+      logger.error(
+        `Error retrieving wallet balance for vendor ${vendorId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
   static async getTransactionHistory(
     vendorId: string,
     filterStatus?: PaymentStatus,
