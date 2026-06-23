@@ -16,15 +16,15 @@ export function formatOrderResponse(order: any, requestedByUserId?: string) {
     pickupLocation: order.pickupLocation || {},
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
-    estDeliveryTime: order.estDeliveryTime || "",
-    riderSecretKey: isRider ? order.riderSecretKey : "",
-    customerSecretKey: isCustomer ? order.customerSecretKey : "",
+    estDeliveryTime: order.estDeliveryTime,
+    riderSecretKey: order.riderSecretKey,
+    customerSecretKey: order.customerSecretKey,
     vendorNet: order.vendorNet,
     settlementStatus: order.settlementStatus || "PENDING",
     payoutStatus: order.payoutStatus || "PENDING",
     pickupAt: order.pickupAt || null,
     deliveredAt: order.deliveredAt || null,
-    productPrice: !isRider ? order.productPrice : undefined,
+    productPrice: order.productPrice,
     packsList: (order.items as unknown as PackGroup[]) || [],
   };
 
@@ -61,7 +61,7 @@ export function formatOrderResponse(order: any, requestedByUserId?: string) {
       phone: order.rider.phoneNumber || "",
       profilePhotoUrl: order.rider.profilePhotoUrl || "",
       riderMaintenanceFee: isRider ? order.riderMaintenanceFee : undefined,
-      totalAmountToReceive: isRider ? order.riderNet : undefined,
+      totalAmountToReceive: order.riderNet,
       riderLocation: order.riderLocation || null,
     };
   }
