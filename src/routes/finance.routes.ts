@@ -221,6 +221,70 @@ router.get(
 
 /**
  * @swagger
+ * /finance/vendors/{vendorId}/wallet/balance:
+ *   get:
+ *     summary: Get Vendor Wallet Balance
+ *     description: Retrieve the current balance, active trading currency, and timestamp parameters of a vendor's digital wallet.
+ *     tags:
+ *       - Vendor Financials
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique structural identifier of the vendor entity
+ *     responses:
+ *       200:
+ *         description: Wallet balance records parsed successfully.
+ *       400:
+ *         description: Vendor identification context parameter is required.
+ *       404:
+ *         description: Wallet account record not found for this vendor profile.
+ *       500:
+ *         description: Internal server error fetching wallet balance.
+ */
+router.get(
+  "/vendors/:vendorId/wallet/balance",
+  authMiddleware,
+  VendorFinancialController.getBalance,
+);
+/**
+ * @swagger
+ * /finance/riders/{riderId}/wallet/balance:
+ *   get:
+ *     summary: Get Rider Wallet Balance
+ *     description: Retrieve the current balance, active trading currency, and timestamp parameters of a logistics rider's digital wallet.
+ *     tags:
+ *       - Rider Financials
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: riderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique structural identifier of the rider entity
+ *     responses:
+ *       200:
+ *         description: Wallet balance records parsed successfully.
+ *       400:
+ *         description: Rider identification context parameter is required.
+ *       404:
+ *         description: Wallet account record not found for this rider profile.
+ *       500:
+ *         description: Internal server error fetching wallet balance.
+ */
+router.get(
+  "/riders/:riderId/wallet/balance",
+  authMiddleware,
+  RiderFinancialController.getBalance,
+);
+/**
+ * @swagger
  * /finance/rider/bank-change/pending:
  *   get:
  *     summary: Check Pending Bank Details Change

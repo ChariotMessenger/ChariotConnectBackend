@@ -26,6 +26,14 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       logger.info(`User ${userId} (${userType}) is online`);
     });
 
+    socket.on("wallet:join", (data) => {
+      const { ownerId } = data;
+      socket.join(`wallet:${ownerId}`);
+      logger.info(
+        `Socket ${socket.id} joined wallet synchronization updates for entity: ${ownerId}`,
+      );
+    });
+
     socket.on("order:join-room", (data) => {
       const { orderId, userId } = data;
       const roomName = `order:${orderId}`;
@@ -186,5 +194,19 @@ export const emitToOrderRoom = (
 export const emitToAllRiders = (eventName: string, data: any) => {
   if (ioInstance) {
     ioInstance.emit(eventName, data);
+  }
+};
+
+export const emitWalletBalanceUpdate = (
+  ownerId: string,
+  balance: number,
+  currency: string,
+) => {
+  if (ioInstance) {
+    ioInstance.to(`wallet:${ownerId}`).emit("wallet:balance-updated", {
+      balance,
+      currency,
+      updatedAt: new Date(),
+    });
   }
 };

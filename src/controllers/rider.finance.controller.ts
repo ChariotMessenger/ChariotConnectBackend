@@ -4,6 +4,33 @@ import { RiderFinancialService } from "../services/rider.finance.service";
 import { PaymentStatus, WithdrawalStatus } from "@prisma/client";
 
 export class RiderFinancialController {
+  static async getBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const { riderId } = req.params;
+      if (!riderId) {
+        res.status(400).json({
+          success: false,
+          message: "Rider identification context parameter is required",
+        });
+        return;
+      }
+
+      const walletData = await RiderFinancialService.getWalletBalance(riderId);
+
+      res.status(200).json({
+        success: true,
+        message: "Wallet balance records parsed successfully",
+        data: walletData,
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message:
+          error.message || "Internal server error fetching wallet balance",
+        code: error.errorCode || "INTERNAL_SERVER_ERROR",
+      });
+    }
+  }
   static async getTransactions(
     req: AuthRequest,
     res: Response,

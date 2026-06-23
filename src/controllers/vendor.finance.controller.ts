@@ -4,6 +4,34 @@ import { VendorFinancialService } from "../services/vendor.finance.service";
 import { PaymentStatus, WithdrawalStatus } from "@prisma/client";
 
 export class VendorFinancialController {
+  static async getBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const { vendorId } = req.params;
+      if (!vendorId) {
+        res.status(400).json({
+          success: false,
+          message: "Vendor identification context parameter is required",
+        });
+        return;
+      }
+
+      const walletData =
+        await VendorFinancialService.getWalletBalance(vendorId);
+
+      res.status(200).json({
+        success: true,
+        message: "Wallet balance records parsed successfully",
+        data: walletData,
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message:
+          error.message || "Internal server error fetching wallet balance",
+        code: error.errorCode || "INTERNAL_SERVER_ERROR",
+      });
+    }
+  }
   static async getTransactions(
     req: AuthRequest,
     res: Response,

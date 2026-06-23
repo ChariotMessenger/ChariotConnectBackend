@@ -11,6 +11,34 @@ import crypto from "crypto";
 import { comparePassword } from "../utils/password";
 
 export class RiderFinancialService {
+  static async getWalletBalance(riderId: string) {
+    try {
+      const wallet = await prisma.wallet.findUnique({
+        where: { riderId },
+        select: {
+          balance: true,
+          currency: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!wallet) {
+        throw new CustomError(
+          "Wallet account record not found for this rider profile",
+          404,
+          "WALLET_NOT_FOUND",
+        );
+      }
+
+      return wallet;
+    } catch (error) {
+      logger.error(
+        `Error retrieving wallet balance for rider ${riderId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
   static async getTransactionHistory(
     riderId: string,
     filterStatus?: PaymentStatus,
