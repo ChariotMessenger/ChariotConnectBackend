@@ -142,6 +142,27 @@ export class VendorFinancialService {
       throw error;
     }
   }
+  static async hasPendingBankDetailsChange(vendorId: string): Promise<boolean> {
+    try {
+      const pendingRequest = await prisma.bankDetailsChangeRequest.findFirst({
+        where: {
+          vendorId,
+          status: VerificationStatus.PENDING,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      return pendingRequest !== null;
+    } catch (error) {
+      logger.error(
+        `Error checking pending bank details change request for vendor ${vendorId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
 
   static async proposeBankDetailsChange(
     vendorId: string,

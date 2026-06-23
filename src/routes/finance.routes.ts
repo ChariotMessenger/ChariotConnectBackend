@@ -199,7 +199,45 @@ router.get(
 
   VendorFinancialController.getWithdrawals,
 );
+/**
+ * @swagger
+ * /finance/vendor/bank-change/pending:
+ *   get:
+ *     summary: Check Pending Bank Details Change
+ *     description: Verify whether the merchant vendor currently has an active pending bank profile modification request.
+ *     tags:
+ *       - Vendor Financials
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pending status evaluated.
+ */
+router.get(
+  "/vendor/bank-change/pending",
+  authMiddleware,
+  VendorFinancialController.checkPendingBankDetailsChange,
+);
 
+/**
+ * @swagger
+ * /finance/rider/bank-change/pending:
+ *   get:
+ *     summary: Check Pending Bank Details Change
+ *     description: Verify whether the rider currently has an active pending bank profile modification request.
+ *     tags:
+ *       - Rider Financials
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pending status evaluated.
+ */
+router.get(
+  "/rider/bank-change/pending",
+  authMiddleware,
+  RiderFinancialController.checkPendingBankDetailsChange,
+);
 /**
  * @swagger
  * /finance/vendor/withdraw:

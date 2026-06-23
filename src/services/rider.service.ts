@@ -969,123 +969,147 @@ export class RiderService {
     try {
       const skip = (page - 1) * limit;
 
-      let queryFilter: any = {};
-
+      let statusFilter: any = undefined;
       if (statusType === "AVAILABLE_JOBS") {
-        queryFilter = {
-          riderId: null,
-          status: "ORDER_PACKED",
-        };
+        statusFilter = "ORDER_PACKED";
       } else if (statusType === "ACTIVE") {
-        queryFilter = {
-          riderId: { $oid: riderId },
-          status: {
-            $in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
-          },
+        statusFilter = {
+          in: ["RIDER_EN_ROUTE_TO_VENDOR", "RIDER_EN_ROUTE_TO_CUSTOMER"],
         };
       } else if (statusType === "DELIVERED") {
-        queryFilter = {
-          riderId: { $oid: riderId },
-          status: "DELIVERED",
+        statusFilter = "DELIVERED";
+      }
+
+      if (statusType === "AVAILABLE_JOBS") {
+        const queryFilter: any = {
+          riderId: null,
+          status: statusFilter,
         };
-      } else {
-        queryFilter = {
-          riderId: { $oid: riderId },
-          status: {
-            $in: [
-              "RIDER_EN_ROUTE_TO_VENDOR",
-              "RIDER_EN_ROUTE_TO_CUSTOMER",
-              "DELIVERED",
-            ],
+
+        const rawOrders = await prisma.order.findRaw({
+          filter: queryFilter,
+          options: {
+            skip,
+            limit,
+            sort: { updatedAt: -1 },
+          },
+        });
+
+        const countPipeline: any[] = [
+          { $match: queryFilter },
+          { $count: "total" },
+        ];
+        const rawCountResult = await prisma.order.aggregateRaw({
+          pipeline: countPipeline,
+        });
+
+        let totalCount = 0;
+        if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
+          totalCount = (rawCountResult[0] as any).total || 0;
+        }
+
+        const orders = Array.isArray(rawOrders) ? rawOrders : [];
+
+        const formattedOrders = orders.map((order: any) => {
+          if (order._id && order._id.$oid) {
+            order.id = order._id.$oid;
+          }
+
+          if (
+            order.createdAt &&
+            typeof order.createdAt === "object" &&
+            "$date" in order.createdAt
+          ) {
+            order.createdAt =
+              typeof order.createdAt.$date === "object" &&
+              order.createdAt.$date.$numberLong
+                ? new Date(
+                    Number(order.createdAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.createdAt.$date).toISOString();
+          }
+
+          if (
+            order.updatedAt &&
+            typeof order.updatedAt === "object" &&
+            "$date" in order.updatedAt
+          ) {
+            order.updatedAt =
+              typeof order.updatedAt.$date === "object" &&
+              order.updatedAt.$date.$numberLong
+                ? new Date(
+                    Number(order.updatedAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.updatedAt.$date).toISOString();
+          }
+
+          if (
+            order.pickupAt &&
+            typeof order.pickupAt === "object" &&
+            "$date" in order.pickupAt
+          ) {
+            order.pickupAt =
+              typeof order.pickupAt.$date === "object" &&
+              order.pickupAt.$date.$numberLong
+                ? new Date(
+                    Number(order.pickupAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.pickupAt.$date).toISOString();
+          }
+
+          if (
+            order.deliveredAt &&
+            typeof order.deliveredAt === "object" &&
+            "$date" in order.deliveredAt
+          ) {
+            order.deliveredAt =
+              typeof order.deliveredAt.$date === "object" &&
+              order.deliveredAt.$date.$numberLong
+                ? new Date(
+                    Number(order.deliveredAt.$date.$numberLong),
+                  ).toISOString()
+                : new Date(order.deliveredAt.$date).toISOString();
+          }
+
+          return formatOrderResponse(order, riderId);
+        });
+
+        return {
+          orders: formattedOrders,
+          meta: {
+            totalCount,
+            page,
+            limit,
+            totalPages: Math.ceil(totalCount / limit),
           },
         };
       }
 
-      const rawOrders = await prisma.order.findRaw({
-        filter: queryFilter,
-        options: {
+      let whereClause: any = {
+        ...(statusType ? { status: statusFilter } : {}),
+        riderId,
+      };
+
+      const [orders, totalCount] = await prisma.$transaction([
+        prisma.order.findMany({
+          where: whereClause,
+          include: {
+            vendor: true,
+            customer: true,
+            rider: true,
+          },
+          orderBy: { updatedAt: "desc" },
           skip,
-          limit,
-          sort: { updatedAt: -1 },
-        },
-      });
+          take: limit,
+        }),
+        prisma.order.count({
+          where: whereClause,
+        }),
+      ]);
 
-      const countPipeline: any[] = [
-        { $match: queryFilter },
-        { $count: "total" },
-      ];
-      const rawCountResult = await prisma.order.aggregateRaw({
-        pipeline: countPipeline,
-      });
-
-      let totalCount = 0;
-      if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
-        totalCount = (rawCountResult[0] as any).total || 0;
-      }
-
-      const orders = Array.isArray(rawOrders) ? rawOrders : [];
-
-      const formattedOrders = orders.map((order: any) => {
-        if (order._id && order._id.$oid) {
-          order.id = order._id.$oid;
-        }
-
-        if (
-          order.createdAt &&
-          typeof order.createdAt === "object" &&
-          "$date" in order.createdAt
-        ) {
-          order.createdAt =
-            typeof order.createdAt.$date === "object" &&
-            order.createdAt.$date.$numberLong
-              ? new Date(
-                  Number(order.createdAt.$date.$numberLong),
-                ).toISOString()
-              : new Date(order.createdAt.$date).toISOString();
-        }
-
-        if (
-          order.updatedAt &&
-          typeof order.updatedAt === "object" &&
-          "$date" in order.updatedAt
-        ) {
-          order.updatedAt =
-            typeof order.updatedAt.$date === "object" &&
-            order.updatedAt.$date.$numberLong
-              ? new Date(
-                  Number(order.updatedAt.$date.$numberLong),
-                ).toISOString()
-              : new Date(order.updatedAt.$date).toISOString();
-        }
-
-        if (
-          order.pickupAt &&
-          typeof order.pickupAt === "object" &&
-          "$date" in order.pickupAt
-        ) {
-          order.pickupAt =
-            typeof order.pickupAt.$date === "object" &&
-            order.pickupAt.$date.$numberLong
-              ? new Date(Number(order.pickupAt.$date.$numberLong)).toISOString()
-              : new Date(order.pickupAt.$date).toISOString();
-        }
-
-        if (
-          order.deliveredAt &&
-          typeof order.deliveredAt === "object" &&
-          "$date" in order.deliveredAt
-        ) {
-          order.deliveredAt =
-            typeof order.deliveredAt.$date === "object" &&
-            order.deliveredAt.$date.$numberLong
-              ? new Date(
-                  Number(order.deliveredAt.$date.$numberLong),
-                ).toISOString()
-              : new Date(order.deliveredAt.$date).toISOString();
-        }
-
-        return formatOrderResponse(order, riderId);
-      });
+      const formattedOrders = orders.map((order: any) =>
+        formatOrderResponse(order, riderId),
+      );
 
       return {
         orders: formattedOrders,

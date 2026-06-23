@@ -50,6 +50,25 @@ export class RiderFinancialController {
     }
   }
 
+  static async checkPendingBankDetailsChange(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const riderId = req.user!.id;
+      const hasPending =
+        await RiderFinancialService.hasPendingBankDetailsChange(riderId);
+
+      res.status(200).json({
+        success: true,
+        data: { hasPending },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async requestWithdrawal(
     req: AuthRequest,
     res: Response,

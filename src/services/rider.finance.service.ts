@@ -31,7 +31,27 @@ export class RiderFinancialService {
       throw error;
     }
   }
+  static async hasPendingBankDetailsChange(riderId: string): Promise<boolean> {
+    try {
+      const pendingRequest = await prisma.bankDetailsChangeRequest.findFirst({
+        where: {
+          riderId,
+          status: VerificationStatus.PENDING,
+        },
+        select: {
+          id: true,
+        },
+      });
 
+      return pendingRequest !== null;
+    } catch (error) {
+      logger.error(
+        `Error checking pending bank details change request for rider ${riderId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
   static async getWithdrawalRequests(
     riderId: string,
     filterStatus?: WithdrawalStatus,
