@@ -98,14 +98,14 @@ export class OrderService {
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       estDeliveryTime: order.estDeliveryTime || "",
-      riderSecretKey: isRider ? order.riderSecretKey : "",
-      customerSecretKey: isCustomer ? order.customerSecretKey : "",
+      riderSecretKey: order.riderSecretKey,
+      customerSecretKey: order.customerSecretKey,
       vendorNet: order.vendorNet,
       settlementStatus: order.settlementStatus || "PENDING",
       payoutStatus: order.payoutStatus || "PENDING",
       pickupAt: order.pickupAt || null,
       deliveredAt: order.deliveredAt || null,
-      productPrice: !isRider ? order.productPrice : undefined,
+      productPrice: order.productPrice,
       packsList: (order.items as unknown as PackGroup[]) || [],
     };
 
