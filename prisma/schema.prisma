@@ -215,6 +215,7 @@ model PendingRider {
   otp              String?
   createdAt        DateTime @default(now())
 }
+
 model Order {
   id                    String      @id @default(auto()) @map("_id") @db.ObjectId
   vendorId              String      @db.ObjectId

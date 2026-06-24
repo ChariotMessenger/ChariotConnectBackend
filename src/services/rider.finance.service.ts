@@ -23,11 +23,43 @@ export class RiderFinancialService {
       });
 
       if (!wallet) {
-        throw new CustomError(
-          "Wallet account record not found for this rider profile",
-          404,
-          "WALLET_NOT_FOUND",
-        );
+        const rider = await prisma.rider.findUnique({
+          where: { id: riderId },
+          select: { country: true },
+        });
+
+        if (!rider) {
+          throw new CustomError(
+            "Rider profile not found",
+            404,
+            "RIDER_NOT_FOUND",
+          );
+        }
+
+        const currencyMap: Record<string, string> = {
+          Nigeria: "NGN",
+          Rwanda: "RWF",
+          Ghana: "GHS",
+          Kenya: "KES",
+          Uganda: "UGX",
+        };
+
+        const defaultCurrency = currencyMap[rider.country || ""] || "NGN";
+
+        const newWallet = await prisma.wallet.create({
+          data: {
+            riderId,
+            balance: 0,
+            currency: defaultCurrency,
+          },
+          select: {
+            balance: true,
+            currency: true,
+            updatedAt: true,
+          },
+        });
+
+        return newWallet;
       }
 
       return wallet;

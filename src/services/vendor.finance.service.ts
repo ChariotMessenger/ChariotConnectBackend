@@ -13,7 +13,7 @@ import { comparePassword } from "../utils/password";
 export class VendorFinancialService {
   static async getWalletBalance(vendorId: string) {
     try {
-      const wallet = await prisma.wallet.findUnique({
+      let wallet = await prisma.wallet.findUnique({
         where: { vendorId },
         select: {
           balance: true,
@@ -23,11 +23,43 @@ export class VendorFinancialService {
       });
 
       if (!wallet) {
-        throw new CustomError(
-          "Wallet account record not found for this vendor profile",
-          404,
-          "WALLET_NOT_FOUND",
-        );
+        const vendor = await prisma.vendor.findUnique({
+          where: { id: vendorId },
+          select: { country: true },
+        });
+
+        if (!vendor) {
+          throw new CustomError(
+            "Vendor profile not found",
+            404,
+            "VENDOR_NOT_FOUND",
+          );
+        }
+
+        const currencyMap: Record<string, string> = {
+          Nigeria: "NGN",
+          Rwanda: "RWF",
+          Ghana: "GHS",
+          Kenya: "KES",
+          Uganda: "UGX",
+        };
+
+        const defaultCurrency = currencyMap[vendor.country || ""] || "NGN";
+
+        const newWallet = await prisma.wallet.create({
+          data: {
+            vendorId,
+            balance: 0,
+            currency: defaultCurrency,
+          },
+          select: {
+            balance: true,
+            currency: true,
+            updatedAt: true,
+          },
+        });
+
+        return newWallet;
       }
 
       return wallet;
