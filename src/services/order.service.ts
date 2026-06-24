@@ -198,10 +198,7 @@ export class OrderService {
         .randomBytes(4)
         .toString("hex")
         .toUpperCase();
-      const riderSecretKey = crypto
-        .randomBytes(4)
-        .toString("hex")
-        .toUpperCase();
+      const ridsKey = crypto.randomBytes(4).toString("hex").toUpperCase();
 
       const order = await prisma.order.create({
         data: {
@@ -216,7 +213,7 @@ export class OrderService {
           pickupLocation: vendor.businessAddress as any,
           estDeliveryTime: data.estDeliveryTime,
           customerSecretKey,
-          riderSecretKey,
+          riderSecretKey: ridsKey,
           productPrice: calculatedProductPrice,
           deliveryFee: systemDeliveryFee,
           protectionFee: orderProtectionFee,
@@ -713,6 +710,19 @@ export class OrderService {
     }
 
     if (isPaid) {
+      const existingOrder = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { vendorId: true, vendorNet: true, currency: true },
+      });
+
+      if (!existingOrder) {
+        throw new CustomError(
+          "Order context not found",
+          404,
+          "ORDER_NOT_FOUND",
+        );
+      }
+
       const [transaction, order] = await prisma.$transaction([
         prisma.transaction.update({
           where: { reference },
@@ -722,6 +732,10 @@ export class OrderService {
           where: { id: orderId },
           data: { status: OrderStatus.PAID },
           include: this.orderIncludeOptions,
+        }),
+        prisma.wallet.update({
+          where: { vendorId: existingOrder.vendorId },
+          data: { balance: { increment: existingOrder.vendorNet } },
         }),
       ]);
 
@@ -916,11 +930,17 @@ export class OrderService {
     riderId: string,
     secretKey: string,
   ) {
-    const order = await prisma.order.findFirst({
+    const orderContext = await prisma.order.findFirst({
       where: { id: orderId, riderId },
+      select: {
+        status: true,
+        customerSecretKey: true,
+        riderId: true,
+        riderNet: true,
+      },
     });
 
-    if (!order) {
+    if (!orderContext) {
       throw new CustomError(
         "Order not found or unauthorized rider access",
         404,
@@ -928,7 +948,7 @@ export class OrderService {
       );
     }
 
-    if (order.status !== OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER) {
+    if (orderContext.status !== OrderStatus.RIDER_EN_ROUTE_TO_CUSTOMER) {
       throw new CustomError(
         "Order status must be RIDER_EN_ROUTE_TO_CUSTOMER to perform final delivery verification",
         400,
@@ -936,7 +956,7 @@ export class OrderService {
       );
     }
 
-    if (order.customerSecretKey !== secretKey) {
+    if (orderContext.customerSecretKey !== secretKey) {
       throw new CustomError(
         "Invalid customer secret key verification failed",
         400,
@@ -944,11 +964,17 @@ export class OrderService {
       );
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: { status: OrderStatus.DELIVERED, deliveredAt: new Date() },
-      include: this.orderIncludeOptions,
-    });
+    const [updatedOrder] = await prisma.$transaction([
+      prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.DELIVERED, deliveredAt: new Date() },
+        include: this.orderIncludeOptions,
+      }),
+      prisma.wallet.update({
+        where: { riderId: orderContext.riderId || undefined },
+        data: { balance: { increment: orderContext.riderNet } },
+      }),
+    ]);
 
     emitToUser(
       updatedOrder.customerId,
