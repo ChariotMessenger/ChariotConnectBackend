@@ -10,7 +10,6 @@ export class ReviewService {
     comment?: string;
   }) {
     try {
-      // Validate rating
       if (data.rating < 1 || data.rating > 5) {
         throw new CustomError(
           "Rating must be between 1 and 5",
@@ -63,7 +62,6 @@ export class ReviewService {
         orderBy: { createdAt: "desc" },
       });
 
-      // Calculate average rating
       const averageRating =
         reviews.length > 0
           ? reviews.reduce((sum, review) => sum + review.rating, 0) /
@@ -79,6 +77,93 @@ export class ReviewService {
       };
     } catch (error) {
       logger.error("Error fetching vendor reviews:", error);
+      throw error;
+    }
+  }
+
+  static async getVendorReviewsByCustomer(
+    vendorId: string,
+    customerId: string,
+  ) {
+    try {
+      const reviews = await prisma.review.findMany({
+        where: {
+          vendorId,
+          customerId,
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhotoUrl: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      logger.info(
+        `Vendor reviews by customer ${customerId} fetched for vendor ${vendorId}`,
+      );
+      return reviews;
+    } catch (error) {
+      logger.error("Error fetching vendor reviews by customer:", error);
+      throw error;
+    }
+  }
+
+  static async getVendorReviewsForCustomer(
+    vendorId: string,
+    customerId: string,
+  ) {
+    try {
+      const reviews = await prisma.review.findMany({
+        where: { vendorId },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhotoUrl: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            customerId: customerId ? "asc" : "desc",
+          },
+          {
+            createdAt: "desc",
+          },
+        ],
+      });
+
+      if (customerId) {
+        reviews.sort((a, b) => {
+          if (a.customerId === customerId) return -1;
+          if (b.customerId === customerId) return 1;
+          return 0;
+        });
+      }
+
+      const averageRating =
+        reviews.length > 0
+          ? reviews.reduce((sum, review) => sum + review.rating, 0) /
+            reviews.length
+          : 0;
+
+      logger.info(`Vendor reviews fetched for viewing customer ${customerId}`);
+
+      return {
+        reviews,
+        averageRating: parseFloat(averageRating.toFixed(2)),
+        totalReviews: reviews.length,
+      };
+    } catch (error) {
+      logger.error("Error fetching vendor reviews for customer view:", error);
       throw error;
     }
   }
@@ -115,7 +200,6 @@ export class ReviewService {
     }
   }
 }
-
 export class FavoriteService {
   static async addFavorite(customerId: string, vendorId: string) {
     try {

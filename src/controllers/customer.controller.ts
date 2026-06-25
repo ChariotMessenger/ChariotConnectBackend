@@ -454,6 +454,58 @@ export class CustomerController {
       throw error;
     }
   }
+  static async getVendorReviewsForCustomer(req: AuthRequest, res: Response) {
+    try {
+      const { vendorId } = req.params;
+      const customerId = req.user?.id;
+
+      if (!vendorId) {
+        throw new CustomError(
+          "Vendor ID is required",
+          400,
+          "MISSING_VENDOR_ID",
+        );
+      }
+
+      const result = await reviewService.getVendorReviewsForCustomer(
+        vendorId,
+        customerId as string,
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error("Error in getVendorReviewsForCustomer:", error);
+      throw error;
+    }
+  }
+  static async customerDeleteReview(req: AuthRequest, res: Response) {
+    try {
+      const { vendorId } = req.body;
+      const customerId = req.user!.id;
+
+      if (!vendorId) {
+        throw new CustomError(
+          "Vendor ID is required",
+          400,
+          "MISSING_VENDOR_ID",
+        );
+      }
+
+      const result = await reviewService.deleteReview(vendorId, customerId);
+
+      res.status(200).json({
+        success: true,
+        message: "Your review has been successfully removed",
+        data: result,
+      });
+    } catch (error) {
+      logger.error("Error in customerDeleteReview:", error);
+      throw error;
+    }
+  }
 
   // static async messageVendor(req: AuthRequest, res: Response) {
   //   try {

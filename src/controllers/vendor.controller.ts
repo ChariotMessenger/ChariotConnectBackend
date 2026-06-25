@@ -531,6 +531,59 @@ export class VendorController {
       throw error;
     }
   }
+
+  static async getVendorReviewsByCustomer(req: AuthRequest, res: Response) {
+    try {
+      const vendorId = req.user!.id;
+      const { customerId } = req.query;
+
+      if (!customerId) {
+        throw new CustomError(
+          "Customer ID is required",
+          400,
+          "MISSING_CUSTOMER_ID",
+        );
+      }
+
+      const result = await reviewService.getVendorReviewsByCustomer(
+        vendorId,
+        customerId as string,
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error("Error in getVendorReviewsByCustomer:", error);
+      throw error;
+    }
+  }
+  static async vendorDeleteReview(req: AuthRequest, res: Response) {
+    try {
+      const vendorId = req.user!.id;
+      const { customerId } = req.body;
+
+      if (!customerId) {
+        throw new CustomError(
+          "Customer ID is required",
+          400,
+          "MISSING_CUSTOMER_ID",
+        );
+      }
+
+      const result = await reviewService.deleteReview(vendorId, customerId);
+
+      res.status(200).json({
+        success: true,
+        message: "Customer review removed from your storefront",
+        data: result,
+      });
+    } catch (error) {
+      logger.error("Error in vendorDeleteReview:", error);
+      throw error;
+    }
+  }
 }
 
 export const vendorController = VendorController;
