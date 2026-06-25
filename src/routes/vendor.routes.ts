@@ -1211,5 +1211,70 @@ protectedRouter.get(
     }
   },
 );
+/**
+ * @swagger
+ * /vendors/reviews/by-customer:
+ *   get:
+ *     summary: Get Vendor Reviews By Specific Customer
+ *     tags:
+ *       - Vendor Reviews
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: customerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Reviews from customer retrieved
+ */
+protectedRouter.get(
+  "/reviews/by-customer",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.getVendorReviewsByCustomer(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /vendors/reviews:
+ *   delete:
+ *     summary: Delete a Customer Review from Vendor Profile
+ *     tags:
+ *       - Vendor Reviews
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customerId
+ *             properties:
+ *               customerId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Customer review deleted
+ */
+protectedRouter.delete(
+  "/reviews",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.vendorDeleteReview(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 router.use("/", protectedRouter);
 export default router;

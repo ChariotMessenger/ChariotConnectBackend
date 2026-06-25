@@ -1265,6 +1265,70 @@ protectedRouter.post(
     }
   },
 );
+/**
+ * @swagger
+ * /customers/reviews/vendor/{vendorId}:
+ *   get:
+ *     summary: Get Vendor Reviews Formatted for Customer (Prioritizing own review)
+ *     tags:
+ *       - Customer Operations
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vendor reviews retrieved successfully
+ */
+protectedRouter.get(
+  "/reviews/vendor/:vendorId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.getVendorReviewsForCustomer(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /customers/reviews:
+ *   delete:
+ *     summary: Delete Own Customer Review
+ *     tags:
+ *       - Customer Operations
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - vendorId
+ *             properties:
+ *               vendorId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Review removed successfully
+ */
+protectedRouter.delete(
+  "/reviews",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.customerDeleteReview(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // /**
 //  * @swagger
