@@ -32,6 +32,8 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       logger.info(
         `Socket ${socket.id} joined wallet synchronization updates for entity: ${ownerId}`,
       );
+
+      socket.emit("wallet:joined", { ownerId, status: "success" });
     });
 
     socket.on("order:join-room", (data) => {
@@ -201,11 +203,13 @@ export const emitWalletBalanceUpdate = (
   ownerId: string,
   balance: number,
   currency: string,
+  totalPendingWithdrawal: number,
 ) => {
   if (ioInstance) {
     ioInstance.to(`wallet:${ownerId}`).emit("wallet:balance-updated", {
       balance,
       currency,
+      totalPendingWithdrawal,
       updatedAt: new Date(),
     });
   }

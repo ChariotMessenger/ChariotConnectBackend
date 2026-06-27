@@ -22,6 +22,18 @@ export class RiderFinancialService {
         },
       });
 
+      const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
+        where: {
+          riderId,
+          status: WithdrawalStatus.PENDING,
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+
+      const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
+
       if (!wallet) {
         const rider = await prisma.rider.findUnique({
           where: { id: riderId },
@@ -59,10 +71,16 @@ export class RiderFinancialService {
           },
         });
 
-        return newWallet;
+        return {
+          ...newWallet,
+          totalPendingWithdrawal,
+        };
       }
 
-      return wallet;
+      return {
+        ...wallet,
+        totalPendingWithdrawal,
+      };
     } catch (error) {
       logger.error(
         `Error retrieving wallet balance for rider ${riderId}:`,
@@ -71,6 +89,7 @@ export class RiderFinancialService {
       throw error;
     }
   }
+
   static async getTransactionHistory(
     riderId: string,
     filterStatus?: PaymentStatus,
@@ -91,6 +110,7 @@ export class RiderFinancialService {
       throw error;
     }
   }
+
   static async hasPendingBankDetailsChange(riderId: string): Promise<boolean> {
     try {
       const pendingRequest = await prisma.bankDetailsChangeRequest.findFirst({
@@ -112,18 +132,24 @@ export class RiderFinancialService {
       throw error;
     }
   }
+
   static async getWithdrawalRequests(
     riderId: string,
     filterStatus?: WithdrawalStatus,
   ) {
     try {
-      return await prisma.withdrawalRequest.findMany({
+      const requests = await prisma.withdrawalRequest.findMany({
         where: {
           riderId,
           ...(filterStatus && { status: filterStatus }),
         },
         orderBy: { createdAt: "desc" },
       });
+
+      return requests.map((request) => ({
+        ...request,
+        withdrawalFeePercentage: "2%",
+      }));
     } catch (error) {
       logger.error(`Error fetching withdrawals for rider ${riderId}:`, error);
       throw error;

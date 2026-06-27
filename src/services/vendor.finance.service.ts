@@ -22,6 +22,18 @@ export class VendorFinancialService {
         },
       });
 
+      const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
+        where: {
+          vendorId,
+          status: WithdrawalStatus.PENDING,
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+
+      const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
+
       if (!wallet) {
         const vendor = await prisma.vendor.findUnique({
           where: { id: vendorId },
@@ -59,10 +71,16 @@ export class VendorFinancialService {
           },
         });
 
-        return newWallet;
+        return {
+          ...newWallet,
+          totalPendingWithdrawal,
+        };
       }
 
-      return wallet;
+      return {
+        ...wallet,
+        totalPendingWithdrawal,
+      };
     } catch (error) {
       logger.error(
         `Error retrieving wallet balance for vendor ${vendorId}:`,
@@ -71,6 +89,7 @@ export class VendorFinancialService {
       throw error;
     }
   }
+
   static async getTransactionHistory(
     vendorId: string,
     filterStatus?: PaymentStatus,
@@ -97,13 +116,18 @@ export class VendorFinancialService {
     filterStatus?: WithdrawalStatus,
   ) {
     try {
-      return await prisma.withdrawalRequest.findMany({
+      const requests = await prisma.withdrawalRequest.findMany({
         where: {
           vendorId,
           ...(filterStatus && { status: filterStatus }),
         },
         orderBy: { createdAt: "desc" },
       });
+
+      return requests.map((request) => ({
+        ...request,
+        withdrawalFeePercentage: "2%",
+      }));
     } catch (error) {
       logger.error(`Error fetching withdrawals for vendor ${vendorId}:`, error);
       throw error;
@@ -202,6 +226,7 @@ export class VendorFinancialService {
       throw error;
     }
   }
+
   static async hasPendingBankDetailsChange(vendorId: string): Promise<boolean> {
     try {
       const pendingRequest = await prisma.bankDetailsChangeRequest.findFirst({
