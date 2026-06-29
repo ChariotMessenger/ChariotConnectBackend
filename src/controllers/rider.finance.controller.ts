@@ -38,12 +38,20 @@ export class RiderFinancialController {
   ) {
     try {
       const riderId = req.user!.id;
-      const status = req.query.status as PaymentStatus | undefined;
+      const filterStatus = req.query.status as PaymentStatus | undefined;
+      const page = req.query.page
+        ? parseInt(req.query.page as string)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string)
+        : undefined;
 
-      const transactions = await RiderFinancialService.getTransactionHistory(
+      const transactions = await RiderFinancialService.getTransactionHistory({
         riderId,
-        status,
-      );
+        filterStatus,
+        page,
+        limit,
+      });
 
       res.status(200).json({
         success: true,
@@ -61,12 +69,20 @@ export class RiderFinancialController {
   ) {
     try {
       const riderId = req.user!.id;
-      const status = req.query.status as WithdrawalStatus | undefined;
+      const filterStatus = req.query.status as WithdrawalStatus | undefined;
+      const page = req.query.page
+        ? parseInt(req.query.page as string)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string)
+        : undefined;
 
-      const withdrawals = await RiderFinancialService.getWithdrawalRequests(
+      const withdrawals = await RiderFinancialService.getWithdrawalRequests({
         riderId,
-        status,
-      );
+        filterStatus,
+        page,
+        limit,
+      });
 
       res.status(200).json({
         success: true,

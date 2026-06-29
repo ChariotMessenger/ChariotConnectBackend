@@ -39,12 +39,20 @@ export class VendorFinancialController {
   ) {
     try {
       const vendorId = req.user!.id;
-      const status = req.query.status as PaymentStatus | undefined;
+      const filterStatus = req.query.status as PaymentStatus | undefined;
+      const page = req.query.page
+        ? parseInt(req.query.page as string)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string)
+        : undefined;
 
-      const transactions = await VendorFinancialService.getTransactionHistory(
+      const transactions = await VendorFinancialService.getTransactionHistory({
         vendorId,
-        status,
-      );
+        filterStatus,
+        page,
+        limit,
+      });
 
       res.status(200).json({
         success: true,
@@ -62,12 +70,20 @@ export class VendorFinancialController {
   ) {
     try {
       const vendorId = req.user!.id;
-      const status = req.query.status as WithdrawalStatus | undefined;
+      const filterStatus = req.query.status as WithdrawalStatus | undefined;
+      const page = req.query.page
+        ? parseInt(req.query.page as string)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string)
+        : undefined;
 
-      const withdrawals = await VendorFinancialService.getWithdrawalRequests(
+      const withdrawals = await VendorFinancialService.getWithdrawalRequests({
         vendorId,
-        status,
-      );
+        filterStatus,
+        page,
+        limit,
+      });
 
       res.status(200).json({
         success: true,
@@ -77,7 +93,6 @@ export class VendorFinancialController {
       next(error);
     }
   }
-
   static async checkPendingBankDetailsChange(
     req: AuthRequest,
     res: Response,
