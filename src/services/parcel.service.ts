@@ -65,7 +65,7 @@ export class ParcelDeliveryService {
     const modifiedStops = await Promise.all(
       data.deliveryStops.map(async (stop, index) => {
         const fileMatch = files.find(
-          (f) => f.fieldname === `deliveryStops[${index}][itemPhoto]`,
+          (f) => f.fieldname === `deliveryStops[${index}][itemPhotosUrl]`,
         );
         if (!fileMatch)
           throw new Error(

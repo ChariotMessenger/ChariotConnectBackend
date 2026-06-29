@@ -91,7 +91,7 @@ router.post("/webhooks/parcel/pawapay", handleParcelPawaPayWebhook);
  *                       type: string
  *                       description: JSON stringified object containing latitude and longitude keys
  *                       example: '{"latitude": 6.4281, "longitude": 3.4219}'
- *                     itemPhoto:
+ *                     itemPhotosUrl:
  *                       type: string
  *                       format: binary
  *                       description: Raw binary image asset for the specific delivery milestone index

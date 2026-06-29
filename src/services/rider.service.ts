@@ -980,6 +980,57 @@ export class RiderService {
         statusFilter = "DELIVERED";
       }
 
+      const availableJobsMatch = {
+        riderId: null,
+        status: "ORDER_PACKED",
+      };
+
+      const personalOrdersMatch = {
+        riderId,
+      };
+
+      const [rawAvailableCounts, rawPersonalCounts] = await Promise.all([
+        prisma.order.aggregateRaw({
+          pipeline: [
+            { $match: availableJobsMatch },
+            { $group: { _id: "$status", count: { $sum: 1 } } },
+          ],
+        }),
+        prisma.order.aggregateRaw({
+          pipeline: [
+            { $match: personalOrdersMatch },
+            { $group: { _id: "$status", count: { $sum: 1 } } },
+          ],
+        }),
+      ]);
+
+      const statusCounts: Record<string, number> = {
+        AVAILABLE_JOBS: 0,
+        ACTIVE: 0,
+        DELIVERED: 0,
+      };
+
+      if (Array.isArray(rawAvailableCounts)) {
+        for (const group of rawAvailableCounts as any[]) {
+          if (group._id === "ORDER_PACKED") {
+            statusCounts.AVAILABLE_JOBS += group.count || 0;
+          }
+        }
+      }
+
+      if (Array.isArray(rawPersonalCounts)) {
+        for (const group of rawPersonalCounts as any[]) {
+          if (
+            group._id === "RIDER_EN_ROUTE_TO_VENDOR" ||
+            group._id === "RIDER_EN_ROUTE_TO_CUSTOMER"
+          ) {
+            statusCounts.ACTIVE += group.count || 0;
+          } else if (group._id === "DELIVERED") {
+            statusCounts.DELIVERED += group.count || 0;
+          }
+        }
+      }
+
       if (statusType === "AVAILABLE_JOBS") {
         const queryFilter: any = {
           riderId: null,
@@ -1076,6 +1127,7 @@ export class RiderService {
 
         return {
           orders: formattedOrders,
+          statusCounts,
           meta: {
             totalCount,
             page,
@@ -1113,6 +1165,7 @@ export class RiderService {
 
       return {
         orders: formattedOrders,
+        statusCounts,
         meta: {
           totalCount,
           page,

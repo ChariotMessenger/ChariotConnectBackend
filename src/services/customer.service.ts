@@ -557,7 +557,7 @@ export class CustomerService {
         };
       }
 
-      const [orders, total] = await prisma.$transaction([
+      const [orders, total, countsGroup] = await prisma.$transaction([
         prisma.order.findMany({
           where: whereClause,
           include: {
@@ -572,7 +572,35 @@ export class CustomerService {
         prisma.order.count({
           where: whereClause,
         }),
+        prisma.order.groupBy({
+          by: ["status"],
+          where: { customerId },
+          _count: { status: true },
+        } as any),
       ]);
+
+      const rawCounts = (countsGroup as any[]).reduce(
+        (acc, curr) => {
+          if (curr && curr.status) {
+            acc[curr.status] = curr._count?.status ?? 0;
+          }
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const statusCounts = {
+        ACTIVE:
+          (rawCounts["WAITING_FOR_APPROVAL"] ?? 0) +
+          (rawCounts["AWAITING_PAYMENT"] ?? 0) +
+          (rawCounts["PAID"] ?? 0) +
+          (rawCounts["ORDER_PACKED"] ?? 0) +
+          (rawCounts["RIDER_EN_ROUTE_TO_VENDOR"] ?? 0) +
+          (rawCounts["RIDER_EN_ROUTE_TO_CUSTOMER"] ?? 0),
+        DELIVERED: rawCounts["DELIVERED"] ?? 0,
+        CANCELLED_AND_REJECTED:
+          (rawCounts["CANCELLED"] ?? 0) + (rawCounts["REJECTED"] ?? 0),
+      };
 
       const formattedOrders = orders.map((order) =>
         formatOrderResponse(order, customerId),
@@ -581,6 +609,7 @@ export class CustomerService {
       logger.info(`Fetched orders for customer: ${customerId}`);
       return {
         orders: formattedOrders,
+        statusCounts,
         pagination: {
           total,
           page,
