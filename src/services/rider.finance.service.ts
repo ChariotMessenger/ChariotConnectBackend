@@ -142,12 +142,14 @@ export class RiderFinancialService {
           by: ["status"],
           where: { riderId },
           _count: { status: true },
-        }),
+        } as any),
       ]);
 
-      const statusCounts = countsGroup.reduce(
+      const statusCounts = (countsGroup as any[]).reduce(
         (acc, curr) => {
-          acc[curr.status] = curr._count.status;
+          if (curr && curr.status) {
+            acc[curr.status] = curr._count?.status ?? 0;
+          }
           return acc;
         },
         {} as Record<string, number>,
@@ -205,12 +207,14 @@ export class RiderFinancialService {
           by: ["status"],
           where: { riderId },
           _count: { status: true },
-        }),
+        } as any),
       ]);
 
-      const statusCounts = countsGroup.reduce(
+      const statusCounts = (countsGroup as any[]).reduce(
         (acc, curr) => {
-          acc[curr.status] = curr._count.status;
+          if (curr && curr.status) {
+            acc[curr.status] = curr._count?.status ?? 0;
+          }
           return acc;
         },
         {} as Record<string, number>,
@@ -234,7 +238,6 @@ export class RiderFinancialService {
       throw error;
     }
   }
-
   static async requestWithdrawal(riderId: string, amount: number) {
     try {
       if (amount <= 0) {
