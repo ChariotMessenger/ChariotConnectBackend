@@ -90,27 +90,6 @@ export class RiderFinancialService {
     }
   }
 
-  static async getTransactionHistory(
-    riderId: string,
-    filterStatus?: PaymentStatus,
-  ) {
-    try {
-      return await prisma.walletTransaction.findMany({
-        where: {
-          riderId,
-          ...(filterStatus && { status: filterStatus }),
-        },
-        orderBy: { createdAt: "desc" },
-      });
-    } catch (error) {
-      logger.error(
-        `Error fetching transaction history for rider ${riderId}:`,
-        error,
-      );
-      throw error;
-    }
-  }
-
   static async hasPendingBankDetailsChange(riderId: string): Promise<boolean> {
     try {
       const pendingRequest = await prisma.bankDetailsChangeRequest.findFirst({
@@ -132,26 +111,126 @@ export class RiderFinancialService {
       throw error;
     }
   }
+  static async getWithdrawalRequests(options: {
+    riderId: string;
+    filterStatus?: WithdrawalStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit ? Math.min(options.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+    const { riderId, filterStatus } = options;
 
-  static async getWithdrawalRequests(
-    riderId: string,
-    filterStatus?: WithdrawalStatus,
-  ) {
     try {
-      const requests = await prisma.withdrawalRequest.findMany({
-        where: {
-          riderId,
-          ...(filterStatus && { status: filterStatus }),
-        },
-        orderBy: { createdAt: "desc" },
-      });
+      const whereClause = {
+        riderId,
+        ...(filterStatus && { status: filterStatus }),
+      };
 
-      return requests.map((request) => ({
+      const [requests, total, countsGroup] = await prisma.$transaction([
+        prisma.withdrawalRequest.findMany({
+          where: whereClause,
+          take: limit,
+          skip,
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.withdrawalRequest.count({
+          where: whereClause,
+        }),
+        prisma.withdrawalRequest.groupBy({
+          by: ["status"],
+          where: { riderId },
+          _count: { status: true },
+        }),
+      ]);
+
+      const statusCounts = countsGroup.reduce(
+        (acc, curr) => {
+          acc[curr.status] = curr._count.status;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const formattedData = requests.map((request) => ({
         ...request,
         withdrawalFeePercentage: "2%",
       }));
+
+      return {
+        data: formattedData,
+        statusCounts,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
       logger.error(`Error fetching withdrawals for rider ${riderId}:`, error);
+      throw error;
+    }
+  }
+
+  static async getTransactionHistory(options: {
+    riderId: string;
+    filterStatus?: PaymentStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit ? Math.min(options.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+    const { riderId, filterStatus } = options;
+
+    try {
+      const whereClause = {
+        riderId,
+        ...(filterStatus && { status: filterStatus }),
+      };
+
+      const [transactions, total, countsGroup] = await prisma.$transaction([
+        prisma.walletTransaction.findMany({
+          where: whereClause,
+          take: limit,
+          skip,
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.walletTransaction.count({
+          where: whereClause,
+        }),
+        prisma.walletTransaction.groupBy({
+          by: ["status"],
+          where: { riderId },
+          _count: { status: true },
+        }),
+      ]);
+
+      const statusCounts = countsGroup.reduce(
+        (acc, curr) => {
+          acc[curr.status] = curr._count.status;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      return {
+        data: transactions,
+        statusCounts,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error(
+        `Error fetching transaction history for rider ${riderId}:`,
+        error,
+      );
       throw error;
     }
   }

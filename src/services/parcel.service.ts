@@ -2,18 +2,32 @@ import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 import axios from "axios";
 import { RouteUtility } from "../utils/route.util";
-
+import { UploadService } from "./upload.service";
 const prisma = new PrismaClient();
 
 export class ParcelDeliveryService {
-  static async initializeParcelDelivery(data: {
-    customerId: string;
-    pickupLocation: any;
-    expectedPickupTime: string;
-    deliveryStops: Array<{ label: string; stopInfo: any }>;
-    currency?: string;
-    note?: string;
-  }) {
+  static async checkIfParcelExists(id: string): Promise<boolean> {
+    const count = await prisma.deliverPackageData.count({
+      where: { id },
+    });
+    return count > 0;
+  }
+  static async initializeParcelDelivery(
+    data: {
+      customerId: string;
+      pickupLocation: string;
+      expectedPickupTime: string;
+      currency?: string;
+      note?: string;
+      deliveryStops: Array<{
+        label: string;
+        receiverName: string;
+        receiverPhoneNumber: string;
+        stopLocation: string;
+      }>;
+    },
+    files: Express.Multer.File[],
+  ) {
     const config = await prisma.pricingConfiguration.findFirst();
     if (!config) throw new Error("Pricing configuration missing");
 
@@ -22,15 +36,20 @@ export class ParcelDeliveryService {
     });
     if (!customer) throw new Error("Customer profile not found");
 
-    const stopCoordinates = data.deliveryStops.map((s) => ({
-      latitude: s.stopInfo.stopLocation.latitude,
-      longitude: s.stopInfo.stopLocation.longitude,
-    }));
+    const parsedPickupLocation = JSON.parse(data.pickupLocation);
+
+    const stopCoordinates = data.deliveryStops.map((s) => {
+      const parsedLocation = JSON.parse(s.stopLocation);
+      return {
+        latitude: parsedLocation.latitude,
+        longitude: parsedLocation.longitude,
+      };
+    });
 
     const totalDistance = await RouteUtility.calculateTotalDistance(
       {
-        latitude: data.pickupLocation.latitude,
-        longitude: data.pickupLocation.longitude,
+        latitude: parsedPickupLocation.latitude,
+        longitude: parsedPickupLocation.longitude,
       },
       stopCoordinates,
     );
@@ -41,18 +60,42 @@ export class ParcelDeliveryService {
     const finalAmountToPay =
       computedDeliveryFee + calculatedProtectionFee + config.orderProcessingFee;
 
-    const modifiedStops = data.deliveryStops.map((stop) => ({
-      label: stop.label,
-      stopInfo: {
-        ...stop.stopInfo,
-        confirmationKey: `CONF-${crypto.randomInt(1000, 9999)}`,
-        isDelivered: false,
-        timeDelivered: null,
-      },
-    }));
+    const generatedParcelId = crypto.randomBytes(12).toString("hex");
+
+    const modifiedStops = await Promise.all(
+      data.deliveryStops.map(async (stop, index) => {
+        const fileMatch = files.find(
+          (f) => f.fieldname === `deliveryStops[${index}][itemPhoto]`,
+        );
+        if (!fileMatch)
+          throw new Error(
+            `Missing document dependency binary for ${stop.label}`,
+          );
+
+        const itemPhotosUrl = await UploadService.uploadParcelItemPhoto(
+          fileMatch,
+          generatedParcelId,
+          stop.label,
+        );
+
+        return {
+          label: stop.label,
+          stopInfo: {
+            receiverName: stop.receiverName,
+            receiverPhoneNumber: stop.receiverPhoneNumber,
+            confirmationKey: `CONF-${crypto.randomInt(1000, 9999)}`,
+            isDelivered: false,
+            stopLocation: JSON.parse(stop.stopLocation),
+            itemPhotosUrl: itemPhotosUrl,
+            timeDelivered: null,
+          },
+        };
+      }),
+    );
 
     const deliveryRecord = await prisma.deliverPackageData.create({
       data: {
+        id: generatedParcelId,
         customerId: data.customerId,
         status: "WAITING_FOR_RIDER_TO_ACCEPT",
         currency: data.currency || "NGN",
@@ -60,7 +103,7 @@ export class ParcelDeliveryService {
         note: data.note,
         pickupSummary: {
           pickupSecretKey: `SEC-${crypto.randomInt(1000, 9999)}`,
-          pickupLocation: data.pickupLocation,
+          pickupLocation: parsedPickupLocation,
           expectedPickupTime: new Date(data.expectedPickupTime),
           deliveryFee: computedDeliveryFee,
           protectionFee: calculatedProtectionFee,
@@ -131,10 +174,178 @@ export class ParcelDeliveryService {
     });
   }
 
-  static async listAvailableDeliveries() {
-    return prisma.deliverPackageData.findMany({
-      where: { status: "WAITING_FOR_RIDER_TO_ACCEPT" },
+  static async listAvailableDeliveries(
+    options: { page?: number; limit?: number } = {},
+  ) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit ? Math.min(options.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+
+    const [deliveries, total] = await prisma.$transaction([
+      prisma.deliverPackageData.findMany({
+        where: { status: "WAITING_FOR_RIDER_TO_ACCEPT" },
+        take: limit,
+        skip,
+        orderBy: { createdAt: "desc" },
+        include: {
+          customer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              profilePhotoUrl: true,
+              phone: true,
+            },
+          },
+        },
+      }),
+      prisma.deliverPackageData.count({
+        where: { status: "WAITING_FOR_RIDER_TO_ACCEPT" },
+      }),
+    ]);
+
+    const formattedData = deliveries.map((delivery) => {
+      const { customer, ...rest } = delivery;
+      return {
+        ...rest,
+        pickupSummary: {
+          ...rest.pickupSummary,
+          customerName: customer
+            ? `${customer.firstName} ${customer.lastName}`.trim()
+            : "Unknown Customer",
+          customerProfilePhotoUrl: customer?.profilePhotoUrl || null,
+          customerPhoneNumber: customer?.phone || null,
+        },
+      };
     });
+
+    return {
+      data: formattedData,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  static async listCustomerDeliveries(options: {
+    customerId: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit ? Math.min(options.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+    const { customerId } = options;
+
+    const [deliveries, total, countsGroup] = await prisma.$transaction([
+      prisma.deliverPackageData.findMany({
+        where: { customerId },
+        take: limit,
+        skip,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.deliverPackageData.count({
+        where: { customerId },
+      }),
+      prisma.deliverPackageData.groupBy({
+        by: ["status"],
+        where: { customerId },
+        _count: { status: true },
+      }),
+    ]);
+
+    const statusCounts = countsGroup.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count.status;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    return {
+      data: deliveries,
+      statusCounts,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  static async listRiderDeliveries(options: {
+    riderId: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit ? Math.min(options.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+    const { riderId } = options;
+
+    const [deliveries, total, countsGroup] = await prisma.$transaction([
+      prisma.deliverPackageData.findMany({
+        where: { riderId },
+        take: limit,
+        skip,
+        orderBy: { createdAt: "desc" },
+        include: {
+          customer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              profilePhotoUrl: true,
+              phone: true,
+            },
+          },
+        },
+      }),
+      prisma.deliverPackageData.count({
+        where: { riderId },
+      }),
+      prisma.deliverPackageData.groupBy({
+        by: ["status"],
+        where: { riderId },
+        _count: { status: true },
+      }),
+    ]);
+
+    const statusCounts = countsGroup.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count.status;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const formattedData = deliveries.map((delivery) => {
+      const { customer, ...rest } = delivery;
+      return {
+        ...rest,
+        pickupSummary: {
+          ...rest.pickupSummary,
+          customerName: customer
+            ? `${customer.firstName} ${customer.lastName}`.trim()
+            : "Unknown Customer",
+          customerProfilePhotoUrl: customer?.profilePhotoUrl || null,
+          customerPhoneNumber: customer?.phone || null,
+        },
+      };
+    });
+
+    return {
+      data: formattedData,
+      statusCounts,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   static async acceptDeliveryJob(parcelId: string, riderId: string) {

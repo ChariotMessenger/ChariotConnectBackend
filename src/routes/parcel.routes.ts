@@ -5,6 +5,7 @@ import {
   handleParcelPawaPayWebhook,
 } from "../controllers/payment.webhooks";
 
+import { upload } from "../middlewares/multer";
 const router = Router();
 /**
  * @swagger
@@ -42,26 +43,24 @@ router.post("/webhooks/parcel/paystack", handleParcelPaystackWebhook);
  *         description: Event acknowledged successfully
  */
 router.post("/webhooks/parcel/pawapay", handleParcelPawaPayWebhook);
-
 /**
  * @swagger
  * /parcel/initialize:
  *   post:
  *     summary: Initialize a Multi-Stop Parcel Delivery Order
- *     description: Computes route metrics using location parameters, provisions verification tracking codes, and records an unallocated shipment entity.
+ *     description: Computes route metrics using location parameters, provisions verification tracking codes, uploads multiple parcel item images via multipart/form-data, and records an unallocated shipment entity.
  *     tags:
  *       - Parcel Delivery
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
  *               - customerId
  *               - pickupLocation
  *               - expectedPickupTime
- *               - deliveryStops
  *             properties:
  *               customerId:
  *                 type: string
@@ -74,14 +73,9 @@ router.post("/webhooks/parcel/pawapay", handleParcelPawaPayWebhook);
  *               note:
  *                 type: string
  *               pickupLocation:
- *                 type: object
- *                 properties:
- *                   latitude:
- *                     type: number
- *                   longitude:
- *                     type: number
- *                   fullAddress:
- *                     type: string
+ *                 type: string
+ *                 description: JSON stringified object containing latitude, longitude, and address keys
+ *                 example: '{"latitude": 6.4541, "longitude": 3.3947, "fullAddress": "10 Broad Street"}'
  *               deliveryStops:
  *                 type: array
  *                 items:
@@ -89,36 +83,42 @@ router.post("/webhooks/parcel/pawapay", handleParcelPawaPayWebhook);
  *                   properties:
  *                     label:
  *                       type: string
- *                     stopInfo:
- *                       type: object
- *                       properties:
- *                         receiverName:
- *                           type: string
- *                         receiverPhoneNumber:
- *                           type: string
+ *                     receiverName:
+ *                       type: string
+ *                     receiverPhoneNumber:
+ *                       type: string
  *                     stopLocation:
- *                       type: object
- *                       properties:
- *                         latitude:
- *                           type: number
- *                         longitude:
- *                           type: number
+ *                       type: string
+ *                       description: JSON stringified object containing latitude and longitude keys
+ *                       example: '{"latitude": 6.4281, "longitude": 3.4219}'
+ *                     itemPhoto:
+ *                       type: string
+ *                       format: binary
+ *                       description: Raw binary image asset for the specific delivery milestone index
  *     responses:
  *       201:
  *         description: Delivery lifecycle initiated successfully
  *       400:
- *         description: Missing configurations or schema formatting mismatch
+ *         description: Missing configurations, invalid object strings, or schema formatting mismatch
  */
-router.post("/parcel/initialize", async (req: Request, res: Response) => {
-  try {
-    const record = await ParcelDeliveryService.initializeParcelDelivery(
-      req.body,
-    );
-    res.status(201).json(record);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-});
+router.post(
+  "/parcel/initialize",
+  upload.any(),
+  async (req: Request, res: Response) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+
+      const record = await ParcelDeliveryService.initializeParcelDelivery(
+        req.body,
+        files,
+      );
+
+      res.status(201).json(record);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
 /**
  * @swagger
  * /parcel/{id}/pay:
@@ -161,29 +161,164 @@ router.post("/parcel/:id/pay", async (req: Request, res: Response) => {
     res.status(400).json({ error: err.message });
   }
 });
-
 /**
  * @swagger
  * /rider/available-jobs:
- *   get:
- *     summary: Query Open Distribution Pipelines
- *     description: Returns an aggregated collection of unassigned jobs waiting for dispatch acceptance.
- *     tags:
- *       - Parcel Delivery
- *     responses:
- *       200:
- *         description: Array compilation rendered successfully
- *       400:
- *         description: Service transaction fault execution
+ * get:
+ * summary: Query Open Distribution Pipelines
+ * description: Returns a paginated collection of unassigned jobs waiting for dispatch acceptance.
+ * tags:
+ * - Parcel Delivery
+ * parameters:
+ * - in: query
+ *   name: page
+ *   schema:
+ *     type: integer
+ *     default: 1
+ *   description: Current page matrix indicator
+ * - in: query
+ *   name: limit
+ *   schema:
+ *     type: integer
+ *     default: 20
+ *   description: Total database record extraction capacity per layout
+ * responses:
+ *   200:
+ *     description: Array compilation rendered successfully with pagination context
+ *   400:
+ *     description: Service transaction fault execution
  */
 router.get("/rider/available-jobs", async (req: Request, res: Response) => {
   try {
-    const jobs = await ParcelDeliveryService.listAvailableDeliveries();
+    const page = req.query.page
+      ? parseInt(req.query.page as string)
+      : undefined;
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string)
+      : undefined;
+
+    const jobs = await ParcelDeliveryService.listAvailableDeliveries({
+      page,
+      limit,
+    });
+
     res.status(200).json(jobs);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
+
+/**
+ * @swagger
+ * /customer/parcel-history/{customerId}:
+ * get:
+ * summary: Retrieve Customer Parcel History
+ * description: Fetches a paginated history of parcel deliveries initiated by a specific customer, accompanied by status aggregates.
+ * tags:
+ * - Parcel Delivery
+ * parameters:
+ * - in: path
+ *   name: customerId
+ *   required: true
+ *   schema:
+ *     type: string
+ *   description: MongoDB document identifier of the target customer account
+ * - in: query
+ *   name: page
+ *   schema:
+ *     type: integer
+ *     default: 1
+ * - in: query
+ *   name: limit
+ *   schema:
+ *     type: integer
+ *     default: 20
+ * responses:
+ *   200:
+ *     description: Successfully compiled customer structural records and status totals
+ *   400:
+ *     description: Invalid input formatting or execution failure
+ */
+router.get(
+  "/customer/parcel-history/:customerId",
+  async (req: Request, res: Response) => {
+    try {
+      const { customerId } = req.params;
+      const page = req.query.page
+        ? parseInt(req.query.page as string)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string)
+        : undefined;
+
+      const history = await ParcelDeliveryService.listCustomerDeliveries({
+        customerId,
+        page,
+        limit,
+      });
+
+      res.status(200).json(history);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /rider/parcel-history/{riderId}:
+ * get:
+ * summary: Retrieve Rider Assignment History
+ * description: Fetches a paginated compilation of parcel distribution pipelines associated with a specific dispatch operator.
+ * tags:
+ * - Parcel Delivery
+ * parameters:
+ * - in: path
+ *   name: riderId
+ *   required: true
+ *   schema:
+ *     type: string
+ *   description: MongoDB document identifier of the target rider account
+ * - in: query
+ *   name: page
+ *   schema:
+ *     type: integer
+ *     default: 1
+ * - in: query
+ *   name: limit
+ *   schema:
+ *     type: integer
+ *     default: 20
+ * responses:
+ *   200:
+ *     description: Successfully compiled rider structural records and status totals
+ *   400:
+ *     description: Invalid input formatting or execution failure
+ */
+router.get(
+  "/rider/parcel-history/:riderId",
+  async (req: Request, res: Response) => {
+    try {
+      const { riderId } = req.params;
+      const page = req.query.page
+        ? parseInt(req.query.page as string)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string)
+        : undefined;
+
+      const history = await ParcelDeliveryService.listRiderDeliveries({
+        riderId,
+        page,
+        limit,
+      });
+
+      res.status(200).json(history);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
 
 /**
  * @swagger

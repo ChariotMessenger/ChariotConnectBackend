@@ -90,18 +90,58 @@ export class VendorFinancialService {
     }
   }
 
-  static async getTransactionHistory(
-    vendorId: string,
-    filterStatus?: PaymentStatus,
-  ) {
+  static async getTransactionHistory(options: {
+    vendorId: string;
+    filterStatus?: PaymentStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit ? Math.min(options.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+    const { vendorId, filterStatus } = options;
+
     try {
-      return await prisma.walletTransaction.findMany({
-        where: {
-          vendorId,
-          ...(filterStatus && { status: filterStatus }),
+      const whereClause = {
+        vendorId,
+        ...(filterStatus && { status: filterStatus }),
+      };
+
+      const [transactions, total, countsGroup] = await prisma.$transaction([
+        prisma.walletTransaction.findMany({
+          where: whereClause,
+          take: limit,
+          skip,
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.walletTransaction.count({
+          where: whereClause,
+        }),
+        prisma.walletTransaction.groupBy({
+          by: ["status"],
+          where: { vendorId },
+          _count: { status: true },
+        }),
+      ]);
+
+      const statusCounts = countsGroup.reduce(
+        (acc, curr) => {
+          acc[curr.status] = curr._count.status;
+          return acc;
         },
-        orderBy: { createdAt: "desc" },
-      });
+        {} as Record<string, number>,
+      );
+
+      return {
+        data: transactions,
+        statusCounts,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
       logger.error(
         `Error fetching transaction history for vendor ${vendorId}:`,
@@ -111,23 +151,63 @@ export class VendorFinancialService {
     }
   }
 
-  static async getWithdrawalRequests(
-    vendorId: string,
-    filterStatus?: WithdrawalStatus,
-  ) {
-    try {
-      const requests = await prisma.withdrawalRequest.findMany({
-        where: {
-          vendorId,
-          ...(filterStatus && { status: filterStatus }),
-        },
-        orderBy: { createdAt: "desc" },
-      });
+  static async getWithdrawalRequests(options: {
+    vendorId: string;
+    filterStatus?: WithdrawalStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit ? Math.min(options.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+    const { vendorId, filterStatus } = options;
 
-      return requests.map((request) => ({
+    try {
+      const whereClause = {
+        vendorId,
+        ...(filterStatus && { status: filterStatus }),
+      };
+
+      const [requests, total, countsGroup] = await prisma.$transaction([
+        prisma.withdrawalRequest.findMany({
+          where: whereClause,
+          take: limit,
+          skip,
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.withdrawalRequest.count({
+          where: whereClause,
+        }),
+        prisma.withdrawalRequest.groupBy({
+          by: ["status"],
+          where: { vendorId },
+          _count: { status: true },
+        }),
+      ]);
+
+      const statusCounts = countsGroup.reduce(
+        (acc, curr) => {
+          acc[curr.status] = curr._count.status;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const formattedData = requests.map((request) => ({
         ...request,
         withdrawalFeePercentage: "2%",
       }));
+
+      return {
+        data: formattedData,
+        statusCounts,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
       logger.error(`Error fetching withdrawals for vendor ${vendorId}:`, error);
       throw error;

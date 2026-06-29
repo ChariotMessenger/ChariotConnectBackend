@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { OrderService } from "../services/order.service";
+import { ParcelDeliveryService } from "./parcel.service";
 import { logger } from "../utils/logger";
 
 export const handlePaystackWebhook = async (
@@ -23,9 +24,17 @@ export const handlePaystackWebhook = async (
     const event = req.body;
     if (event.event === "charge.success") {
       const reference = event.data.reference;
-      logger.info(`Paystack webhook received for reference: ${reference}`);
+      const parcelId = event.data.metadata?.parcelId;
 
-      await OrderService.verifyPayment(reference, "PAYSTACK");
+      if (parcelId) {
+        logger.info(`Paystack webhook received for Parcel ID: ${parcelId}`);
+        await ParcelDeliveryService.verifyWebhookPayment(parcelId, "PAYSTACK");
+      } else {
+        logger.info(
+          `Paystack webhook received for Order Reference: ${reference}`,
+        );
+        await OrderService.verifyPayment(reference, "PAYSTACK");
+      }
     }
   } catch (error) {
     logger.error("Paystack webhook execution error:", error);
@@ -45,7 +54,14 @@ export const handlePawaPayWebhook = async (
       const reference = event.depositId;
       logger.info(`PawaPay webhook received for depositId: ${reference}`);
 
-      await OrderService.verifyPayment(reference, "PAWAPAY");
+      const isParcel =
+        await ParcelDeliveryService.checkIfParcelExists(reference);
+
+      if (isParcel) {
+        await ParcelDeliveryService.verifyWebhookPayment(reference, "PAWAPAY");
+      } else {
+        await OrderService.verifyPayment(reference, "PAWAPAY");
+      }
     }
   } catch (error) {
     logger.error("PawaPay webhook execution error:", error);

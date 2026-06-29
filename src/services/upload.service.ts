@@ -98,6 +98,29 @@ export class UploadService {
       throw error;
     }
   }
+
+  static async uploadParcelItemPhoto(
+    file: Express.Multer.File,
+    parcelId: string,
+    label: string,
+  ): Promise<string> {
+    try {
+      const result = await cloudinary.uploader.upload(file.path, {
+        folder: `chariot-connect/parcels/${parcelId}`,
+        public_id: `${label.toLowerCase()}-${Date.now()}`,
+        resource_type: "auto",
+      });
+      logger.info(
+        `Parcel item photo uploaded for package assignment ${parcelId}`,
+      );
+      return result.secure_url;
+    } catch (error) {
+      logger.error("Error uploading parcel item photo:", error);
+      throw error;
+    } finally {
+      await this.cleanup(file.path);
+    }
+  }
 }
 
 export default UploadService;
