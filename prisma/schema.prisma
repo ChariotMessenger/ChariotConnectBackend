@@ -106,6 +106,7 @@ model Customer {
   orders                 Order[]           @relation("CustomerOrders")
 locationHistory        LocationHistory[] @relation("CustomerLocationHistory")
 savedLocations         SavedLocation[]   @relation("CustomerSavedLocations")
+packages DeliverPackageData[] @relation("CustomerPackages")
   @@index([country])
 }
 
@@ -198,6 +199,7 @@ model Rider {
   otpVerifications      OTPVerification[]
   deliveries            Order[]            @relation("RiderOrders")
   locationHistory       LocationHistory[]  @relation("RiderLocationHistory")
+  packages DeliverPackageData[] @relation("RiderPackages")
 
   wallet                   Wallet?
 walletTransactions       WalletTransaction[]
@@ -518,4 +520,57 @@ model BankDetailsChangeRequest {
 
   @@index([vendorId])
   @@index([riderId])
+}
+
+enum ParcelDeliveryStatus {
+  WAITING_FOR_RIDER_TO_ACCEPT
+  ACCEPTED
+  DELIVERY_IN_PROGRESS
+  ALL_PACKAGE_DELIVERED
+}
+
+model DeliverPackageData {
+  id               String               @id @default(auto()) @map("_id") @db.ObjectId
+  customerId       String               @db.ObjectId
+  customer         Customer             @relation("CustomerPackages", fields: [customerId], references: [id])
+  riderId          String?              @db.ObjectId
+  rider            Rider?               @relation("RiderPackages", fields: [riderId], references: [id])
+  pickupSummary    PickupInfo
+  timePickedUp     DateTime?
+  avgDistanceKm    String
+  note             String?
+  status           ParcelDeliveryStatus @default(WAITING_FOR_RIDER_TO_ACCEPT)
+  currency         String               @default("NGN")
+  deliveryStops    StopDataInfo[]
+  timeCompleted    DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([status])
+  @@index([customerId])
+  @@index([riderId])
+}
+
+type PickupInfo {
+  pickupSecretKey    String
+  pickupLocation     Point
+  expectedPickupTime DateTime
+  totalAmountToPay   Float
+  deliveryFee        Float
+  protectionFee      Float
+}
+
+type StopDataInfo {
+  label    String
+  stopInfo DeliveryInfo
+}
+
+type DeliveryInfo {
+  receiverName        String
+  receiverPhoneNumber String
+  confirmationKey     String
+  isDelivered         Boolean      @default(false)
+  stopLocation        Point
+  itemPhotosUrl       String
+  timeDelivered       DateTime?
 }
