@@ -523,6 +523,7 @@ model BankDetailsChangeRequest {
 }
 
 enum ParcelDeliveryStatus {
+  INITIATED
   WAITING_FOR_RIDER_TO_ACCEPT
   ACCEPTED
   DELIVERY_IN_PROGRESS

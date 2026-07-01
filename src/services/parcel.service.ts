@@ -97,7 +97,7 @@ export class ParcelDeliveryService {
       data: {
         id: generatedParcelId,
         customerId: data.customerId,
-        status: "WAITING_FOR_RIDER_TO_ACCEPT",
+        status: "INITIATED",
         currency: data.currency || "NGN",
         avgDistanceKm: totalDistance.toFixed(1),
         note: data.note,
