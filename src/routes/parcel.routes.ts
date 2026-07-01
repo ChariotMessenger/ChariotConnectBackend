@@ -165,6 +165,7 @@ router.post("/parcel/:id/pay", async (req: AuthRequest, res: Response) => {
     res.status(400).json({ error: err.message });
   }
 });
+
 /**
  * @swagger
  * /rider/available-jobs:
