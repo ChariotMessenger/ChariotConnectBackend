@@ -140,10 +140,20 @@ export class ParcelDeliveryService {
           payer: { address: { value: customerPhone } },
           customerTimestamp: new Date().toISOString(),
         },
-        { headers: { Authorization: `Bearer ${process.env.PAWAPAY_SECRET}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAWAPAY_SECRET_KEY}`,
+          },
+        },
       );
       return { provider: "PAWAPAY", data: gatewayResponse.data };
     } else {
+      if (!process.env.PAYSTACK_SECRET_KEY) {
+        throw new Error(
+          "Paystack integration initialization failed: PAYSTACK_SECRET_KEY environment definition is empty.",
+        );
+      }
+
       const gatewayResponse = await axios.post(
         "https://api.paystack.co/transaction/initialize",
         {
@@ -152,7 +162,11 @@ export class ParcelDeliveryService {
           currency: parcel.currency,
           metadata: { parcelId },
         },
-        { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        },
       );
       return {
         provider: "PAYSTACK",
@@ -160,7 +174,6 @@ export class ParcelDeliveryService {
       };
     }
   }
-
   static async verifyWebhookPayment(reference: string, platform: string) {
     const parcelId = reference;
     const parcel = await prisma.deliverPackageData.findUnique({
