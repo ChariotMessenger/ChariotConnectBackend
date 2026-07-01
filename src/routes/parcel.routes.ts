@@ -169,29 +169,29 @@ router.post("/parcel/:id/pay", async (req: AuthRequest, res: Response) => {
 /**
  * @swagger
  * /rider/available-jobs:
- * get:
- * summary: Query Open Distribution Pipelines
- * description: Returns a paginated collection of unassigned jobs waiting for dispatch acceptance.
- * tags:
- * - Parcel Delivery
- * parameters:
- * - in: query
- *   name: page
- *   schema:
- *     type: integer
- *     default: 1
- *   description: Current page matrix indicator
- * - in: query
- *   name: limit
- *   schema:
- *     type: integer
- *     default: 20
- *   description: Total database record extraction capacity per layout
- * responses:
- *   200:
- *     description: Array compilation rendered successfully with pagination context
- *   400:
- *     description: Service transaction fault execution
+ *   get:
+ *     summary: Query Open Distribution Pipelines
+ *     description: Returns a paginated collection of unassigned jobs waiting for dispatch acceptance.
+ *     tags:
+ *       - Parcel Delivery
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Current page matrix indicator
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Total database record extraction capacity per layout
+ *     responses:
+ *       200:
+ *         description: Array compilation rendered successfully with pagination context
+ *       400:
+ *         description: Service transaction fault execution
  */
 router.get("/rider/available-jobs", async (req: AuthRequest, res: Response) => {
   try {
@@ -216,33 +216,33 @@ router.get("/rider/available-jobs", async (req: AuthRequest, res: Response) => {
 /**
  * @swagger
  * /customer/parcel-history/{customerId}:
- * get:
- * summary: Retrieve Customer Parcel History
- * description: Fetches a paginated history of parcel deliveries initiated by a specific customer, accompanied by status aggregates.
- * tags:
- * - Parcel Delivery
- * parameters:
- * - in: path
- *   name: customerId
- *   required: true
- *   schema:
- *     type: string
- *   description: MongoDB document identifier of the target customer account
- * - in: query
- *   name: page
- *   schema:
- *     type: integer
- *     default: 1
- * - in: query
- *   name: limit
- *   schema:
- *     type: integer
- *     default: 20
- * responses:
- *   200:
- *     description: Successfully compiled customer structural records and status totals
- *   400:
- *     description: Invalid input formatting or execution failure
+ *   get:
+ *     summary: Retrieve Customer Parcel History
+ *     description: Fetches a paginated history of parcel deliveries initiated by a specific customer, accompanied by status aggregates.
+ *     tags:
+ *       - Parcel Delivery
+ *     parameters:
+ *       - in: path
+ *         name: customerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB document identifier of the target customer account
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Successfully compiled customer structural records and status totals
+ *       400:
+ *         description: Invalid input formatting or execution failure
  */
 router.get(
   "/customer/parcel-history/:customerId",
@@ -272,33 +272,33 @@ router.get(
 /**
  * @swagger
  * /rider/parcel-history/{riderId}:
- * get:
- * summary: Retrieve Rider Assignment History
- * description: Fetches a paginated compilation of parcel distribution pipelines associated with a specific dispatch operator.
- * tags:
- * - Parcel Delivery
- * parameters:
- * - in: path
- *   name: riderId
- *   required: true
- *   schema:
- *     type: string
- *   description: MongoDB document identifier of the target rider account
- * - in: query
- *   name: page
- *   schema:
- *     type: integer
- *     default: 1
- * - in: query
- *   name: limit
- *   schema:
- *     type: integer
- *     default: 20
- * responses:
- *   200:
- *     description: Successfully compiled rider structural records and status totals
- *   400:
- *     description: Invalid input formatting or execution failure
+ *   get:
+ *     summary: Retrieve Rider Assignment History
+ *     description: Fetches a paginated compilation of parcel distribution pipelines associated with a specific dispatch operator.
+ *     tags:
+ *       - Parcel Delivery
+ *     parameters:
+ *       - in: path
+ *         name: riderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB document identifier of the target rider account
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Successfully compiled rider structural records and status totals
+ *       400:
+ *         description: Invalid input formatting or execution failure
  */
 router.get(
   "/rider/parcel-history/:riderId",
