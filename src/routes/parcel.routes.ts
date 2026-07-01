@@ -4,9 +4,12 @@ import {
   handleParcelPaystackWebhook,
   handleParcelPawaPayWebhook,
 } from "../controllers/payment.webhooks";
+import { authMiddleware } from "../middlewares/auth";
+import { AuthRequest } from "../middlewares/auth";
 
 import { upload } from "../middlewares/multer";
 const router = Router();
+router.use(authMiddleware);
 /**
  * @swagger
  * tags:
@@ -104,7 +107,7 @@ router.post("/webhooks/parcel/pawapay", handleParcelPawaPayWebhook);
 router.post(
   "/parcel/initialize",
   upload.any(),
-  async (req: Request, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const files = req.files as Express.Multer.File[];
 
@@ -150,7 +153,7 @@ router.post(
  *       400:
  *         description: Unrecognized shipment identifier index
  */
-router.post("/parcel/:id/pay", async (req: Request, res: Response) => {
+router.post("/parcel/:id/pay", async (req: AuthRequest, res: Response) => {
   try {
     const payload = await ParcelDeliveryService.generatePaymentLink(
       req.params.id,
@@ -158,6 +161,7 @@ router.post("/parcel/:id/pay", async (req: Request, res: Response) => {
     );
     res.status(200).json(payload);
   } catch (err: any) {
+    console.log(err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -188,7 +192,7 @@ router.post("/parcel/:id/pay", async (req: Request, res: Response) => {
  *   400:
  *     description: Service transaction fault execution
  */
-router.get("/rider/available-jobs", async (req: Request, res: Response) => {
+router.get("/rider/available-jobs", async (req: AuthRequest, res: Response) => {
   try {
     const page = req.query.page
       ? parseInt(req.query.page as string)
@@ -241,7 +245,7 @@ router.get("/rider/available-jobs", async (req: Request, res: Response) => {
  */
 router.get(
   "/customer/parcel-history/:customerId",
-  async (req: Request, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const { customerId } = req.params;
       const page = req.query.page
@@ -297,7 +301,7 @@ router.get(
  */
 router.get(
   "/rider/parcel-history/:riderId",
-  async (req: Request, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const { riderId } = req.params;
       const page = req.query.page
@@ -351,7 +355,7 @@ router.get(
  *       400:
  *         description: Target manifest instance locked or claimed by alternative asset
  */
-router.post("/rider/accept/:id", async (req: Request, res: Response) => {
+router.post("/rider/accept/:id", async (req: AuthRequest, res: Response) => {
   try {
     const update = await ParcelDeliveryService.acceptDeliveryJob(
       req.params.id,
@@ -383,16 +387,19 @@ router.post("/rider/accept/:id", async (req: Request, res: Response) => {
  *       400:
  *         description: Underlying database schema processing issue
  */
-router.post("/rider/start-transit/:id", async (req: Request, res: Response) => {
-  try {
-    const update = await ParcelDeliveryService.triggerProgressState(
-      req.params.id,
-    );
-    res.status(200).json(update);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-});
+router.post(
+  "/rider/start-transit/:id",
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const update = await ParcelDeliveryService.triggerProgressState(
+        req.params.id,
+      );
+      res.status(200).json(update);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
 /**
  * @swagger
  * /rider/verify-stop/{id}:
@@ -427,17 +434,20 @@ router.post("/rider/start-transit/:id", async (req: Request, res: Response) => {
  *       400:
  *         description: Verification verification terminated due to key mismatch errors
  */
-router.post("/rider/verify-stop/:id", async (req: Request, res: Response) => {
-  try {
-    const { label, keyInput } = req.body;
-    const result = await ParcelDeliveryService.verifyStopConfirmationKey(
-      req.params.id,
-      label,
-      keyInput,
-    );
-    res.status(200).json(result);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-});
+router.post(
+  "/rider/verify-stop/:id",
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { label, keyInput } = req.body;
+      const result = await ParcelDeliveryService.verifyStopConfirmationKey(
+        req.params.id,
+        label,
+        keyInput,
+      );
+      res.status(200).json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
 export const parcelRouter = router;
