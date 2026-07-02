@@ -256,10 +256,16 @@ router.get(
         ? parseInt(req.query.limit as string)
         : undefined;
 
+      const statusFilter = req.query.status as
+        | "ACTIVE"
+        | "DELIVERED"
+        | undefined;
+
       const history = await ParcelDeliveryService.listCustomerDeliveries({
         customerId,
         page,
         limit,
+        statusFilter,
       });
 
       res.status(200).json(history);
@@ -312,10 +318,16 @@ router.get(
         ? parseInt(req.query.limit as string)
         : undefined;
 
+      const statusFilter = req.query.status as
+        | "ACTIVE"
+        | "DELIVERED"
+        | undefined;
+
       const history = await ParcelDeliveryService.listRiderDeliveries({
         riderId,
         page,
         limit,
+        statusFilter,
       });
 
       res.status(200).json(history);
@@ -367,13 +379,12 @@ router.post("/rider/accept/:id", async (req: AuthRequest, res: Response) => {
     res.status(400).json({ error: err.message });
   }
 });
-
 /**
  * @swagger
  * /rider/start-transit/{id}:
  *   post:
  *     summary: Signal Transit Activity Engagement
- *     description: Shifts delivery context into the active tracking layout mode and appends current temporal stamps.
+ *     description: Shifts delivery context into the active tracking layout mode and appends current temporal stamps after validating the pickup secret key.
  *     tags:
  *       - Parcel Delivery
  *     parameters:
@@ -382,19 +393,39 @@ router.post("/rider/accept/:id", async (req: AuthRequest, res: Response) => {
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pickupSecretKey
+ *             properties:
+ *               pickupSecretKey:
+ *                 type: string
+ *                 description: The confirmation key provided by the customer at the pickup point.
  *     responses:
  *       200:
  *         description: Core routing status progress altered to active state
  *       400:
- *         description: Underlying database schema processing issue
+ *         description: Underlying database schema processing issue or missing/invalid pickup key
  */
 router.post(
   "/rider/start-transit/:id",
   async (req: AuthRequest, res: Response) => {
     try {
+      const { pickupSecretKey } = req.body;
+
+      if (!pickupSecretKey) {
+        return res.status(400).json({ error: "Pickup secret key is required" });
+      }
+
       const update = await ParcelDeliveryService.triggerProgressState(
         req.params.id,
+        pickupSecretKey,
       );
+
       res.status(200).json(update);
     } catch (err: any) {
       res.status(400).json({ error: err.message });

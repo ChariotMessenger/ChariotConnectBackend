@@ -247,21 +247,43 @@ export class ParcelDeliveryService {
     customerId: string;
     page?: number;
     limit?: number;
+    statusFilter?: "ACTIVE" | "DELIVERED";
   }) {
     const page = options.page && options.page > 0 ? options.page : 1;
     const limit = options.limit ? Math.min(options.limit, 100) : 20;
     const skip = (page - 1) * limit;
-    const { customerId } = options;
+    const { customerId, statusFilter } = options;
+
+    const whereClause: any = { customerId };
+
+    if (statusFilter === "ACTIVE") {
+      whereClause.status = {
+        in: ["ACCEPTED", "DELIVERY_IN_PROGRESS"],
+      };
+    } else if (statusFilter === "DELIVERED") {
+      whereClause.status = "ALL_PACKAGE_DELIVERED";
+    }
 
     const [deliveries, total, countsGroup] = await prisma.$transaction([
       prisma.deliverPackageData.findMany({
-        where: { customerId },
+        where: whereClause,
         take: limit,
         skip,
         orderBy: { createdAt: "desc" },
+        include: {
+          rider: {
+            select: {
+              firstName: true,
+              lastName: true,
+              phone: true,
+              profilePhotoUrl: true,
+              currentLocation: true,
+            },
+          },
+        },
       }),
       prisma.deliverPackageData.count({
-        where: { customerId },
+        where: whereClause,
       }),
       prisma.deliverPackageData.groupBy({
         by: ["status"],
@@ -280,8 +302,18 @@ export class ParcelDeliveryService {
       {} as Record<string, number>,
     );
 
+    const formattedData = deliveries.map((delivery) => {
+      const { pickupSecretKey, ...safePickupSummary } =
+        delivery.pickupSummary || {};
+
+      return {
+        ...delivery,
+        pickupSummary: safePickupSummary,
+      };
+    });
+
     return {
-      data: deliveries,
+      data: formattedData,
       statusCounts,
       pagination: {
         total,
@@ -291,20 +323,30 @@ export class ParcelDeliveryService {
       },
     };
   }
-
   static async listRiderDeliveries(options: {
     riderId: string;
     page?: number;
     limit?: number;
+    statusFilter?: "ACTIVE" | "DELIVERED";
   }) {
     const page = options.page && options.page > 0 ? options.page : 1;
     const limit = options.limit ? Math.min(options.limit, 100) : 20;
     const skip = (page - 1) * limit;
-    const { riderId } = options;
+    const { riderId, statusFilter } = options;
+
+    const whereClause: any = { riderId };
+
+    if (statusFilter === "ACTIVE") {
+      whereClause.status = {
+        in: ["ACCEPTED", "DELIVERY_IN_PROGRESS"],
+      };
+    } else if (statusFilter === "DELIVERED") {
+      whereClause.status = "ALL_PACKAGE_DELIVERED";
+    }
 
     const [deliveries, total, countsGroup] = await prisma.$transaction([
       prisma.deliverPackageData.findMany({
-        where: { riderId },
+        where: whereClause,
         take: limit,
         skip,
         orderBy: { createdAt: "desc" },
@@ -320,7 +362,7 @@ export class ParcelDeliveryService {
         },
       }),
       prisma.deliverPackageData.count({
-        where: { riderId },
+        where: whereClause,
       }),
       prisma.deliverPackageData.groupBy({
         by: ["status"],
@@ -341,10 +383,13 @@ export class ParcelDeliveryService {
 
     const formattedData = deliveries.map((delivery) => {
       const { customer, ...rest } = delivery;
+      const { pickupSecretKey, ...safePickupSummary } =
+        rest.pickupSummary || {};
+
       return {
         ...rest,
         pickupSummary: {
-          ...rest.pickupSummary,
+          ...safePickupSummary,
           customerName: customer
             ? `${customer.firstName} ${customer.lastName}`.trim()
             : "Unknown Customer",
@@ -383,7 +428,20 @@ export class ParcelDeliveryService {
     });
   }
 
-  static async triggerProgressState(parcelId: string) {
+  static async triggerProgressState(parcelId: string, pickupSecretKey: string) {
+    const delivery = await prisma.deliverPackageData.findUnique({
+      where: { id: parcelId },
+      select: { pickupSummary: true },
+    });
+
+    if (!delivery) {
+      throw new Error("Delivery record not found");
+    }
+
+    if (delivery.pickupSummary?.pickupSecretKey !== pickupSecretKey) {
+      throw new Error("Invalid pickup secret key");
+    }
+
     return prisma.deliverPackageData.update({
       where: { id: parcelId },
       data: {
