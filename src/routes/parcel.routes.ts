@@ -258,7 +258,7 @@ router.get(
 
       const statusFilter = req.query.status as
         | "ACTIVE"
-        | "DELIVERED"
+        | "COMPLETED"
         | undefined;
 
       const history = await ParcelDeliveryService.listCustomerDeliveries({

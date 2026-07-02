@@ -247,7 +247,7 @@ export class ParcelDeliveryService {
     customerId: string;
     page?: number;
     limit?: number;
-    statusFilter?: "ACTIVE" | "DELIVERED";
+    statusFilter?: "ACTIVE" | "COMPLETED";
   }) {
     const page = options.page && options.page > 0 ? options.page : 1;
     const limit = options.limit ? Math.min(options.limit, 100) : 20;
@@ -260,7 +260,7 @@ export class ParcelDeliveryService {
       whereClause.status = {
         in: ["ACCEPTED", "DELIVERY_IN_PROGRESS"],
       };
-    } else if (statusFilter === "DELIVERED") {
+    } else if (statusFilter === "COMPLETED") {
       whereClause.status = "ALL_PACKAGE_DELIVERED";
     }
 
