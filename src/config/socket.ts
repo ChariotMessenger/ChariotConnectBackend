@@ -7,7 +7,7 @@ interface ConnectedUsers {
 }
 
 const connectedUsers: ConnectedUsers = {};
-let ioInstance: SocketIOServer | null = null;
+export let ioInstance: SocketIOServer | null = null;
 
 export const initializeSocketIO = (io: SocketIOServer) => {
   ioInstance = io;

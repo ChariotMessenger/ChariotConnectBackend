@@ -3,7 +3,15 @@ import crypto from "crypto";
 import axios from "axios";
 import { RouteUtility } from "../utils/route.util";
 import { UploadService } from "./upload.service";
+import { emitToUser, emitToAllRiders, ioInstance } from "../config/socket";
+
 const prisma = new PrismaClient();
+
+const emitToParcelRoom = (parcelId: string, eventName: string, data: any) => {
+  if (ioInstance) {
+    ioInstance.to(`parcel:${parcelId}`).emit(eventName, data);
+  }
+};
 
 export class ParcelDeliveryService {
   static async checkIfParcelExists(id: string): Promise<boolean> {
@@ -12,6 +20,7 @@ export class ParcelDeliveryService {
     });
     return count > 0;
   }
+
   static async initializeParcelDelivery(
     data: {
       customerId: string;
@@ -107,7 +116,6 @@ export class ParcelDeliveryService {
           expectedPickupTime: new Date(data.expectedPickupTime),
           deliveryFee: computedDeliveryFee,
           protectionFee: calculatedProtectionFee,
-          // totalAmountToPay: finalAmountToPay,
           totalAmountToPay: 100,
         },
         deliveryStops: modifiedStops,
@@ -175,6 +183,7 @@ export class ParcelDeliveryService {
       };
     }
   }
+
   static async verifyWebhookPayment(reference: string, platform: string) {
     const parcelId = reference;
     const parcel = await prisma.deliverPackageData.findUnique({
@@ -182,10 +191,17 @@ export class ParcelDeliveryService {
     });
     if (!parcel) return;
 
-    await prisma.deliverPackageData.update({
+    const updatedParcel = await prisma.deliverPackageData.update({
       where: { id: parcelId },
       data: { status: "WAITING_FOR_RIDER_TO_ACCEPT" },
     });
+
+    emitToUser(
+      updatedParcel.customerId,
+      "parcel:payment-confirmed",
+      updatedParcel,
+    );
+    emitToAllRiders("parcel:available-job", updatedParcel);
   }
 
   static async listAvailableDeliveries(
@@ -323,6 +339,7 @@ export class ParcelDeliveryService {
       },
     };
   }
+
   static async listRiderDeliveries(options: {
     riderId: string;
     page?: number;
@@ -419,13 +436,18 @@ export class ParcelDeliveryService {
       throw new Error("Job allocation no longer active");
     }
 
-    return prisma.deliverPackageData.update({
+    const updatedParcel = await prisma.deliverPackageData.update({
       where: { id: parcelId },
       data: {
         riderId,
         status: "ACCEPTED",
       },
     });
+
+    emitToUser(updatedParcel.customerId, "parcel:accepted", updatedParcel);
+    emitToParcelRoom(parcelId, "parcel:status-updated", updatedParcel);
+
+    return updatedParcel;
   }
 
   static async triggerProgressState(parcelId: string, pickupSecretKey: string) {
@@ -442,13 +464,22 @@ export class ParcelDeliveryService {
       throw new Error("Invalid pickup secret key");
     }
 
-    return prisma.deliverPackageData.update({
+    const updatedParcel = await prisma.deliverPackageData.update({
       where: { id: parcelId },
       data: {
         status: "DELIVERY_IN_PROGRESS",
         timePickedUp: new Date(),
       },
     });
+
+    emitToUser(
+      updatedParcel.customerId,
+      "parcel:journey-started",
+      updatedParcel,
+    );
+    emitToParcelRoom(parcelId, "parcel:status-updated", updatedParcel);
+
+    return updatedParcel;
   }
 
   static async verifyStopConfirmationKey(
@@ -481,7 +512,7 @@ export class ParcelDeliveryService {
         ? "ALL_PACKAGE_DELIVERED"
         : "DELIVERY_IN_PROGRESS";
 
-    return prisma.deliverPackageData.update({
+    const updatedParcel = await prisma.deliverPackageData.update({
       where: { id: parcelId },
       data: {
         deliveryStops: targetList,
@@ -490,5 +521,13 @@ export class ParcelDeliveryService {
           terminalState === "ALL_PACKAGE_DELIVERED" ? new Date() : null,
       },
     });
+
+    emitToUser(updatedParcel.customerId, "parcel:stop-confirmed", {
+      label,
+      parcel: updatedParcel,
+    });
+    emitToParcelRoom(parcelId, "parcel:status-updated", updatedParcel);
+
+    return updatedParcel;
   }
 }
