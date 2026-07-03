@@ -274,7 +274,7 @@ export class ParcelDeliveryService {
 
     if (statusFilter === "ACTIVE") {
       whereClause.status = {
-        in: ["ACCEPTED", "DELIVERY_IN_PROGRESS"],
+        in: ["ACCEPTED", "DELIVERY_IN_PROGRESS", "WAITING_FOR_RIDER_TO_ACCEPT"],
       };
     } else if (statusFilter === "COMPLETED") {
       whereClause.status = "ALL_PACKAGE_DELIVERED";
