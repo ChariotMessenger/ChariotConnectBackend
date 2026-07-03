@@ -258,7 +258,6 @@ export class ParcelDeliveryService {
       },
     };
   }
-
   static async listCustomerDeliveries(options: {
     customerId: string;
     page?: number;
@@ -319,12 +318,9 @@ export class ParcelDeliveryService {
     );
 
     const formattedData = deliveries.map((delivery) => {
-      const { pickupSecretKey, ...safePickupSummary } =
-        delivery.pickupSummary || {};
-
       return {
         ...delivery,
-        pickupSummary: safePickupSummary,
+        pickupSummary: delivery.pickupSummary || {},
       };
     });
 
