@@ -432,6 +432,7 @@ router.post(
     }
   },
 );
+
 /**
  * @swagger
  * /rider/verify-stop/{id}:
@@ -479,6 +480,66 @@ router.post(
       res.status(200).json(result);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /rider/update-location/{id}:
+ *   post:
+ *     summary: Update Rider Stream Location Coordinates
+ *     description: Streams real-time coordinate updates from an assigned rider to an active parcel delivery tracking pipeline node.
+ *     tags:
+ *       - Parcel Delivery
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique identifier of the parcel instance
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - locationData
+ *             properties:
+ *               locationData:
+ *                 type: object
+ *                 description: GeoJSON or coordinate structural object containing latitude and longitude metrics
+ *     responses:
+ *       200:
+ *         description: Spatial records synchronized and tracking room instances notified successfully.
+ *       400:
+ *         description: Active coordinates rejected due to terminal closed parcel states.
+ *       404:
+ *         description: Active assignment validation framework failed for the requested identifiers.
+ */
+router.post(
+  "/rider/update-location/:id",
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { locationData } = req.body;
+      const riderId = req.user?.id;
+
+      if (!riderId) {
+        throw new Error("Unauthorized: Rider identity context missing");
+      }
+
+      const result = await ParcelDeliveryService.updateRiderLocation(
+        req.params.id,
+        riderId,
+        locationData,
+      );
+
+      res.status(200).json(result);
+    } catch (err: any) {
+      const statusCode = err.message.includes("not found") ? 404 : 400;
+      res.status(statusCode).json({ error: err.message });
     }
   },
 );

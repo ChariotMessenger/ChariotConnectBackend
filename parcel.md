@@ -290,18 +290,74 @@ socket.emit("parcel:leave", {
 });
 ```
 
+# Rider Location Updated
+
+Event
+
+```
+parcel:rider-location-updated
+```
+
+Description
+
+Broadcast continuously as the rider streams their live structural coordinate positioning metrics. Use this payload stream to transition layout map markers in real time.
+
+Payload
+
+```json
+{
+  "id": "67f3a2bc91...",
+  "customerId": "67f1b2...",
+  "riderId": "67f2c4...",
+  "status": "DELIVERY_IN_PROGRESS",
+  "currency": "NGN",
+  "avgDistanceKm": "5.4",
+  "note": "Handle with care",
+  "pickupSummary": {
+    "expectedPickupTime": "2026-07-04T15:00:00.000Z",
+    "deliveryFee": 1200,
+    "protectionFee": 150,
+    "customerName": "Jane Doe",
+    "customerProfilePhotoUrl": "https://...",
+    "customerPhoneNumber": "+234..."
+  },
+  "deliveryStops": [
+    {
+      "label": "Stop 1",
+      "stopInfo": {
+        "receiverName": "John Smith",
+        "receiverPhoneNumber": "+234...",
+        "isDelivered": false,
+        "stopLocation": { "latitude": 6.5244, "longitude": 3.3792 }
+      }
+    }
+  ],
+  "rider": {
+    "firstName": "Alex",
+    "lastName": "Rider",
+    "phone": "+234...",
+    "profilePhotoUrl": "https://...",
+    "currentLocation": {
+      "latitude": 6.5312,
+      "longitude": 3.3815
+    }
+  }
+}
+```
+
 ---
 
 # Event Summary
 
-| Event                    | Recipient   | Description                 |
-| ------------------------ | ----------- | --------------------------- |
-| parcel:payment-confirmed | Customer    | Payment has been verified   |
-| parcel:available-job     | Riders      | New delivery available      |
-| parcel:accepted          | Customer    | Rider accepted the delivery |
-| parcel:journey-started   | Customer    | Rider picked up parcel      |
-| parcel:stop-confirmed    | Customer    | One delivery stop completed |
-| parcel:status-updated    | Parcel Room | Parcel status changed       |
+| Event                         | Recipient   | Description                 |
+| ----------------------------- | ----------- | --------------------------- |
+| parcel:payment-confirmed      | Customer    | Payment has been verified   |
+| parcel:available-job          | Riders      | New delivery available      |
+| parcel:accepted               | Customer    | Rider accepted the delivery |
+| parcel:journey-started        | Customer    | Rider picked up parcel      |
+| parcel:stop-confirmed         | Customer    | One delivery stop completed |
+| parcel:status-updated         | Parcel Room | Parcel status changed       |
+| parcel:rider-location-updated | Parcel Room | Parcel status changed       |
 
 ---
 
@@ -317,4 +373,5 @@ socket.emit("parcel:leave", {
 4. Riders should listen for:
    - `parcel:available-job`
 5. Both customer and rider should join the parcel room immediately after obtaining the parcel ID.
-6. Listen for `parcel:status-updated` to keep the tracking screen synchronized in real time.
+6. Listen for `parcel:rider-location-updated` to project live positioning layout markers onto maps.
+7. Listen for `parcel:status-updated` to keep the tracking screen synchronized in real time.

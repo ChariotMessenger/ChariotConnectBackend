@@ -258,6 +258,7 @@ export class ParcelDeliveryService {
       },
     };
   }
+
   static async listCustomerDeliveries(options: {
     customerId: string;
     page?: number;
@@ -525,5 +526,87 @@ export class ParcelDeliveryService {
     emitToParcelRoom(parcelId, "parcel:status-updated", updatedParcel);
 
     return updatedParcel;
+  }
+
+  static async updateRiderLocation(
+    parcelId: string,
+    riderId: string,
+    locationData: any,
+  ) {
+    const parcel = await prisma.deliverPackageData.findFirst({
+      where: { id: parcelId, riderId },
+    });
+
+    if (!parcel) {
+      throw new Error(
+        "Active parcel assignment context not found for this rider identity",
+      );
+    }
+
+    const nonActiveStatuses = [
+      "ALL_PACKAGE_DELIVERED",
+      "CANCELLED",
+      "REJECTED",
+    ];
+
+    if (nonActiveStatuses.includes(parcel.status)) {
+      throw new Error(
+        "Cannot process active location streams on a closed terminal parcel node instance",
+      );
+    }
+
+    await prisma.rider.update({
+      where: { id: riderId },
+      data: {
+        currentLocation: locationData,
+      },
+    });
+
+    const updatedParcel = await prisma.deliverPackageData.findUnique({
+      where: { id: parcelId },
+      include: {
+        customer: {
+          select: {
+            firstName: true,
+            lastName: true,
+            profilePhotoUrl: true,
+            phone: true,
+          },
+        },
+        rider: {
+          select: {
+            firstName: true,
+            lastName: true,
+            phone: true,
+            profilePhotoUrl: true,
+            currentLocation: true,
+          },
+        },
+      },
+    });
+
+    if (!updatedParcel) {
+      throw new Error("Parcel instance failed to reload after synchronization");
+    }
+
+    const { customer, ...rest } = updatedParcel;
+    const formattedResponse = {
+      ...rest,
+      pickupSummary: {
+        ...((rest.pickupSummary as any) || {}),
+        customerName: customer
+          ? `${customer.firstName} ${customer.lastName}`.trim()
+          : "Unknown Customer",
+        customerProfilePhotoUrl: customer?.profilePhotoUrl || null,
+        customerPhoneNumber: customer?.phone || null,
+      },
+    };
+
+    emitToParcelRoom(
+      parcelId,
+      "parcel:rider-location-updated",
+      formattedResponse,
+    );
+    return formattedResponse;
   }
 }
