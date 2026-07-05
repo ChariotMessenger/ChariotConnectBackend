@@ -22,6 +22,7 @@ import { messageRouter } from "./routes/message.routes";
 import { paymentWebhookRouter } from "./routes/payment.webhook.routes";
 import { financeRouter } from "./routes/finance.routes";
 import { parcelRouter } from "./routes/parcel.routes";
+import { notificationRouter } from "./routes/notification.routes";
 //Admin
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
 import adminAuthRoutes from "./routes/admin/adminAuth.routes";
@@ -139,6 +140,7 @@ app.use(`${apiPrefix}/messages`, messageRouter);
 app.use(`${apiPrefix}/global`, globalRoutes);
 app.use(`${apiPrefix}`, paymentWebhookRouter);
 app.use(`${apiPrefix}/finance`, financeRouter);
+app.use(`${apiPrefix}/notifications`, notificationRouter);
 app.use(`${apiPrefix}`, parcelRouter);
 //Admin
 app.use(`${apiPrefix}/admins`, adminManagementRoutes);

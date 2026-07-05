@@ -107,6 +107,7 @@ model Customer {
 locationHistory        LocationHistory[] @relation("CustomerLocationHistory")
 savedLocations         SavedLocation[]   @relation("CustomerSavedLocations")
 packages DeliverPackageData[] @relation("CustomerPackages")
+notifications Notification[]
   @@index([country])
 }
 
@@ -154,6 +155,7 @@ model Vendor {
   wallet                   Wallet?
 walletTransactions       WalletTransaction[]
 withdrawalRequests       WithdrawalRequest[]
+notifications Notification[]
 bankDetailsChanges       BankDetailsChangeRequest[]
 
   @@index([country])
@@ -204,6 +206,7 @@ model Rider {
   wallet                   Wallet?
 walletTransactions       WalletTransaction[]
 withdrawalRequests       WithdrawalRequest[]
+notifications Notification[]
 bankDetailsChanges       BankDetailsChangeRequest[]
   @@index([country])
   @@index([state])
@@ -574,4 +577,25 @@ type DeliveryInfo {
   stopLocation        Point
   itemPhotosUrl       String
   timeDelivered       DateTime?
+}
+
+model Notification {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String    @db.ObjectId
+  userRole       UserRole
+  title          String
+  body           String
+  clickableLinks String[]
+  iconUrl        String?
+  isRead         Boolean   @default(false)
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  customer       Customer? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor         Vendor?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rider          Rider?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, userRole])
+  @@index([isRead])
 }
