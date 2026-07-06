@@ -105,6 +105,6 @@ router.post("/direct", authenticateAdmin, handleCreateDirectNotification);
  */
 router.post("/broadcast", authenticateAdmin, handleBroadcastNotification);
 
-export const adminNotificationRouter = router;
-
 router.get("/", authenticateAdmin, handleGetAllNotifications);
+
+export const adminNotificationRouter = router;

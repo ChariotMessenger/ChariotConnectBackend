@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { handleGetPendingVerifications } from "../../controllers/admin/admin.verification.controller";
-import { authMiddleware, authorize } from "../../middlewares/auth";
+import { authenticateAdmin } from "../../middlewares/adminAuth";
 
 const router = Router();
 
@@ -37,11 +37,6 @@ const router = Router();
  *       500:
  *         description: Internal engine data fault.
  */
-router.get(
-  "/pending",
-  authMiddleware,
-  authorize("MANAGE_VERIFICATIONS"),
-  handleGetPendingVerifications,
-);
+router.get("/pending", authenticateAdmin, handleGetPendingVerifications);
 
 export const adminVerificationRouter = router;

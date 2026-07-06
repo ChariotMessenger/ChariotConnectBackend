@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { AdminAuthController } from "../../controllers/admin/adminAuth.controller";
-import { authMiddleware } from "../../middlewares/auth";
 
 const router = Router();
 
@@ -41,10 +40,10 @@ router.post("/login", AdminAuthController.login);
  *     security:
  *       - bearerAuth: []
  */
-router.patch(
-  "/update-password",
-  authMiddleware,
-  AdminAuthController.updatePassword,
-);
+// router.patch(
+//   "/update-password",
+//   authMiddleware,
+//   AdminAuthController.updatePassword,
+// );
 
 export default router;

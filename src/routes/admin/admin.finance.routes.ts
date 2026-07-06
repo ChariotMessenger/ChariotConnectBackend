@@ -5,13 +5,11 @@ import {
   handleGetBankChanges,
   handleUpdateBankDetailsStatus,
 } from "../../controllers/admin/admin.finance.controller";
-import { authMiddleware, authorize } from "../../middlewares/auth";
+import { authenticateAdmin } from "../../middlewares/adminAuth";
 
 const router = Router();
 
-router.use(authMiddleware);
-router.use(authorize("MANAGE_FINANCES"));
-
+router.use(authenticateAdmin);
 router.get("/withdrawals", handleGetWithdrawals);
 router.patch("/withdrawals/:id/status", handleUpdateWithdrawalStatus);
 

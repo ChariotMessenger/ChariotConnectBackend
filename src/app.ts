@@ -37,6 +37,7 @@ import { swaggerOptions } from "./config/swagger";
 import { logger } from "./utils/logger";
 import { adminPricingRouter } from "./routes/admin/admin.pricing.routes";
 import { adminFinanceRouter } from "./routes/admin/admin.finance.routes";
+import { adminParcelRouter } from "./routes/admin/admin.parcel.routes";
 const app: Express = express();
 
 // Swagger Setup
@@ -154,6 +155,7 @@ app.use(`${apiPrefix}/admin/pricing`, adminPricingRouter);
 app.use(`${apiPrefix}/admin/notifications`, adminNotificationRouter);
 app.use(`${apiPrefix}/admin/verification`, adminVerificationRouter);
 app.use(`${apiPrefix}/admin/finance`, adminFinanceRouter);
+app.use(`${apiPrefix}/admin/parcels`, adminParcelRouter);
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
