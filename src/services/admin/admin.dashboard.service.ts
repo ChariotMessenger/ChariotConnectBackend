@@ -301,34 +301,6 @@ export const AdminService = {
     };
   },
 
-  async getOrders(page = 1, limit = 10, status?: OrderStatus) {
-    const skip = (page - 1) * limit;
-    const orders = await prisma.order.findMany({
-      where: status ? { status } : {},
-      skip,
-      take: limit,
-      orderBy: { createdAt: "desc" },
-      include: {
-        customer: { select: { firstName: true, lastName: true } },
-        vendor: { select: { businessName: true } },
-        rider: { select: { firstName: true, lastName: true } },
-      },
-    });
-
-    return orders.map((o) => ({
-      orderId: o.id,
-      customer: `${o.customer.firstName} ${o.customer.lastName}`,
-      station: o.vendor?.businessName || "N/A",
-      driver: o.rider
-        ? `${o.rider.firstName} ${o.rider.lastName}`
-        : "Unassigned",
-      quantity: "10L",
-      fuelType: "Food",
-      grossAmount: o.totalAmount,
-      status: o.status,
-    }));
-  },
-
   async getOrderDetail(orderId: string) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -341,15 +313,49 @@ export const AdminService = {
 
     if (!order) return null;
 
+    const itemsArray = Array.isArray(order.items) ? order.items : [];
+    let totalCalculatedQuantity = 0;
+
+    itemsArray.forEach((pack: any) => {
+      if (pack && typeof pack === "object" && Array.isArray(pack.itemList)) {
+        pack.itemList.forEach((item: any) => {
+          if (
+            item &&
+            typeof item === "object" &&
+            typeof item.quantity === "number"
+          ) {
+            totalCalculatedQuantity += item.quantity;
+          }
+        });
+      }
+    });
+
+    const formattedQuantity = `${totalCalculatedQuantity} pcs`;
+    const calculatedPlatformProfit =
+      order.totalAmount - order.vendorNet - order.riderNet;
+    const platformProfitString = `₦${calculatedPlatformProfit.toLocaleString()}`;
+
+    let delayMessage = "N/A";
+    if (order.pickupAt && order.createdAt) {
+      const differenceInMinutes = Math.round(
+        (new Date(order.pickupAt).getTime() -
+          new Date(order.createdAt).getTime()) /
+          60000,
+      );
+      if (differenceInMinutes > 0) {
+        delayMessage = `${differenceInMinutes} mins`;
+      }
+    }
+
     return {
       customerOrder: {
         orderId: order.id,
         customerName: `${order.customer.firstName} ${order.customer.lastName}`,
-        orderType: "Food", // Hardcoded as per screenshot requirement
+        orderType: order.vendor.businessType || "Retail",
         orderStatus: order.status,
-        items: order.items, // Json field
+        items: order.items,
         grossAmount: order.totalAmount,
-        fluidPrice: "₦290,000 - ₦1,300/L",
+        fluidPrice: platformProfitString,
       },
       deliveryDetails: {
         deliveryStatus: order.rider ? "Driver assigned" : "Pending",
@@ -357,27 +363,86 @@ export const AdminService = {
           ? `${order.rider.firstName} ${order.rider.lastName}`
           : "N/A",
         station: order.vendor.businessName,
-        deliveryAddress: order.notes || "No address provided", // Points are objects, using notes or business address instead
+        deliveryAddress:
+          order.deliveryLocation?.fullAddress ||
+          order.deliveryLocation?.locationName ||
+          order.notes ||
+          "No address provided",
         deliveryFee: order.deliveryFee,
-        chariotFee: 500,
-        riderReceive: order.deliveryFee - 500,
+        chariotFee: order.protectionFee,
+        riderReceive: order.riderNet,
       },
       timestamp: {
-        orderPlaced: order.createdAt,
-        driverAssigned: order.pickupAt, // Mapping based on available DateTime fields
-        deliveryStarted: order.pickupAt,
-        deliveryCompleted: order.deliveredAt,
-        stationDelay: "2 mins",
+        orderPlaced: order.createdAt
+          ? new Date(order.createdAt).toISOString()
+          : "Awaiting...",
+        driverAssigned: order.pickupAt
+          ? new Date(order.pickupAt).toISOString()
+          : "Awaiting...",
+        deliveryStarted: order.pickupAt
+          ? new Date(order.pickupAt).toISOString()
+          : "Awaiting...",
+        deliveryCompleted: order.deliveredAt
+          ? new Date(order.deliveredAt).toISOString()
+          : "Awaiting...",
+        stationDelay: delayMessage,
       },
       vendorsSale: {
         stationName: order.vendor.businessName,
-        stationLocation: order.vendor.businessType,
-        orderType: "Food",
-        volumeSold: "10 L",
+        stationLocation: order.vendor.businessType || "Retail",
+        orderType: order.vendor.businessType || "Retail",
+        volumeSold: formattedQuantity,
         amountSold: order.vendorNet,
-        fluidPrice: "₦290,000 - ₦1,300/L",
+        fluidPrice: `₦${order.productPrice.toLocaleString()}`,
       },
     };
+  },
+
+  async getOrders(page = 1, limit = 10, status?: OrderStatus) {
+    const skip = (page - 1) * limit;
+    const orders = await prisma.order.findMany({
+      where: status ? { status } : {},
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        customer: { select: { firstName: true, lastName: true } },
+        vendor: { select: { businessName: true, businessType: true } },
+        rider: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    return orders.map((o) => {
+      const itemsArray = Array.isArray(o.items) ? o.items : [];
+      let count = 0;
+
+      itemsArray.forEach((pack: any) => {
+        if (pack && typeof pack === "object" && Array.isArray(pack.itemList)) {
+          pack.itemList.forEach((item: any) => {
+            if (
+              item &&
+              typeof item === "object" &&
+              typeof item.quantity === "number"
+            ) {
+              count += item.quantity;
+            }
+          });
+        }
+      });
+
+      return {
+        orderId: o.id,
+        customer: `${o.customer.firstName} ${o.customer.lastName}`,
+        station: o.vendor?.businessName || "N/A",
+        driver: o.rider
+          ? `${o.rider.firstName} ${o.rider.lastName}`
+          : "Unassigned",
+        quantity: `${count} pcs`,
+        fuelType: o.vendor?.businessType || "Retail",
+        grossAmount: o.totalAmount,
+        status: o.status,
+      };
+    });
   },
 
   async getPricingConfig() {
