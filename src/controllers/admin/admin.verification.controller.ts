@@ -1,30 +1,29 @@
-import { Request, Response } from "express";
-import { getVerificationRequests } from "../../services/admin/admin.verification.service";
-export class VerificationController {
-  async getRequests(req: Request, res: Response) {
-    try {
-      const type = req.query.type as "VENDOR" | "RIDER";
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+import { Response } from "express";
+import { AuthRequest } from "../../middlewares/auth";
+import { adminVerificationService } from "../../services/admin/admin.verification.service";
 
-      if (!type || !["VENDOR", "RIDER"].includes(type)) {
-        return res.status(400).json({
-          success: false,
-          message: "Valid type (VENDOR or RIDER) is required",
-        });
-      }
+export const handleGetPendingVerifications = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = parseInt(req.query.offset as string) || 0;
 
-      const verificationData = await getVerificationRequests(type, page, limit);
+    const result = await adminVerificationService.getPendingVerifications(
+      limit,
+      offset,
+    );
 
-      return res.status(200).json({
-        success: true,
-        ...verificationData,
-      });
-    } catch (error: any) {
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Failed to fetch verification requests",
-      });
-    }
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending verifications queue",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-}
+};

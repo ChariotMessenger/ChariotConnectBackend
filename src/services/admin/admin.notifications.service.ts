@@ -108,4 +108,25 @@ export const adminNotificationService = {
 
     return { count: 0 };
   },
+
+  async getAllNotifications(limit: number, offset: number) {
+    const [notifications, totalCount] = await Promise.all([
+      prisma.notification.findMany({
+        take: limit,
+        skip: offset,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.notification.count(),
+    ]);
+
+    return {
+      notifications,
+      meta: {
+        totalCount,
+        limit,
+        offset,
+        hasNextPage: offset + limit < totalCount,
+      },
+    };
+  },
 };

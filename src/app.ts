@@ -30,7 +30,8 @@ import adminAnalyticsRoutes from "./routes/admin/adminAnalytics.routes";
 import accountRoutes from "./routes/admin/admin.temp.routes";
 import adminUserRoutes from "./routes/admin/admin.user.routes";
 import adminDashboardRouter from "./routes/admin/admin.dashboard.routes";
-
+import { adminNotificationRouter } from "./routes/admin/admin.notification.routes";
+import { adminVerificationRouter } from "./routes/admin/admin.verification.routes";
 // Config
 import { swaggerOptions } from "./config/swagger";
 import { logger } from "./utils/logger";
@@ -150,7 +151,8 @@ app.use(`${apiPrefix}/admin/accounts`, accountRoutes);
 app.use(`${apiPrefix}/admin`, adminUserRoutes);
 app.use(`${apiPrefix}/admin`, adminDashboardRouter);
 app.use(`${apiPrefix}/admin/pricing`, adminPricingRouter);
-
+app.use(`${apiPrefix}/admin/notifications`, adminNotificationRouter);
+app.use(`${apiPrefix}/admin/verification`, adminVerificationRouter);
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
