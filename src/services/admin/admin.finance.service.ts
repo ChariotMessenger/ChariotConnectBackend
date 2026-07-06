@@ -106,17 +106,22 @@ export const adminFinanceService = {
 
         updatedBalance = finalWallet.balance;
 
+        const transactionData: any = {
+          amount: request.amount,
+          type: "WITHDRAWAL",
+          status: "SUCCESSFUL",
+          reference: request.reference,
+          currency: request.currency,
+        };
+
+        if (request.vendorId) {
+          transactionData.vendor = { connect: { id: request.vendorId } };
+        } else if (request.riderId) {
+          transactionData.rider = { connect: { id: request.riderId } };
+        }
+
         await tx.walletTransaction.create({
-          data: {
-            walletId: wallet.id,
-            vendorId: request.vendorId,
-            riderId: request.riderId,
-            amount: request.amount,
-            type: "WITHDRAWAL",
-            status: "SUCCESSFUL",
-            reference: request.reference,
-            currency: request.currency,
-          } as any,
+          data: transactionData,
         });
       }
 
@@ -141,7 +146,6 @@ export const adminFinanceService = {
       return updatedRequest;
     });
   },
-
   async getBankDetailsRequests(
     page: number,
     limit: number,
