@@ -30,20 +30,4 @@ const router = Router();
  */
 router.post("/login", AdminAuthController.login);
 
-/**
- * @swagger
- * /admin/auth/update-password:
- *   patch:
- *     summary: Update Admin Password
- *     tags:
- *       - Admin Auth
- *     security:
- *       - bearerAuth: []
- */
-// router.patch(
-//   "/update-password",
-//   authMiddleware,
-//   AdminAuthController.updatePassword,
-// );
-
 export default router;

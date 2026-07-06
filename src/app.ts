@@ -155,7 +155,7 @@ app.use(`${apiPrefix}/admin/pricing`, adminPricingRouter);
 app.use(`${apiPrefix}/admin/notifications`, adminNotificationRouter);
 app.use(`${apiPrefix}/admin/verification`, adminVerificationRouter);
 app.use(`${apiPrefix}/admin/finance`, adminFinanceRouter);
-app.use(`${apiPrefix}/admin/parcels`, adminParcelRouter);
+app.use(`${apiPrefix}/admin`, adminParcelRouter);
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
