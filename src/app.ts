@@ -146,7 +146,7 @@ app.use(`${apiPrefix}/notifications`, notificationRouter);
 app.use(`${apiPrefix}`, parcelRouter);
 //Admin
 app.use(`${apiPrefix}/admins`, adminManagementRoutes);
-app.use(`${apiPrefix}/admin/auth`, adminAuthRoutes);
+app.use(`${apiPrefix}/admin-auth`, adminAuthRoutes);
 app.use(`${apiPrefix}/admin`, adminAnalyticsRoutes);
 app.use(`${apiPrefix}/admin/accounts`, accountRoutes);
 app.use(`${apiPrefix}/admin`, adminUserRoutes);
