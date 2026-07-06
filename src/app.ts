@@ -133,6 +133,8 @@ app.use("/health", healthRoutes);
 const apiVersion = process.env.API_VERSION || "v1";
 const apiPrefix = `/api/${apiVersion}`;
 
+app.use(`${apiPrefix}/admin-auth`, adminAuthRoutes);
+
 app.use(`${apiPrefix}/customers`, customerRoutes);
 app.use(`${apiPrefix}/vendors`, vendorRoutes);
 app.use(`${apiPrefix}/riders`, riderRoutes);
