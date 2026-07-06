@@ -1,12 +1,9 @@
 import { Router } from "express";
 import { DashboardController } from "../../controllers/admin/admin.dashboard.controller";
-import { VerificationController } from "../../controllers/admin/admin.verification.controller";
 import { authenticateAdmin } from "../../middlewares/adminAuth";
 
 const adminDashboardRouter = Router();
 const dashboardController = new DashboardController();
-const verificationController = new VerificationController();
-
 /**
  * @swagger
  * tags:
@@ -104,10 +101,5 @@ adminDashboardRouter.patch(
 );
 
 // Verification Routes
-adminDashboardRouter.get(
-  "/verifications",
-  authenticateAdmin,
-  verificationController.getRequests,
-);
 
 export default adminDashboardRouter;
