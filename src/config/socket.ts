@@ -1,7 +1,7 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { logger } from "../utils/logger";
 import { messageService } from "../services/message.service";
-
+import { RiderMetricsService } from "../services/rider.metrics.service";
 interface ConnectedUsers {
   [userId: string]: string;
 }
@@ -212,5 +212,15 @@ export const emitWalletBalanceUpdate = (
       totalPendingWithdrawal,
       updatedAt: new Date(),
     });
+  }
+};
+export const emitRiderTodayStatsUpdate = async (riderId: string) => {
+  if (ioInstance) {
+    try {
+      const stats = await RiderMetricsService.getRiderTodayStats(riderId);
+      ioInstance.to(`user:${riderId}`).emit("rider:today-stats-updated", stats);
+    } catch (error) {
+      logger.error("Failed to push real-time metric update", error);
+    }
   }
 };
