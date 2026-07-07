@@ -79,6 +79,25 @@ model SavedLocation {
 
   @@unique([customerId, name]) // Prevents a single customer from duplicating location names
 }
+model DeviceToken {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  token       String   @unique
+  userType    UserType
+  customerId  String?  @db.ObjectId
+  vendorId    String?  @db.ObjectId
+  riderId     String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([riderId])
+}
+enum UserType {
+  CUSTOMER
+  VENDOR
+  RIDER
+}
 
 model Customer {
   id                     String            @id @default(auto()) @map("_id") @db.ObjectId
