@@ -6,14 +6,22 @@ import path from "path";
 const prisma = new PrismaClient();
 
 if (getApps().length === 0) {
-  const serviceAccountPath = path.resolve(
-    process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
-      "./firebase-service-account.json",
-  );
-
-  initializeApp({
-    credential: cert(serviceAccountPath),
-  });
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    const serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+    );
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
+  } else {
+    const serviceAccountPath = path.resolve(
+      process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
+        "./firebase-service-account.json",
+    );
+    initializeApp({
+      credential: cert(serviceAccountPath),
+    });
+  }
 }
 
 export class NotificationService {
