@@ -1,6 +1,12 @@
-import { PrismaClient, UserRole } from "@prisma/client";
-
+import { PrismaClient, UserRole, UserType } from "@prisma/client";
+import { NotificationService } from "../notification.service";
 const prisma = new PrismaClient();
+
+const mapRoleToType = (role: "CUSTOMER" | "VENDOR" | "RIDER"): UserType => {
+  if (role === "CUSTOMER") return UserType.CUSTOMER;
+  if (role === "VENDOR") return UserType.VENDOR;
+  return UserType.RIDER;
+};
 
 export const adminNotificationService = {
   async createNotification(data: {
@@ -27,9 +33,19 @@ export const adminNotificationService = {
     if (data.userRole === "RIDER")
       payload.rider = { connect: { id: data.userId } };
 
-    return await prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: payload,
     });
+
+    try {
+      await NotificationService.sendPushNotification(
+        data.userId,
+        mapRoleToType(data.userRole),
+        { title: data.title, body: data.body },
+      );
+    } catch (e) {}
+
+    return notification;
   },
 
   async broadcastNotification(data: {
@@ -101,9 +117,21 @@ export const adminNotificationService = {
     }
 
     if (notificationsToCreate.length > 0) {
-      return await prisma.notification.createMany({
+      const result = await prisma.notification.createMany({
         data: notificationsToCreate,
       });
+
+      for (const notification of notificationsToCreate) {
+        try {
+          await NotificationService.sendPushNotification(
+            notification.userId,
+            mapRoleToType(notification.userRole),
+            { title: notification.title, body: notification.body },
+          );
+        } catch (e) {}
+      }
+
+      return result;
     }
 
     return { count: 0 };

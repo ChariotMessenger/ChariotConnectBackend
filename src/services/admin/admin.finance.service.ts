@@ -4,7 +4,7 @@ import {
   VerificationStatus,
 } from "@prisma/client";
 import { emitWalletBalanceUpdate } from "../../config/socket";
-
+import { NotificationService } from "../notification.service";
 const prisma = new PrismaClient();
 
 export const adminFinanceService = {
