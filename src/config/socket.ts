@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { logger } from "../utils/logger";
 import { messageService } from "../services/message.service";
 import { RiderMetricsService } from "../services/rider.metrics.service";
+
 interface ConnectedUsers {
   [userId: string]: string;
 }
@@ -24,6 +25,17 @@ export const initializeSocketIO = (io: SocketIOServer) => {
       socket.data.userType = userType;
 
       logger.info(`User ${userId} (${userType}) is online`);
+    });
+
+    socket.on("rider:get-today-stats", async (data) => {
+      try {
+        const { riderId } = data;
+        const stats = await RiderMetricsService.getRiderTodayStats(riderId);
+        socket.emit("rider:today-stats-updated", stats);
+      } catch (error) {
+        logger.error("Error fetching rider metrics via socket:", error);
+        socket.emit("error", { message: "Failed to fetch today metrics" });
+      }
     });
 
     socket.on("wallet:join", (data) => {
@@ -214,6 +226,7 @@ export const emitWalletBalanceUpdate = (
     });
   }
 };
+
 export const emitRiderTodayStatsUpdate = async (riderId: string) => {
   if (ioInstance) {
     try {
