@@ -23,6 +23,7 @@ import { paymentWebhookRouter } from "./routes/payment.webhook.routes";
 import { financeRouter } from "./routes/finance.routes";
 import { parcelRouter } from "./routes/parcel.routes";
 import { notificationRouter } from "./routes/notification.routes";
+import { metricsRouter } from "./routes/rider.metrics.routes";
 //Admin
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
 import adminAuthRoutes from "./routes/admin/adminAuth.routes";
@@ -32,6 +33,7 @@ import adminUserRoutes from "./routes/admin/admin.user.routes";
 import adminDashboardRouter from "./routes/admin/admin.dashboard.routes";
 import { adminNotificationRouter } from "./routes/admin/admin.notification.routes";
 import { adminVerificationRouter } from "./routes/admin/admin.verification.routes";
+
 // Config
 import { swaggerOptions } from "./config/swagger";
 import { logger } from "./utils/logger";
@@ -145,6 +147,7 @@ app.use(`${apiPrefix}/global`, globalRoutes);
 app.use(`${apiPrefix}`, paymentWebhookRouter);
 app.use(`${apiPrefix}/finance`, financeRouter);
 app.use(`${apiPrefix}/notifications`, notificationRouter);
+app.use(`${apiPrefix}/metrics`, metricsRouter);
 app.use(`${apiPrefix}`, parcelRouter);
 //Admin
 app.use(`${apiPrefix}/admins`, adminManagementRoutes);
