@@ -1,9 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, UserType } from "@prisma/client";
 import crypto from "crypto";
 import axios from "axios";
 import { RouteUtility } from "../utils/route.util";
 import { UploadService } from "./upload.service";
 import { emitToUser, emitToAllRiders, ioInstance } from "../config/socket";
+import { NotificationService } from "./notification.service";
 
 const prisma = new PrismaClient();
 
@@ -202,6 +203,31 @@ export class ParcelDeliveryService {
       updatedParcel,
     );
     emitToAllRiders("parcel:available-job", updatedParcel);
+
+    await NotificationService.sendPushNotification(
+      updatedParcel.customerId,
+      UserType.CUSTOMER,
+      {
+        title: "Payment Confirmed 💳",
+        body: "Your package order payment was processed. Finding a nearby rider now.",
+        data: { parcelId: updatedParcel.id, type: "PAYMENT_CONFIRMED" },
+      },
+    );
+
+    const activeRiders = await prisma.rider.findMany({
+      where: { onlineStatus: "ONLINE", status: "ACTIVE" },
+      select: { id: true },
+    });
+
+    await Promise.all(
+      activeRiders.map((rider) =>
+        NotificationService.sendPushNotification(rider.id, UserType.RIDER, {
+          title: "New Delivery Request Available 📦",
+          body: `Earn money moving a package over ${updatedParcel.avgDistanceKm}km. Open your dashboard to view parameters.`,
+          data: { parcelId: updatedParcel.id, type: "NEW_DELIVERY_JOB" },
+        }),
+      ),
+    );
   }
 
   static async listAvailableDeliveries(
@@ -444,6 +470,16 @@ export class ParcelDeliveryService {
     emitToUser(updatedParcel.customerId, "parcel:accepted", updatedParcel);
     emitToParcelRoom(parcelId, "parcel:status-updated", updatedParcel);
 
+    await NotificationService.sendPushNotification(
+      updatedParcel.customerId,
+      UserType.CUSTOMER,
+      {
+        title: "Rider Assigned 🏍️",
+        body: "A courier has accepted your package routing request and is heading toward the pickup coordinates.",
+        data: { parcelId, type: "JOB_ACCEPTED" },
+      },
+    );
+
     return updatedParcel;
   }
 
@@ -475,6 +511,16 @@ export class ParcelDeliveryService {
       updatedParcel,
     );
     emitToParcelRoom(parcelId, "parcel:status-updated", updatedParcel);
+
+    await NotificationService.sendPushNotification(
+      updatedParcel.customerId,
+      UserType.CUSTOMER,
+      {
+        title: "Package In Transit 🚀",
+        body: "Your rider has successfully checked in the packages. Tracking parameters are now live on your map view.",
+        data: { parcelId, type: "DELIVERY_IN_PROGRESS" },
+      },
+    );
 
     return updatedParcel;
   }
@@ -524,6 +570,28 @@ export class ParcelDeliveryService {
       parcel: updatedParcel,
     });
     emitToParcelRoom(parcelId, "parcel:status-updated", updatedParcel);
+
+    if (terminalState === "ALL_PACKAGE_DELIVERED") {
+      await NotificationService.sendPushNotification(
+        updatedParcel.customerId,
+        UserType.CUSTOMER,
+        {
+          title: "All Packages Delivered! 🎉",
+          body: `All stop counters verified successfully. Thank you for using our service.`,
+          data: { parcelId, type: "DELIVERY_COMPLETED" },
+        },
+      );
+    } else {
+      await NotificationService.sendPushNotification(
+        updatedParcel.customerId,
+        UserType.CUSTOMER,
+        {
+          title: `Waypoint Confirmed: ${label} ✅`,
+          body: `Package drop-off successful at stop: ${label}. Moving toward remaining destinations.`,
+          data: { parcelId, type: "WAYPOINT_CONFIRMED", waypointLabel: label },
+        },
+      );
+    }
 
     return updatedParcel;
   }
