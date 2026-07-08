@@ -2,6 +2,7 @@ import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getMessaging, MulticastMessage } from "firebase-admin/messaging";
 import { PrismaClient, UserType } from "@prisma/client";
 import path from "path";
+import fs from "fs";
 
 const prisma = new PrismaClient();
 
@@ -18,9 +19,19 @@ if (getApps().length === 0) {
       process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
         "./firebase-service-account.json",
     );
-    initializeApp({
-      credential: cert(serviceAccountPath),
-    });
+
+    if (
+      fs.existsSync(serviceAccountPath) &&
+      fs.statSync(serviceAccountPath).size > 0
+    ) {
+      initializeApp({
+        credential: cert(serviceAccountPath),
+      });
+    } else {
+      throw new Error(
+        "Firebase initialization failed: Missing or empty service account configuration.",
+      );
+    }
   }
 }
 
