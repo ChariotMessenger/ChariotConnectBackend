@@ -1,38 +1,20 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getMessaging, MulticastMessage } from "firebase-admin/messaging";
 import { PrismaClient, UserType } from "@prisma/client";
-import path from "path";
-import fs from "fs";
 
 const prisma = new PrismaClient();
 
 if (getApps().length === 0) {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    throw new Error(
+      "Firebase initialization failed: FIREBASE_SERVICE_ACCOUNT_JSON environment variable is missing.",
     );
-    initializeApp({
-      credential: cert(serviceAccount),
-    });
-  } else {
-    const serviceAccountPath = path.resolve(
-      process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
-        "./firebase-service-account.json",
-    );
-
-    if (
-      fs.existsSync(serviceAccountPath) &&
-      fs.statSync(serviceAccountPath).size > 0
-    ) {
-      initializeApp({
-        credential: cert(serviceAccountPath),
-      });
-    } else {
-      throw new Error(
-        "Firebase initialization failed: Missing or empty service account configuration.",
-      );
-    }
   }
+
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  initializeApp({
+    credential: cert(serviceAccount),
+  });
 }
 
 export class NotificationService {
