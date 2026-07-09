@@ -1,8 +1,9 @@
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
-import { OrderStatus, PaymentStatus } from "@prisma/client";
+import { OrderStatus, PaymentStatus, UserType } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { emitToUser, emitToOrderRoom, emitToAllRiders } from "../config/socket";
+import { NotificationService } from "./notification.service";
 import crypto from "crypto";
 import axios from "axios";
 
@@ -38,6 +39,7 @@ interface UpdateOrderInput {
   notes?: string;
   estDeliveryTime?: string;
 }
+
 export class OrderService {
   private static orderIncludeOptions = {
     vendor: {
@@ -157,6 +159,7 @@ export class OrderService {
         select: {
           currency: true,
           businessAddress: true,
+          businessName: true,
         },
       });
 
@@ -235,6 +238,14 @@ export class OrderService {
         data.vendorId,
         "order:new-incoming",
         this.formatOrderResponse(order, data.vendorId),
+      );
+
+      NotificationService.sendPushNotification(data.vendorId, UserType.VENDOR, {
+        title: "New Incoming Order",
+        body: `You have received a new order from a customer. Click to view options.`,
+        data: { orderId: order.id, type: "NEW_ORDER" },
+      }).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
       );
 
       try {
@@ -372,6 +383,19 @@ export class OrderService {
         "order:updated",
         this.formatOrderResponse(updatedOrder),
       );
+
+      NotificationService.sendPushNotification(
+        updatedOrder.vendorId,
+        UserType.VENDOR,
+        {
+          title: "Order Modified",
+          body: `The customer has updated details on order #${orderId}.`,
+          data: { orderId, type: "ORDER_MODIFIED" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
+      );
+
       return this.formatOrderResponse(updatedOrder, customerId);
     } catch (error) {
       logger.error("Error updating order:", error);
@@ -426,6 +450,19 @@ export class OrderService {
         "order:updated",
         this.formatOrderResponse(updatedOrder),
       );
+
+      NotificationService.sendPushNotification(
+        order.vendorId,
+        UserType.VENDOR,
+        {
+          title: "Order Cancelled",
+          body: `Customer cancelled order #${orderId}.`,
+          data: { orderId, status: "CANCELLED" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
+      );
+
       return this.formatOrderResponse(updatedOrder, customerId);
     } catch (error) {
       logger.error("Error cancelling order:", error);
@@ -496,6 +533,32 @@ export class OrderService {
         "order:ready-for-payment",
         this.formatOrderResponse(updatedOrder, order.customerId),
       );
+
+      NotificationService.sendPushNotification(
+        order.customerId,
+        UserType.CUSTOMER,
+        {
+          title: "Order Approved",
+          body: `Your order has been approved and is ready for payment.`,
+          data: { orderId, status: "AWAITING_PAYMENT" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
+      );
+    }
+
+    if (status === OrderStatus.REJECTED) {
+      NotificationService.sendPushNotification(
+        order.customerId,
+        UserType.CUSTOMER,
+        {
+          title: "Order Declined",
+          body: `The vendor declined your order execution request.`,
+          data: { orderId, status: "REJECTED" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
+      );
     }
 
     return this.formatOrderResponse(updatedOrder, vendorId);
@@ -543,6 +606,18 @@ export class OrderService {
         orderId,
         "order:updated",
         this.formatOrderResponse(updatedOrder),
+      );
+
+      NotificationService.sendPushNotification(
+        order.customerId,
+        UserType.CUSTOMER,
+        {
+          title: "Order Declined",
+          body: `The vendor declined your order execution request.`,
+          data: { orderId, status: "REJECTED" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
       );
 
       return this.formatOrderResponse(updatedOrder, vendorId);
@@ -593,6 +668,18 @@ export class OrderService {
       emitToAllRiders(
         "delivery-job:available",
         this.formatOrderResponse(updatedOrder),
+      );
+
+      NotificationService.sendPushNotification(
+        order.customerId,
+        UserType.CUSTOMER,
+        {
+          title: "Order Packed",
+          body: `Your order from ${updatedOrder.vendor?.businessName || "Vendor"} is completely packed and awaiting runner setup.`,
+          data: { orderId, status: "ORDER_PACKED" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
       );
 
       return this.formatOrderResponse(updatedOrder, vendorId);
@@ -750,6 +837,18 @@ export class OrderService {
         this.formatOrderResponse(order),
       );
 
+      NotificationService.sendPushNotification(
+        order.vendorId,
+        UserType.VENDOR,
+        {
+          title: "Payment Received",
+          body: `Payment for order #${orderId} was successfully settled. Begin preparation.`,
+          data: { orderId, status: "PAID" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
+      );
+
       return [transaction, this.formatOrderResponse(order, order.customerId)];
     }
     throw new CustomError("Payment not verified", 400, "PAYMENT_FAILED");
@@ -806,6 +905,26 @@ export class OrderService {
       "order:updated",
       this.formatOrderResponse(updatedOrder),
     );
+
+    NotificationService.sendPushNotification(
+      updatedOrder.customerId,
+      UserType.CUSTOMER,
+      {
+        title: "Rider Heading to Vendor",
+        body: `A rider has accepted the delivery match and is picking up your items.`,
+        data: { orderId, status: "RIDER_EN_ROUTE_TO_VENDOR" },
+      },
+    ).catch((e: any) => logger.error("Push notification failing context:", e));
+
+    NotificationService.sendPushNotification(
+      updatedOrder.vendorId,
+      UserType.VENDOR,
+      {
+        title: "Rider Dispatched",
+        body: `A rider is heading to your business address to pick up order #${orderId}.`,
+        data: { orderId, status: "RIDER_EN_ROUTE_TO_VENDOR" },
+      },
+    ).catch((e: any) => logger.error("Push notification failing context:", e));
 
     return this.formatOrderResponse(updatedOrder, riderId);
   }
@@ -866,6 +985,16 @@ export class OrderService {
       this.formatOrderResponse(updatedOrder),
     );
 
+    NotificationService.sendPushNotification(
+      updatedOrder.vendorId,
+      UserType.VENDOR,
+      {
+        title: "Rider Unassigned",
+        body: `The assigned courier unlinked from order #${orderId}. A matching replacement search is active.`,
+        data: { orderId, status: "ORDER_PACKED" },
+      },
+    ).catch((e: any) => logger.error("Push notification failing context:", e));
+
     return this.formatOrderResponse(updatedOrder, riderId);
   }
 
@@ -922,6 +1051,30 @@ export class OrderService {
       this.formatOrderResponse(updatedOrder),
     );
 
+    NotificationService.sendPushNotification(
+      updatedOrder.customerId,
+      UserType.CUSTOMER,
+      {
+        title: "Order En Route",
+        body: `Your order has been collected from the vendor and is coming your way.`,
+        data: { orderId, status: "RIDER_EN_ROUTE_TO_CUSTOMER" },
+      },
+    ).catch((e: any) => logger.error("Push notification failing context:", e));
+
+    if (updatedOrder.riderId) {
+      NotificationService.sendPushNotification(
+        updatedOrder.riderId,
+        UserType.RIDER,
+        {
+          title: "Pickup Confirmed",
+          body: `Package collection verified successfully. Deliver to customer dropoff address.`,
+          data: { orderId, status: "RIDER_EN_ROUTE_TO_CUSTOMER" },
+        },
+      ).catch((e: any) =>
+        logger.error("Push notification failing context:", e),
+      );
+    }
+
     return this.formatOrderResponse(updatedOrder, vendorId);
   }
 
@@ -937,6 +1090,8 @@ export class OrderService {
         customerSecretKey: true,
         riderId: true,
         riderNet: true,
+        customerId: true,
+        vendorId: true,
       },
     });
 
@@ -991,6 +1146,26 @@ export class OrderService {
       "order:updated",
       this.formatOrderResponse(updatedOrder),
     );
+
+    NotificationService.sendPushNotification(
+      orderContext.customerId,
+      UserType.CUSTOMER,
+      {
+        title: "Order Delivered",
+        body: `Enjoy your delivery! Handover key clearance validation was successful.`,
+        data: { orderId, status: "DELIVERED" },
+      },
+    ).catch((e: any) => logger.error("Push notification failing context:", e));
+
+    NotificationService.sendPushNotification(
+      orderContext.vendorId,
+      UserType.VENDOR,
+      {
+        title: "Delivery Completed",
+        body: `Order #${orderId} was safely handed over to the buyer.`,
+        data: { orderId, status: "DELIVERED" },
+      },
+    ).catch((e: any) => logger.error("Push notification failing context:", e));
 
     return this.formatOrderResponse(updatedOrder, riderId);
   }
