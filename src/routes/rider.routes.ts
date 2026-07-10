@@ -810,11 +810,13 @@ protectedRouter.post(
  *                             type: string
  */
 router.get("/nearby-jobs", authMiddleware, riderController.getNearbyJobs);
+
 /**
  * @swagger
  * /riders/riders/orders:
  *   get:
  *     summary: Get paginated tracking context arrays for rider dashboard node
+ *     description: Retrieve a paginated collection of rider orders grouped by status, with optional rider location coordinates for proximity-based available jobs.
  *     tags:
  *       - Orders
  *     security:
@@ -822,26 +824,96 @@ router.get("/nearby-jobs", authMiddleware, riderController.getNearbyJobs);
  *     parameters:
  *       - in: query
  *         name: statusType
+ *         required: false
  *         schema:
  *           type: string
  *           enum:
+ *             - AVAILABLE_JOBS
  *             - ACTIVE
  *             - DELIVERED
- *             - CANCELLED
- *         description: Filter status structural type
+ *         description: Filter orders by rider dashboard status.
  *       - in: query
  *         name: page
+ *         required: false
  *         schema:
  *           type: integer
  *           default: 1
+ *         description: Page number.
  *       - in: query
  *         name: limit
+ *         required: false
  *         schema:
  *           type: integer
  *           default: 10
+ *         description: Number of records per page.
+ *       - in: query
+ *         name: lat
+ *         required: false
+ *         schema:
+ *           type: number
+ *           example: 6.5244
+ *         description: Current latitude coordinate of the rider.
+ *       - in: query
+ *         name: lng
+ *         required: false
+ *         schema:
+ *           type: number
+ *           example: 3.3792
+ *         description: Current longitude coordinate of the rider.
  *     responses:
  *       200:
- *         description: Returns payload list data with tracking counts metadata
+ *         description: Rider orders retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Orders retrieved successfully.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     counts:
+ *                       type: object
+ *                       properties:
+ *                         availableJobs:
+ *                           type: integer
+ *                           example: 12
+ *                         active:
+ *                           type: integer
+ *                           example: 4
+ *                         delivered:
+ *                           type: integer
+ *                           example: 87
+ *                     orders:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 103
+ *                         page:
+ *                           type: integer
+ *                           example: 1
+ *                         limit:
+ *                           type: integer
+ *                           example: 10
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 11
+ *       400:
+ *         description: Invalid request parameters.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
  */
 router.get("/riders/orders", authMiddleware, riderController.getRiderOrders);
 // /**

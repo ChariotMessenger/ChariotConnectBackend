@@ -16,6 +16,7 @@ import UploadService from "./upload.service";
 import axios from "axios";
 import { PackGroup } from "./order.service";
 import { formatOrderResponse } from "../utils/order-utils";
+import * as geolib from "geolib";
 interface Point {
   latitude?: number;
   longitude?: number;
@@ -964,10 +965,10 @@ export class RiderService {
     limit: number = 10,
     lat?: number,
     lng?: number,
-    radiusInKm: number = 10,
   ) {
     try {
       const skip = (page - 1) * limit;
+      const ADMIN_RADIUS_KM = 10;
 
       let statusFilter: any = undefined;
       if (statusType === "AVAILABLE_JOBS") {
@@ -1040,28 +1041,39 @@ export class RiderService {
         const rawOrders = await prisma.order.findRaw({
           filter: queryFilter,
           options: {
-            skip,
-            limit,
             sort: { updatedAt: -1 },
           },
         });
 
-        const countPipeline: any[] = [
-          { $match: queryFilter },
-          { $count: "total" },
-        ];
-        const rawCountResult = await prisma.order.aggregateRaw({
-          pipeline: countPipeline,
-        });
+        let orders: any[] = Array.isArray(rawOrders)
+          ? (rawOrders as any[])
+          : [];
 
-        let totalCount = 0;
-        if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
-          totalCount = (rawCountResult[0] as any).total || 0;
+        if (lat !== undefined && lng !== undefined) {
+          orders = orders.filter((order: any) => {
+            if (
+              !order.pickupLocation ||
+              !order.pickupLocation.latitude ||
+              !order.pickupLocation.longitude
+            ) {
+              return false;
+            }
+
+            return geolib.isPointWithinRadius(
+              {
+                latitude: order.pickupLocation.latitude,
+                longitude: order.pickupLocation.longitude,
+              },
+              { latitude: lat, longitude: lng },
+              ADMIN_RADIUS_KM * 1000,
+            );
+          });
         }
 
-        const orders = Array.isArray(rawOrders) ? rawOrders : [];
+        const totalCount = orders.length;
+        const paginatedOrders = orders.slice(skip, skip + limit);
 
-        const formattedOrders = orders.map((order: any) => {
+        const formattedOrders = paginatedOrders.map((order: any) => {
           if (order._id && order._id.$oid) {
             order.id = order._id.$oid;
           }
@@ -1124,6 +1136,8 @@ export class RiderService {
 
           return formatOrderResponse(order, riderId);
         });
+
+        statusCounts.AVAILABLE_JOBS = totalCount;
 
         return {
           orders: formattedOrders,

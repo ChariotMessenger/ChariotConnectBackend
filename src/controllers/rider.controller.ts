@@ -406,9 +406,6 @@ export class RiderController {
       const lng = req.query.lng
         ? parseFloat(req.query.lng as string)
         : undefined;
-      const radiusInKm = req.query.radius
-        ? parseFloat(req.query.radius as string)
-        : undefined;
 
       const result = await riderService.getRiderOrders(
         req.user!.id,
@@ -417,7 +414,6 @@ export class RiderController {
         limit,
         lat,
         lng,
-        radiusInKm,
       );
 
       res.status(200).json({
