@@ -973,7 +973,7 @@ protectedRouter.get(
  * /customers/vendors:
  *   post:
  *     summary: Fetch Vendors
- *     description: Retrieve verified vendors filtered by location and/or service type (FOOD, GROCERY, PHARMACY) with pagination.
+ *     description: Retrieve verified vendors filtered by location, service type, open status, star ratings, and custom keyword criteria with pagination.
  *     tags:
  *       - Customer Operations
  *     security:
@@ -984,6 +984,10 @@ protectedRouter.get(
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - latitude
+ *               - longitude
+ *               - vendorServiceType
  *             properties:
  *               latitude:
  *                 type: number
@@ -991,22 +995,41 @@ protectedRouter.get(
  *               longitude:
  *                 type: number
  *                 example: 3.3792
- *               radiusKm:
- *                 type: number
- *                 default: 10
  *               vendorServiceType:
  *                 type: string
- *                 enum: [FOOD, GROCERY, PHARMACY]
+ *                 enum:
+ *                   - FOOD
+ *                   - GROCERY
+ *                   - PHARMACY
  *                 example: FOOD
+ *               rank:
+ *                 type: string
+ *                 nullable: true
+ *                 enum:
+ *                   - FIVE_STAR_PLUS
+ *                   - FOUR_STAR_PLUS
+ *                   - THREE_STAR_PLUS
+ *                   - TWO_STAR_PLUS
+ *                 example: FOUR_STAR_PLUS
+ *               openVendors:
+ *                 type: boolean
+ *                 nullable: true
+ *                 example: true
+ *               searchField:
+ *                 type: string
+ *                 nullable: true
+ *                 example: Zitos
  *               page:
  *                 type: integer
  *                 default: 1
+ *                 example: 1
  *               limit:
  *                 type: integer
  *                 default: 10
+ *                 example: 10
  *     responses:
  *       200:
- *         description: Vendors retrieved successfully
+ *         description: Vendors retrieved successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -1014,6 +1037,7 @@ protectedRouter.get(
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 vendors:
  *                   type: array
  *                   items:
@@ -1021,14 +1045,45 @@ protectedRouter.get(
  *                     properties:
  *                       id:
  *                         type: string
+ *                         example: 66b91f8bcb73d5c9dca43d1e
  *                       businessName:
  *                         type: string
+ *                         example: Zitos Kitchen
  *                       businessType:
  *                         type: string
+ *                         example: Restaurant
  *                       vendorServiceType:
  *                         type: string
+ *                         example: FOOD
  *                       profilePhotoUrl:
  *                         type: string
+ *                         nullable: true
+ *                         example: https://example.com/profile.jpg
+ *                       brandLogoUrl:
+ *                         type: string
+ *                         nullable: true
+ *                         example: https://example.com/logo.png
+ *                       coverPhotoUrl:
+ *                         type: string
+ *                         nullable: true
+ *                         example: https://example.com/cover.jpg
+ *                       bio:
+ *                         type: string
+ *                         nullable: true
+ *                         example: Serving delicious local and continental meals.
+ *                       rank:
+ *                         type: number
+ *                         example: 4.8
+ *                       vendorWorkPeriod:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           opensAt:
+ *                             type: string
+ *                             example: "08:00"
+ *                           closesAt:
+ *                             type: string
+ *                             example: "22:00"
  *                       businessAddress:
  *                         $ref: '#/components/schemas/Point'
  *                 pagination:
@@ -1036,12 +1091,22 @@ protectedRouter.get(
  *                   properties:
  *                     total:
  *                       type: integer
+ *                       example: 145
  *                     page:
  *                       type: integer
+ *                       example: 1
  *                     limit:
  *                       type: integer
+ *                       example: 10
  *                     totalPages:
  *                       type: integer
+ *                       example: 15
+ *       400:
+ *         description: Invalid request payload.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
  */
 protectedRouter.post(
   "/vendors",

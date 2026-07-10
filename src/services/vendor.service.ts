@@ -830,9 +830,14 @@ export class VendorService {
   static async getVendors(params: {
     latitude?: number;
     longitude?: number;
-    radiusKm?: number;
-    serviceType?: "FOOD" | "GROCERY" | "PHARMACY";
-    search?: string; // New search parameter
+    vendorServiceType?: string;
+    rank?:
+      | "FIVE_STAR_PLUS"
+      | "FOUR_STAR_PLUS"
+      | "THREE_STAR_PLUS"
+      | "TWO_STAR_PLUS";
+    openVendors?: boolean;
+    searchField?: string;
     page?: number;
     limit?: number;
   }) {
@@ -840,13 +845,15 @@ export class VendorService {
       const {
         latitude,
         longitude,
-        radiusKm = 10,
-        serviceType,
-        search,
+        vendorServiceType,
+        rank,
+        openVendors,
+        searchField,
         page = 1,
         limit = 10,
       } = params;
 
+      const ADMIN_RADIUS_KM = 10;
       const skip = (page - 1) * limit;
 
       const whereClause: any = {
@@ -854,15 +861,33 @@ export class VendorService {
         verificationStatus: "VERIFIED",
       };
 
-      if (serviceType) {
-        whereClause.vendorServiceType = serviceType;
+      if (vendorServiceType) {
+        whereClause.vendorServiceType = vendorServiceType;
+      }
+
+      if (rank) {
+        switch (rank) {
+          case "FIVE_STAR_PLUS":
+            whereClause.rank = { gte: 5.0 };
+            break;
+          case "FOUR_STAR_PLUS":
+            whereClause.rank = { gte: 4.0 };
+            break;
+          case "THREE_STAR_PLUS":
+            whereClause.rank = { gte: 3.0 };
+            break;
+          case "TWO_STAR_PLUS":
+            whereClause.rank = { gte: 2.0 };
+            break;
+        }
       }
 
       if (latitude !== undefined && longitude !== undefined) {
         const kmPerDegree = 111;
-        const latDelta = radiusKm / kmPerDegree;
+        const latDelta = ADMIN_RADIUS_KM / kmPerDegree;
         const lngDelta =
-          radiusKm / (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
+          ADMIN_RADIUS_KM /
+          (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
 
         whereClause.businessAddress = {
           is: {
@@ -878,13 +903,14 @@ export class VendorService {
         };
       }
 
-      if (search) {
+      if (searchField) {
         whereClause.OR = [
-          { businessName: { contains: search, mode: "insensitive" } },
+          { businessName: { contains: searchField, mode: "insensitive" } },
+          { bio: { contains: searchField, mode: "insensitive" } },
           {
             catalogItems: {
               some: {
-                name: { contains: search, mode: "insensitive" },
+                name: { contains: searchField, mode: "insensitive" },
               },
             },
           },
@@ -919,8 +945,8 @@ export class VendorService {
             catalogItems: {
               where: {
                 available: true,
-                ...(search
-                  ? { name: { contains: search, mode: "insensitive" } }
+                ...(searchField
+                  ? { name: { contains: searchField, mode: "insensitive" } }
                   : {}),
               },
               select: {
@@ -933,20 +959,57 @@ export class VendorService {
               },
             },
           },
-          skip,
-          take: limit,
           orderBy: { businessName: "asc" },
         }),
         prisma.vendor.count({ where: whereClause }),
       ]);
 
+      let filteredVendors = vendors;
+
+      if (openVendors) {
+        const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+        const now = new Date();
+        const currentDayStr = days[now.getDay()];
+
+        const currentHours = now.getHours().toString().padStart(2, "0");
+        const currentMinutes = now.getMinutes().toString().padStart(2, "0");
+        const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+        filteredVendors = vendors.filter((vendor: any) => {
+          if (
+            !vendor.vendorWorkPeriod ||
+            typeof vendor.vendorWorkPeriod !== "object"
+          ) {
+            return false;
+          }
+
+          const schedule = vendor.vendorWorkPeriod[currentDayStr];
+          if (!schedule || !schedule.openingTime || !schedule.closingTime) {
+            return false;
+          }
+
+          const { openingTime, closingTime } = schedule;
+
+          if (closingTime < openingTime) {
+            return (
+              currentTimeStr >= openingTime || currentTimeStr <= closingTime
+            );
+          }
+
+          return currentTimeStr >= openingTime && currentTimeStr <= closingTime;
+        });
+      }
+
+      const paginatedVendors = filteredVendors.slice(skip, skip + limit);
+      const finalTotal = openVendors ? filteredVendors.length : total;
+
       return {
-        vendors,
+        vendors: paginatedVendors,
         pagination: {
-          total,
+          total: finalTotal,
           page,
           limit,
-          totalPages: Math.ceil(total / limit),
+          totalPages: Math.ceil(finalTotal / limit),
         },
       };
     } catch (error) {
