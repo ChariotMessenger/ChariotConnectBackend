@@ -8,6 +8,7 @@ import { UserRole, VerificationStatus, OrderStatus } from "@prisma/client";
 import { CustomError } from "../middlewares/errorHandler";
 import { SmsService } from "./sms-service";
 import { PackGroup } from "./order.service";
+import * as geolib from "geolib";
 import { formatOrderResponse } from "../utils/order-utils";
 interface Point {
   latitude?: number;
@@ -882,27 +883,6 @@ export class VendorService {
         }
       }
 
-      if (latitude !== undefined && longitude !== undefined) {
-        const kmPerDegree = 111;
-        const latDelta = ADMIN_RADIUS_KM / kmPerDegree;
-        const lngDelta =
-          ADMIN_RADIUS_KM /
-          (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
-
-        whereClause.businessAddress = {
-          is: {
-            latitude: {
-              gte: latitude - latDelta,
-              lte: latitude + latDelta,
-            },
-            longitude: {
-              gte: longitude - lngDelta,
-              lte: longitude + lngDelta,
-            },
-          },
-        };
-      }
-
       if (searchField) {
         whereClause.OR = [
           { businessName: { contains: searchField, mode: "insensitive" } },
@@ -917,54 +897,74 @@ export class VendorService {
         ];
       }
 
-      const [vendors, total] = await prisma.$transaction([
-        prisma.vendor.findMany({
-          where: whereClause,
-          select: {
-            id: true,
-            businessName: true,
-            businessType: true,
-            vendorServiceType: true,
-            businessAddress: true,
-            phone: true,
-            profilePhotoUrl: true,
-            currency: true,
-            createdAt: true,
-            brandLogoUrl: true,
-            coverPhotoUrl: true,
-            country: true,
-            vendorWorkPeriod: true,
-            bio: true,
-            rank: true,
-            productCategories: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            catalogItems: {
-              where: {
-                available: true,
-                ...(searchField
-                  ? { name: { contains: searchField, mode: "insensitive" } }
-                  : {}),
-              },
-              select: {
-                id: true,
-                name: true,
-                price: true,
-                imageUrl: true,
-                description: true,
-                categoryId: true,
-              },
+      const vendors = await prisma.vendor.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          businessName: true,
+          businessType: true,
+          vendorServiceType: true,
+          businessAddress: true,
+          phone: true,
+          profilePhotoUrl: true,
+          currency: true,
+          createdAt: true,
+          brandLogoUrl: true,
+          coverPhotoUrl: true,
+          country: true,
+          vendorWorkPeriod: true,
+          bio: true,
+          rank: true,
+          productCategories: {
+            select: {
+              id: true,
+              name: true,
             },
           },
-          orderBy: { businessName: "asc" },
-        }),
-        prisma.vendor.count({ where: whereClause }),
-      ]);
+          catalogItems: {
+            where: {
+              available: true,
+              ...(searchField
+                ? { name: { contains: searchField, mode: "insensitive" } }
+                : {}),
+            },
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              imageUrl: true,
+              description: true,
+              categoryId: true,
+            },
+          },
+        },
+        orderBy: { businessName: "asc" },
+      });
 
       let filteredVendors = vendors;
+
+      if (latitude !== undefined && longitude !== undefined) {
+        filteredVendors = filteredVendors.filter((vendor) => {
+          if (
+            !vendor.businessAddress ||
+            !vendor.businessAddress.latitude ||
+            !vendor.businessAddress.longitude
+          ) {
+            return false;
+          }
+
+          const isInsideRadius = geolib.isPointWithinRadius(
+            {
+              latitude: vendor.businessAddress.latitude,
+              longitude: vendor.businessAddress.longitude,
+            },
+            { latitude: latitude, longitude: longitude },
+            ADMIN_RADIUS_KM * 1000,
+          );
+
+          return isInsideRadius;
+        });
+      }
 
       if (openVendors) {
         const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -975,7 +975,7 @@ export class VendorService {
         const currentMinutes = now.getMinutes().toString().padStart(2, "0");
         const currentTimeStr = `${currentHours}:${currentMinutes}`;
 
-        filteredVendors = vendors.filter((vendor: any) => {
+        filteredVendors = filteredVendors.filter((vendor: any) => {
           if (
             !vendor.vendorWorkPeriod ||
             typeof vendor.vendorWorkPeriod !== "object"
@@ -1000,16 +1000,16 @@ export class VendorService {
         });
       }
 
+      const total = filteredVendors.length;
       const paginatedVendors = filteredVendors.slice(skip, skip + limit);
-      const finalTotal = openVendors ? filteredVendors.length : total;
 
       return {
         vendors: paginatedVendors,
         pagination: {
-          total: finalTotal,
+          total,
           page,
           limit,
-          totalPages: Math.ceil(finalTotal / limit),
+          totalPages: Math.ceil(total / limit),
         },
       };
     } catch (error) {
