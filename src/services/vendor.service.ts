@@ -979,7 +979,7 @@ export class VendorService {
 
       const total = filteredVendors.length;
       const paginatedVendors = filteredVendors.slice(skip, skip + limit);
-
+      console.log("Paginated Vendors:", paginatedVendors);
       return {
         vendors: paginatedVendors,
         pagination: {

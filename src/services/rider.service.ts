@@ -1155,7 +1155,7 @@ export class RiderService {
       const formattedOrders = orders.map((order: any) =>
         formatOrderResponse(order, riderId),
       );
-
+      console.log("Formatted Orders:", formattedOrders);
       return {
         orders: formattedOrders,
         statusCounts,
