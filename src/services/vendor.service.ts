@@ -854,11 +854,9 @@ export class VendorService {
         limit = 10,
       } = params;
 
-      const ADMIN_RADIUS_KM = 10;
       const skip = (page - 1) * limit;
 
       const whereClause: any = {
-        verified: true,
         verificationStatus: "VERIFIED",
       };
 
