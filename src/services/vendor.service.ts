@@ -831,14 +831,9 @@ export class VendorService {
   static async getVendors(params: {
     latitude?: number;
     longitude?: number;
-    vendorServiceType?: string;
-    rank?:
-      | "FIVE_STAR_PLUS"
-      | "FOUR_STAR_PLUS"
-      | "THREE_STAR_PLUS"
-      | "TWO_STAR_PLUS";
-    openVendors?: boolean;
-    searchField?: string;
+    radiusKm?: number;
+    serviceType?: "FOOD" | "GROCERY" | "PHARMACY";
+    search?: string; // New search parameter
     page?: number;
     limit?: number;
   }) {
@@ -846,10 +841,9 @@ export class VendorService {
       const {
         latitude,
         longitude,
-        vendorServiceType,
-        rank,
-        openVendors,
-        searchField,
+        radiusKm = 10,
+        serviceType,
+        search,
         page = 1,
         limit = 10,
       } = params;
@@ -857,129 +851,98 @@ export class VendorService {
       const skip = (page - 1) * limit;
 
       const whereClause: any = {
+        verified: true,
         verificationStatus: "VERIFIED",
       };
 
-      if (vendorServiceType) {
-        whereClause.vendorServiceType = vendorServiceType;
+      if (serviceType) {
+        whereClause.vendorServiceType = serviceType;
       }
 
-      if (rank) {
-        switch (rank) {
-          case "FIVE_STAR_PLUS":
-            whereClause.rank = { gte: 5.0 };
-            break;
-          case "FOUR_STAR_PLUS":
-            whereClause.rank = { gte: 4.0 };
-            break;
-          case "THREE_STAR_PLUS":
-            whereClause.rank = { gte: 3.0 };
-            break;
-          case "TWO_STAR_PLUS":
-            whereClause.rank = { gte: 2.0 };
-            break;
-        }
+      if (latitude !== undefined && longitude !== undefined) {
+        const kmPerDegree = 111;
+        const latDelta = radiusKm / kmPerDegree;
+        const lngDelta =
+          radiusKm / (kmPerDegree * Math.cos(latitude * (Math.PI / 180)));
+
+        whereClause.businessAddress = {
+          is: {
+            latitude: {
+              gte: latitude - latDelta,
+              lte: latitude + latDelta,
+            },
+            longitude: {
+              gte: longitude - lngDelta,
+              lte: longitude + lngDelta,
+            },
+          },
+        };
       }
 
-      if (searchField) {
+      if (search) {
         whereClause.OR = [
-          { businessName: { contains: searchField, mode: "insensitive" } },
-          { bio: { contains: searchField, mode: "insensitive" } },
+          { businessName: { contains: search, mode: "insensitive" } },
           {
             catalogItems: {
               some: {
-                name: { contains: searchField, mode: "insensitive" },
+                name: { contains: search, mode: "insensitive" },
               },
             },
           },
         ];
       }
 
-      const vendors = await prisma.vendor.findMany({
-        where: whereClause,
-        select: {
-          id: true,
-          businessName: true,
-          businessType: true,
-          vendorServiceType: true,
-          businessAddress: true,
-          phone: true,
-          profilePhotoUrl: true,
-          currency: true,
-          createdAt: true,
-          brandLogoUrl: true,
-          coverPhotoUrl: true,
-          country: true,
-          vendorWorkPeriod: true,
-          bio: true,
-          rank: true,
-          productCategories: {
-            select: {
-              id: true,
-              name: true,
+      const [vendors, total] = await prisma.$transaction([
+        prisma.vendor.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            businessName: true,
+            businessType: true,
+            vendorServiceType: true,
+            businessAddress: true,
+            phone: true,
+            profilePhotoUrl: true,
+            currency: true,
+            createdAt: true,
+            brandLogoUrl: true,
+            coverPhotoUrl: true,
+            country: true,
+            vendorWorkPeriod: true,
+            bio: true,
+            rank: true,
+            productCategories: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            catalogItems: {
+              where: {
+                available: true,
+                ...(search
+                  ? { name: { contains: search, mode: "insensitive" } }
+                  : {}),
+              },
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                imageUrl: true,
+                description: true,
+                categoryId: true,
+              },
             },
           },
-          catalogItems: {
-            where: {
-              available: true,
-              ...(searchField
-                ? { name: { contains: searchField, mode: "insensitive" } }
-                : {}),
-            },
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              imageUrl: true,
-              description: true,
-              categoryId: true,
-            },
-          },
-        },
-        orderBy: { businessName: "asc" },
-      });
+          skip,
+          take: limit,
+          orderBy: { businessName: "asc" },
+        }),
+        prisma.vendor.count({ where: whereClause }),
+      ]);
 
-      let filteredVendors = vendors;
-
-      if (openVendors) {
-        const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-        const now = new Date();
-        const currentDayStr = days[now.getDay()];
-
-        const currentHours = now.getHours().toString().padStart(2, "0");
-        const currentMinutes = now.getMinutes().toString().padStart(2, "0");
-        const currentTimeStr = `${currentHours}:${currentMinutes}`;
-
-        filteredVendors = filteredVendors.filter((vendor: any) => {
-          if (
-            !vendor.vendorWorkPeriod ||
-            typeof vendor.vendorWorkPeriod !== "object"
-          ) {
-            return false;
-          }
-
-          const schedule = vendor.vendorWorkPeriod[currentDayStr];
-          if (!schedule || !schedule.openingTime || !schedule.closingTime) {
-            return false;
-          }
-
-          const { openingTime, closingTime } = schedule;
-
-          if (closingTime < openingTime) {
-            return (
-              currentTimeStr >= openingTime || currentTimeStr <= closingTime
-            );
-          }
-
-          return currentTimeStr >= openingTime && currentTimeStr <= closingTime;
-        });
-      }
-
-      const total = filteredVendors.length;
-      const paginatedVendors = filteredVendors.slice(skip, skip + limit);
-      console.log("Paginated Vendors:", paginatedVendors);
       return {
-        vendors: paginatedVendors,
+        vendors,
         pagination: {
           total,
           page,

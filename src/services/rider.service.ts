@@ -965,10 +965,10 @@ export class RiderService {
     limit: number = 10,
     lat?: number,
     lng?: number,
+    radiusInKm: number = 10,
   ) {
     try {
       const skip = (page - 1) * limit;
-      const ADMIN_RADIUS_KM = 10;
 
       let statusFilter: any = undefined;
       if (statusType === "AVAILABLE_JOBS") {
@@ -1041,18 +1041,28 @@ export class RiderService {
         const rawOrders = await prisma.order.findRaw({
           filter: queryFilter,
           options: {
+            skip,
+            limit,
             sort: { updatedAt: -1 },
           },
         });
 
-        let orders: any[] = Array.isArray(rawOrders)
-          ? (rawOrders as any[])
-          : [];
+        const countPipeline: any[] = [
+          { $match: queryFilter },
+          { $count: "total" },
+        ];
+        const rawCountResult = await prisma.order.aggregateRaw({
+          pipeline: countPipeline,
+        });
 
-        const totalCount = orders.length;
-        const paginatedOrders = orders.slice(skip, skip + limit);
+        let totalCount = 0;
+        if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
+          totalCount = (rawCountResult[0] as any).total || 0;
+        }
 
-        const formattedOrders = paginatedOrders.map((order: any) => {
+        const orders = Array.isArray(rawOrders) ? rawOrders : [];
+
+        const formattedOrders = orders.map((order: any) => {
           if (order._id && order._id.$oid) {
             order.id = order._id.$oid;
           }
@@ -1116,8 +1126,6 @@ export class RiderService {
           return formatOrderResponse(order, riderId);
         });
 
-        statusCounts.AVAILABLE_JOBS = totalCount;
-
         return {
           orders: formattedOrders,
           statusCounts,
@@ -1155,7 +1163,7 @@ export class RiderService {
       const formattedOrders = orders.map((order: any) =>
         formatOrderResponse(order, riderId),
       );
-      console.log("Formatted Orders:", formattedOrders);
+
       return {
         orders: formattedOrders,
         statusCounts,

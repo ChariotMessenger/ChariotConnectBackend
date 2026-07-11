@@ -294,13 +294,23 @@ export class CustomerController {
       const result = await vendorService.getVendors({
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
-        vendorServiceType,
-        rank,
-        openVendors: openVendors === true || openVendors === "true",
-        searchField: searchField?.toString(),
+        serviceType: vendorServiceType,
+        // rank,
+        // openVendors: openVendors === true || openVendors === "true",
+        search: searchField?.toString(),
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 10,
       });
+
+      // const result = await vendorService.getVendors({
+      //   latitude: latitude ? parseFloat(latitude) : undefined,
+      //   longitude: longitude ? parseFloat(longitude) : undefined,
+      //   radiusKm: radiusKm ? parseFloat(radiusKm) : 10,
+      //   serviceType: vendorServiceType,
+      //   search: search?.toString(),
+      //   page: parseInt(page) || 1,
+      //   limit: parseInt(limit) || 10,
+      // });
 
       res.status(200).json({
         success: true,
