@@ -294,6 +294,7 @@ export class CustomerController {
       const result = await vendorService.getVendors({
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
+        radiusKm: 10,
         serviceType: vendorServiceType,
         // rank,
         // openVendors: openVendors === true || openVendors === "true",
