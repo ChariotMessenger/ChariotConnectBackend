@@ -1049,27 +1049,6 @@ export class RiderService {
           ? (rawOrders as any[])
           : [];
 
-        if (lat !== undefined && lng !== undefined) {
-          orders = orders.filter((order: any) => {
-            if (
-              !order.pickupLocation ||
-              !order.pickupLocation.latitude ||
-              !order.pickupLocation.longitude
-            ) {
-              return false;
-            }
-
-            return geolib.isPointWithinRadius(
-              {
-                latitude: order.pickupLocation.latitude,
-                longitude: order.pickupLocation.longitude,
-              },
-              { latitude: lat, longitude: lng },
-              ADMIN_RADIUS_KM * 1000,
-            );
-          });
-        }
-
         const totalCount = orders.length;
         const paginatedOrders = orders.slice(skip, skip + limit);
 

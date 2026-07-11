@@ -943,29 +943,6 @@ export class VendorService {
 
       let filteredVendors = vendors;
 
-      if (latitude !== undefined && longitude !== undefined) {
-        filteredVendors = filteredVendors.filter((vendor) => {
-          if (
-            !vendor.businessAddress ||
-            !vendor.businessAddress.latitude ||
-            !vendor.businessAddress.longitude
-          ) {
-            return false;
-          }
-
-          const isInsideRadius = geolib.isPointWithinRadius(
-            {
-              latitude: vendor.businessAddress.latitude,
-              longitude: vendor.businessAddress.longitude,
-            },
-            { latitude: latitude, longitude: longitude },
-            ADMIN_RADIUS_KM * 1000,
-          );
-
-          return isInsideRadius;
-        });
-      }
-
       if (openVendors) {
         const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
         const now = new Date();
