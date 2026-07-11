@@ -1108,7 +1108,7 @@ protectedRouter.get(
  *       500:
  *         description: Internal server error.
  */
-router.post(
+protectedRouter.post(
   "/vendors",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
