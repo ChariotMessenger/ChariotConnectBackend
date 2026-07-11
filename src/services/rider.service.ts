@@ -965,12 +965,14 @@ export class RiderService {
     limit: number = 10,
     lat?: number,
     lng?: number,
-    radiusInKm: number = 10,
   ) {
     try {
       const skip = (page - 1) * limit;
 
+      const ADMIN_RADIUS_KM = 10;
+
       let statusFilter: any = undefined;
+
       if (statusType === "AVAILABLE_JOBS") {
         statusFilter = "ORDER_PACKED";
       } else if (statusType === "ACTIVE") {
@@ -983,6 +985,7 @@ export class RiderService {
 
       const availableJobsMatch = {
         riderId: null,
+
         status: "ORDER_PACKED",
       };
 
@@ -994,12 +997,15 @@ export class RiderService {
         prisma.order.aggregateRaw({
           pipeline: [
             { $match: availableJobsMatch },
+
             { $group: { _id: "$status", count: { $sum: 1 } } },
           ],
         }),
+
         prisma.order.aggregateRaw({
           pipeline: [
             { $match: personalOrdersMatch },
+
             { $group: { _id: "$status", count: { $sum: 1 } } },
           ],
         }),
@@ -1007,7 +1013,9 @@ export class RiderService {
 
       const statusCounts: Record<string, number> = {
         AVAILABLE_JOBS: 0,
+
         ACTIVE: 0,
+
         DELIVERED: 0,
       };
 
@@ -1035,34 +1043,51 @@ export class RiderService {
       if (statusType === "AVAILABLE_JOBS") {
         const queryFilter: any = {
           riderId: null,
+
           status: statusFilter,
         };
 
         const rawOrders = await prisma.order.findRaw({
           filter: queryFilter,
+
           options: {
-            skip,
-            limit,
             sort: { updatedAt: -1 },
           },
         });
 
-        const countPipeline: any[] = [
-          { $match: queryFilter },
-          { $count: "total" },
-        ];
-        const rawCountResult = await prisma.order.aggregateRaw({
-          pipeline: countPipeline,
-        });
+        let orders: any[] = Array.isArray(rawOrders)
+          ? (rawOrders as any[])
+          : [];
 
-        let totalCount = 0;
-        if (Array.isArray(rawCountResult) && rawCountResult.length > 0) {
-          totalCount = (rawCountResult[0] as any).total || 0;
+        if (lat !== undefined && lng !== undefined) {
+          orders = orders.filter((order: any) => {
+            if (
+              !order.pickupLocation ||
+              !order.pickupLocation.latitude ||
+              !order.pickupLocation.longitude
+            ) {
+              return false;
+            }
+
+            return geolib.isPointWithinRadius(
+              {
+                latitude: order.pickupLocation.latitude,
+
+                longitude: order.pickupLocation.longitude,
+              },
+
+              { latitude: lat, longitude: lng },
+
+              ADMIN_RADIUS_KM * 1000,
+            );
+          });
         }
 
-        const orders = Array.isArray(rawOrders) ? rawOrders : [];
+        const totalCount = orders.length;
 
-        const formattedOrders = orders.map((order: any) => {
+        const paginatedOrders = orders.slice(skip, skip + limit);
+
+        const formattedOrders = paginatedOrders.map((order: any) => {
           if (order._id && order._id.$oid) {
             order.id = order._id.$oid;
           }
@@ -1126,13 +1151,20 @@ export class RiderService {
           return formatOrderResponse(order, riderId);
         });
 
+        statusCounts.AVAILABLE_JOBS = totalCount;
+
         return {
           orders: formattedOrders,
+
           statusCounts,
+
           meta: {
             totalCount,
+
             page,
+
             limit,
+
             totalPages: Math.ceil(totalCount / limit),
           },
         };
@@ -1140,21 +1172,29 @@ export class RiderService {
 
       let whereClause: any = {
         ...(statusType ? { status: statusFilter } : {}),
+
         riderId,
       };
 
       const [orders, totalCount] = await prisma.$transaction([
         prisma.order.findMany({
           where: whereClause,
+
           include: {
             vendor: true,
+
             customer: true,
+
             rider: true,
           },
+
           orderBy: { updatedAt: "desc" },
+
           skip,
+
           take: limit,
         }),
+
         prisma.order.count({
           where: whereClause,
         }),
@@ -1166,19 +1206,26 @@ export class RiderService {
 
       return {
         orders: formattedOrders,
+
         statusCounts,
+
         meta: {
           totalCount,
+
           page,
+
           limit,
+
           totalPages: Math.ceil(totalCount / limit),
         },
       };
     } catch (error) {
       logger.error("Error fetching rider orders dashboard context:", error);
+
       throw error;
     }
   }
+
   static async getOnlineRiders(state: string) {
     try {
       const riders = await prisma.rider.findMany({

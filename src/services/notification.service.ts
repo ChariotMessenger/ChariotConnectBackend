@@ -5,16 +5,22 @@ import { PrismaClient, UserType } from "@prisma/client";
 const prisma = new PrismaClient();
 
 if (getApps().length === 0) {
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    throw new Error(
-      "Firebase initialization failed: FIREBASE_SERVICE_ACCOUNT_JSON environment variable is missing.",
-    );
+  try {
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      console.error(
+        "Firebase initialization failed: FIREBASE_SERVICE_ACCOUNT_JSON environment variable is missing.",
+      );
+    } else {
+      const serviceAccount = JSON.parse(
+        process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+      );
+      initializeApp({
+        credential: cert(serviceAccount),
+      });
+    }
+  } catch (error) {
+    console.error("Failed to parse or initialize Firebase Admin SDK:", error);
   }
-
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
 }
 
 export class NotificationService {
@@ -44,6 +50,13 @@ export class NotificationService {
     userType: UserType,
     payload: { title: string; body: string; data?: Record<string, string> },
   ) {
+    if (getApps().length === 0) {
+      console.warn(
+        "Notification skipped: Firebase Admin SDK was not initialized correctly.",
+      );
+      return;
+    }
+
     const whereClause: any = {};
     if (userType === UserType.CUSTOMER) whereClause.customerId = targetId;
     if (userType === UserType.VENDOR) whereClause.vendorId = targetId;
@@ -84,28 +97,32 @@ export class NotificationService {
       },
     };
 
-    const messaging = getMessaging();
-    const response = await messaging.sendEachForMulticast(message);
+    try {
+      const messaging = getMessaging();
+      const response = await messaging.sendEachForMulticast(message);
 
-    if (response.failureCount > 0) {
-      const tokensToRemove: string[] = [];
-      response.responses.forEach((resp: any, idx: number) => {
-        if (!resp.success && resp.error) {
-          const code = resp.error.code;
-          if (
-            code === "messaging/invalid-registration-token" ||
-            code === "messaging/registration-token-not-registered"
-          ) {
-            tokensToRemove.push(tokens[idx]);
+      if (response.failureCount > 0) {
+        const tokensToRemove: string[] = [];
+        response.responses.forEach((resp: any, idx: number) => {
+          if (!resp.success && resp.error) {
+            const code = resp.error.code;
+            if (
+              code === "messaging/invalid-registration-token" ||
+              code === "messaging/registration-token-not-registered"
+            ) {
+              tokensToRemove.push(tokens[idx]);
+            }
           }
-        }
-      });
-
-      if (tokensToRemove.length > 0) {
-        await prisma.deviceToken.deleteMany({
-          where: { token: { in: tokensToRemove } },
         });
+
+        if (tokensToRemove.length > 0) {
+          await prisma.deviceToken.deleteMany({
+            where: { token: { in: tokensToRemove } },
+          });
+        }
       }
+    } catch (sendError) {
+      console.error("Failed to send multicast notifications:", sendError);
     }
   }
 }

@@ -282,7 +282,6 @@ export class CustomerController {
         page,
         limit,
       } = req.body;
-
       if (!latitude && !longitude && !vendorServiceType && !searchField) {
         throw new CustomError(
           "Please provide a location, service type, or search term to find vendors",
@@ -290,29 +289,16 @@ export class CustomerController {
           "FILTER_REQUIRED",
         );
       }
-
       const result = await vendorService.getVendors({
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
-        radiusKm: 10,
-        serviceType: vendorServiceType,
-        // rank,
-        // openVendors: openVendors === true || openVendors === "true",
-        search: searchField?.toString(),
+        vendorServiceType,
+        rank,
+        openVendors: openVendors === true || openVendors === "true",
+        searchField: searchField?.toString(),
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 10,
       });
-
-      // const result = await vendorService.getVendors({
-      //   latitude: latitude ? parseFloat(latitude) : undefined,
-      //   longitude: longitude ? parseFloat(longitude) : undefined,
-      //   radiusKm: radiusKm ? parseFloat(radiusKm) : 10,
-      //   serviceType: vendorServiceType,
-      //   search: search?.toString(),
-      //   page: parseInt(page) || 1,
-      //   limit: parseInt(limit) || 10,
-      // });
-
       res.status(200).json({
         success: true,
         ...result,
