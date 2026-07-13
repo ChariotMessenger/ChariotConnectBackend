@@ -370,6 +370,40 @@ export class CustomerController {
         .json({ success: false, message: error.message });
     }
   }
+  static async getLatestVendorOrder(req: AuthRequest, res: Response) {
+    try {
+      const { vendorId } = req.params;
+      const type = req.query.type as "LAST_ORDER" | "CANCELABLE_LAST_ORDER";
+
+      if (!vendorId) {
+        throw new CustomError(
+          "Vendor ID is required",
+          400,
+          "MISSING_VENDOR_ID",
+        );
+      }
+
+      if (type !== "LAST_ORDER" && type !== "CANCELABLE_LAST_ORDER") {
+        throw new CustomError(
+          "Invalid type parameter. Expected 'LAST_ORDER' or 'CANCELABLE_LAST_ORDER'",
+          400,
+          "INVALID_TYPE",
+        );
+      }
+
+      const result = await customerService.getLatestVendorOrder(
+        req.user!.id,
+        vendorId,
+        type,
+      );
+
+      res.status(200).json(result);
+    } catch (error: any) {
+      res
+        .status(error.statusCode || 500)
+        .json({ success: false, message: error.message });
+    }
+  }
   static async getOrderById(req: AuthRequest, res: Response) {
     try {
       const { orderId } = req.params;

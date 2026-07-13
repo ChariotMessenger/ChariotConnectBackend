@@ -58,11 +58,20 @@ export class CustomerService {
         }
       }
 
-      const otp = await createOTPVerification(data.email, UserRole.CUSTOMER);
+      const otp = await createOTPVerification(
+        normalizedEmail,
+        UserRole.CUSTOMER,
+      );
 
-      await EmailService.sendOTPEmail(data.email, otp.code, data.firstName);
+      await EmailService.sendOTPEmail(
+        normalizedEmail,
+        otp.code,
+        data.firstName,
+      );
 
-      logger.info(`Customer registration Step 1 initiated for ${data.email}`);
+      logger.info(
+        `Customer registration Step 1 initiated for ${normalizedEmail}`,
+      );
 
       return {
         success: true,
@@ -396,6 +405,73 @@ export class CustomerService {
       };
     } catch (error) {
       logger.error("Error in loginWithPassword:", error);
+      throw error;
+    }
+  }
+  static async getLatestVendorOrder(
+    customerId: string,
+    vendorId: string,
+    type: "LAST_ORDER" | "CANCELABLE_LAST_ORDER",
+  ) {
+    try {
+      let statusCondition: any = undefined;
+
+      if (type === "CANCELABLE_LAST_ORDER") {
+        statusCondition = {
+          in: ["WAITING_FOR_APPROVAL", "AWAITING_PAYMENT"],
+        };
+      } else {
+        statusCondition = {
+          in: [
+            "WAITING_FOR_APPROVAL",
+            "AWAITING_PAYMENT",
+            "PAID",
+            "ORDER_PACKED",
+            "RIDER_EN_ROUTE_TO_VENDOR",
+            "RIDER_EN_ROUTE_TO_CUSTOMER",
+            "DELIVERED",
+            "CANCELLED",
+            "REJECTED",
+          ],
+        };
+      }
+
+      const order = await prisma.order.findFirst({
+        where: {
+          customerId,
+          vendorId,
+          status: statusCondition,
+        },
+        include: {
+          vendor: true,
+          customer: true,
+          rider: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      if (!order) {
+        return {
+          success: true,
+          order: null,
+          message: "No matching order found for this vendor.",
+        };
+      }
+
+      const formattedOrder = formatOrderResponse(order, customerId);
+
+      logger.info(
+        `Fetched latest vendor order (${type}) for customer: ${customerId}, vendor: ${vendorId}`,
+      );
+
+      return {
+        success: true,
+        order: formattedOrder,
+      };
+    } catch (error) {
+      logger.error("Error fetching latest vendor order:", error);
       throw error;
     }
   }

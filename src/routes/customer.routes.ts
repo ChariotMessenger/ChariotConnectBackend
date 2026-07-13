@@ -854,6 +854,92 @@ protectedRouter.get(
     }
   },
 );
+
+/**
+ * @swagger
+ * /customers/orders/latest-vendor-order/{vendorId}:
+ *   get:
+ *     summary: Fetch the absolute last order made or the last cancelable order from a specific vendor
+ *     tags:
+ *       - Customer Operations
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the target vendor
+ *       - in: query
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - LAST_ORDER
+ *             - CANCELABLE_LAST_ORDER
+ *         description: Query option for either exact last order or last unverified order
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 order:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     totalAmount:
+ *                       type: number
+ *                     status:
+ *                       type: string
+ *                     currency:
+ *                       type: string
+ *                     notes:
+ *                       type: string
+ *                       nullable: true
+ *                     pickupLocation:
+ *                       $ref: '#/components/schemas/Point'
+ *                     deliveryLocation:
+ *                       $ref: '#/components/schemas/Point'
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     vendor:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         businessName:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         profilePhotoUrl:
+ *                           type: string
+ *                           nullable: true
+ */
+protectedRouter.get(
+  "/orders/latest-vendor-order/:vendorId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await customerController.getLatestVendorOrder(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 /**
  * @swagger
  * /customers/orders/{orderId}:
