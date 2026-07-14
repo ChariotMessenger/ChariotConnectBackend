@@ -192,6 +192,7 @@ export const messageService = {
           businessName: true,
           brandLogoUrl: true,
           coverPhotoUrl: true,
+          vendorWorkPeriod: true,
         },
       }),
       prisma.message.groupBy({
