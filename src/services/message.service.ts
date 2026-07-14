@@ -230,6 +230,7 @@ export const messageService = {
         vendorBusinessName: vendor?.businessName || "Unknown Vendor",
         vendorBrandLogoUrl: vendor?.brandLogoUrl || null,
         vendorCoverPhotoUrl: vendor?.coverPhotoUrl || null,
+        vendorWorkPeriod: vendor?.vendorWorkPeriod || null,
         unreadCount: unreadCountMap.get(room.id) || 0,
       };
     });
