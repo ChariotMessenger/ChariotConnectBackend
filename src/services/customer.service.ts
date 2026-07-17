@@ -706,17 +706,9 @@ export class CustomerService {
           customerId,
         },
         include: {
-          vendor: {
-            select: {
-              id: true,
-              businessName: true,
-              phone: true,
-              profilePhotoUrl: true,
-            },
-          },
-          rider: {
-            select: { firstName: true, lastName: true, phone: true },
-          },
+          vendor: true,
+          customer: true,
+          rider: true,
         },
       });
 
@@ -724,10 +716,7 @@ export class CustomerService {
         throw new Error("Order not found or access denied");
       }
 
-      return {
-        ...order,
-        packsList: (order.items as unknown as PackGroup[]) || [],
-      };
+      return formatOrderResponse(order, customerId);
     } catch (error) {
       logger.error(`Error fetching customer order ${orderId}:`, error);
       throw error;
