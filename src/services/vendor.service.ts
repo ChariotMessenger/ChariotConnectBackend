@@ -828,6 +828,65 @@ export class VendorService {
       throw error;
     }
   }
+  static async getVendorOrderById(vendorId: string, orderId: string) {
+    try {
+      const order = await prisma.order.findFirst({
+        where: {
+          id: orderId,
+          vendorId,
+        },
+        include: {
+          vendor: true,
+          customer: true,
+          rider: true,
+        },
+      });
+
+      if (!order) {
+        throw new Error("Order not found or does not belong to this vendor");
+      }
+
+      const statusGroupCounts = await prisma.order.groupBy({
+        by: ["status"],
+        where: { vendorId },
+        _count: { status: true },
+      } as any);
+
+      const countsMap = (statusGroupCounts as any[]).reduce(
+        (acc, current) => {
+          if (current?._count) {
+            acc[current.status] = current._count.status;
+          }
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const statusCounts = {
+        WAITING_FOR_APPROVAL: countsMap["WAITING_FOR_APPROVAL"] || 0,
+        AWAITING_PAYMENT: countsMap["AWAITING_PAYMENT"] || 0,
+        PAID: countsMap["PAID"] || 0,
+        ORDER_PACKED: countsMap["ORDER_PACKED"] || 0,
+        RIDER_EN_ROUTE_TO_VENDOR: countsMap["RIDER_EN_ROUTE_TO_VENDOR"] || 0,
+        RIDER_EN_ROUTE_TO_CUSTOMER:
+          countsMap["RIDER_EN_ROUTE_TO_CUSTOMER"] || 0,
+        DELIVERED: countsMap["DELIVERED"] || 0,
+        CANCELLED: countsMap["CANCELLED"] || 0,
+        REJECTED: countsMap["REJECTED"] || 0,
+      };
+
+      const formattedOrder = formatOrderResponse(order, vendorId);
+
+      logger.info(`Fetched order ${orderId} for vendor: ${vendorId}`);
+      return {
+        order: formattedOrder,
+        statusCounts,
+      };
+    } catch (error) {
+      logger.error("Error fetching vendor order by id:", error);
+      throw error;
+    }
+  }
   static async getVendors(params: {
     latitude?: number;
     longitude?: number;

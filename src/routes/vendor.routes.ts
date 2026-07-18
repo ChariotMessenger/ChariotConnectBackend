@@ -1133,7 +1133,148 @@ protectedRouter.get(
     }
   },
 );
-
+/**
+ * @swagger
+ * /vendors/orders/{orderId}:
+ *   get:
+ *     summary: Get a single vendor order by ID
+ *     tags: [Vendor Operations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique identifier of the order
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 order:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     totalAmount:
+ *                       type: number
+ *                     status:
+ *                       type: string
+ *                     currency:
+ *                       type: string
+ *                     notes:
+ *                       type: string
+ *                       nullable: true
+ *                     vendorNet:
+ *                       type: number
+ *                     deliveryFee:
+ *                       type: number
+ *                     settlementStatus:
+ *                       type: string
+ *                     payoutStatus:
+ *                       type: string
+ *                     pickupLocation:
+ *                       $ref: '#/components/schemas/Point'
+ *                     deliveryLocation:
+ *                       $ref: '#/components/schemas/Point'
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     customer:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         firstName:
+ *                           type: string
+ *                         lastName:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         profilePhotoUrl:
+ *                           type: string
+ *                           nullable: true
+ *                     rider:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         firstName:
+ *                           type: string
+ *                         lastName:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         profilePhotoUrl:
+ *                           type: string
+ *                           nullable: true
+ *                     packsList:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           packLabel:
+ *                             type: string
+ *                           itemList:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 productId:
+ *                                   type: string
+ *                                 itemName:
+ *                                   type: string
+ *                                 productImageUrl:
+ *                                   type: string
+ *                                   nullable: true
+ *                                 price:
+ *                                   type: number
+ *                                 quantity:
+ *                                   type: integer
+ *                                 description:
+ *                                   type: string
+ *                                   nullable: true
+ *                 statusCounts:
+ *                   type: object
+ *                   properties:
+ *                     WAITING_FOR_APPROVAL:
+ *                       type: integer
+ *                     AWAITING_PAYMENT:
+ *                       type: integer
+ *                     PAID:
+ *                       type: integer
+ *                     ORDER_PACKED:
+ *                       type: integer
+ *                     RIDER_EN_ROUTE_TO_VENDOR:
+ *                       type: integer
+ *                     RIDER_EN_ROUTE_TO_CUSTOMER:
+ *                       type: integer
+ *                     DELIVERED:
+ *                       type: integer
+ *                     CANCELLED:
+ *                       type: integer
+ *                     REJECTED:
+ *                       type: integer
+ */
+protectedRouter.get(
+  "/orders/:orderId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await vendorController.getOrderById(req as any, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 // /**
 //  * @swagger
 //  * /vendors/messages:

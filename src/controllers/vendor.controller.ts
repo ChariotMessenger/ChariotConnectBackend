@@ -479,6 +479,25 @@ export class VendorController {
       });
     }
   }
+  static async getOrderById(req: AuthRequest, res: Response) {
+    try {
+      const vendorId = req.user!.id;
+      const { orderId } = req.params;
+
+      const result = await vendorService.getVendorOrderById(vendorId, orderId);
+
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error: any) {
+      logger.error("Error in VendorController.getOrderById:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
   // Messaging
   // static async getMessages(req: AuthRequest, res: Response) {
   //   try {
