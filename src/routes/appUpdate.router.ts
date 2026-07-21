@@ -9,9 +9,7 @@ const router = Router();
  *   get:
  *     summary: Get App Update Configurations by Role
  *     tags:
- *       - Admin App Update
- *     security:
- *       - bearerAuth: []
+ *       - App Update
  *     parameters:
  *       - in: path
  *         name: role
@@ -20,6 +18,12 @@ const router = Router();
  *           type: string
  *           enum: [customer, rider, vendor]
  *         example: customer
+ *       - in: query
+ *         name: key
+ *         required: false
+ *         schema:
+ *           type: string
+ *         example: customers_app_update1
  *       - in: query
  *         name: page
  *         schema:

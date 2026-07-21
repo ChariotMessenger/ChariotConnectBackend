@@ -5,43 +5,52 @@ export const getAppUpdatesByRole = async (
   role: TargetRole,
   page: number = 1,
   limit: number = 10,
+  key?: string,
 ) => {
   const skip = (page - 1) * limit;
 
   let items: any[] = [];
   let total = 0;
 
+  const whereClause: any = {};
+  if (key) {
+    whereClause.key = key;
+  }
+
   switch (role) {
     case "customer":
       [items, total] = await Promise.all([
         prisma.customerAppUpdate.findMany({
+          where: whereClause,
           skip,
           take: limit,
           orderBy: { key: "asc" },
         }),
-        prisma.customerAppUpdate.count(),
+        prisma.customerAppUpdate.count({ where: whereClause }),
       ]);
       break;
 
     case "rider":
       [items, total] = await Promise.all([
         prisma.riderAppUpdate.findMany({
+          where: whereClause,
           skip,
           take: limit,
           orderBy: { key: "asc" },
         }),
-        prisma.riderAppUpdate.count(),
+        prisma.riderAppUpdate.count({ where: whereClause }),
       ]);
       break;
 
     case "vendor":
       [items, total] = await Promise.all([
         prisma.vendorAppUpdate.findMany({
+          where: whereClause,
           skip,
           take: limit,
           orderBy: { key: "asc" },
         }),
-        prisma.vendorAppUpdate.count(),
+        prisma.vendorAppUpdate.count({ where: whereClause }),
       ]);
       break;
 

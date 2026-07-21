@@ -1,50 +1,116 @@
-/// <reference types="node" />
-import { PrismaClient, AdminStatus } from "@prisma/client";
-import * as bcrypt from "bcryptjs";
+// import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient();
 
-async function main() {
-  const email = "admin@umali.app";
-  const plainPassword = "Password@123!";
+// async function main() {
+//   const customerUpdates = [
+//     {
+//       key: "customers_app_update1",
+//       isUpdateAvailable: true,
+//       mustUpdate: true,
+//       androidAppLink:
+//         "https://play.google.com/store/apps/details?id=com.chariotconnect.customer",
+//       iosAppLink: "https://apps.apple.com/app/id0000000001",
+//       isAndroid: true,
+//       isIos: true,
+//     },
+//     {
+//       key: "customers_app_update2",
+//       isUpdateAvailable: true,
+//       mustUpdate: false,
+//       androidAppLink:
+//         "https://play.google.com/store/apps/details?id=com.chariotconnect.customer",
+//       iosAppLink: "https://apps.apple.com/app/id0000000001",
+//       isAndroid: true,
+//       isIos: true,
+//     },
+//     {
+//       key: "customers_app_update3",
+//       isUpdateAvailable: false,
+//       mustUpdate: false,
+//       androidAppLink:
+//         "https://play.google.com/store/apps/details?id=com.chariotconnect.customer",
+//       iosAppLink: "https://apps.apple.com/app/id0000000001",
+//       isAndroid: true,
+//       isIos: true,
+//     },
+//   ];
 
-  const existingAdmin = await prisma.admin.findUnique({
-    where: { email },
-  });
+//   const riderUpdates = [
+//     {
+//       key: "riders_app_update1",
+//       isUpdateAvailable: true,
+//       mustUpdate: true,
+//       androidAppLink:
+//         "https://play.google.com/store/apps/details?id=com.chariotconnect.rider",
+//       iosAppLink: "https://apps.apple.com/app/id0000000002",
+//       isAndroid: true,
+//       isIos: true,
+//     },
+//     {
+//       key: "riders_app_update2",
+//       isUpdateAvailable: false,
+//       mustUpdate: false,
+//       androidAppLink:
+//         "https://play.google.com/store/apps/details?id=com.chariotconnect.rider",
+//       iosAppLink: "https://apps.apple.com/app/id0000000002",
+//       isAndroid: true,
+//       isIos: true,
+//     },
+//   ];
 
-  if (existingAdmin) {
-    return;
-  }
+//   const vendorUpdates = [
+//     {
+//       key: "vendors_app_update1",
+//       isUpdateAvailable: true,
+//       mustUpdate: true,
+//       androidAppLink:
+//         "https://play.google.com/store/apps/details?id=com.chariotconnect.vendor",
+//       iosAppLink: "https://apps.apple.com/app/id0000000003",
+//       isAndroid: true,
+//       isIos: true,
+//     },
+//     {
+//       key: "vendors_app_update2",
+//       isUpdateAvailable: false,
+//       mustUpdate: false,
+//       androidAppLink:
+//         "https://play.google.com/store/apps/details?id=com.chariotconnect.vendor",
+//       iosAppLink: "https://apps.apple.com/app/id0000000003",
+//       isAndroid: true,
+//       isIos: true,
+//     },
+//   ];
 
-  let defaultRole = await prisma.role.findFirst();
+//   for (const data of customerUpdates) {
+//     await prisma.customerAppUpdate.upsert({
+//       where: { key: data.key },
+//       update: data,
+//       create: data,
+//     });
+//   }
 
-  if (!defaultRole) {
-    defaultRole = await prisma.role.create({
-      data: {
-        name: "Super Admin",
-        permissions: ["MANAGE_VERIFICATIONS", "ALL"],
-      } as any,
-    });
-  }
+//   for (const data of riderUpdates) {
+//     await prisma.riderAppUpdate.upsert({
+//       where: { key: data.key },
+//       update: data,
+//       create: data,
+//     });
+//   }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(plainPassword, salt);
+//   for (const data of vendorUpdates) {
+//     await prisma.vendorAppUpdate.upsert({
+//       where: { key: data.key },
+//       update: data,
+//       create: data,
+//     });
+//   }
+// }
 
-  await prisma.admin.create({
-    data: {
-      name: "System Administrator",
-      email,
-      password: hashedPassword,
-      status: AdminStatus.ACTIVE,
-      roleId: defaultRole.id,
-    },
-  });
-}
-
-main()
-  .catch((e) => {
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// main()
+//   .catch((e) => {
+//     process.exit(1);
+//   })
+//   .finally(async () => {
+//     await prisma.$disconnect();
+//   });

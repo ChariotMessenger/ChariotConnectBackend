@@ -6,8 +6,14 @@ export const handleGetAppUpdates = async (req: Request, res: Response) => {
     const { role } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
+    const key = req.query.key as string | undefined;
 
-    const result = await getAppUpdatesByRole(role as TargetRole, page, limit);
+    const result = await getAppUpdatesByRole(
+      role as TargetRole,
+      page,
+      limit,
+      key,
+    );
 
     return res.status(200).json({
       success: true,
