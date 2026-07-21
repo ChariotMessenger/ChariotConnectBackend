@@ -982,7 +982,6 @@ export class VendorService {
           coverPhotoUrl: true,
           country: true,
           vendorWorkPeriod: true,
-          bio: true,
           rank: true,
           productCategories: {
             select: {
@@ -993,9 +992,6 @@ export class VendorService {
           catalogItems: {
             where: {
               available: true,
-              ...(searchField
-                ? { name: { contains: searchField, mode: "insensitive" } }
-                : {}),
             },
             select: {
               id: true,

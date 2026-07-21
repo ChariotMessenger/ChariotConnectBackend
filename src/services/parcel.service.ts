@@ -117,7 +117,7 @@ export class ParcelDeliveryService {
           expectedPickupTime: new Date(data.expectedPickupTime),
           deliveryFee: computedDeliveryFee,
           protectionFee: calculatedProtectionFee,
-          totalAmountToPay: 100,
+          totalAmountToPay: finalAmountToPay,
         },
         deliveryStops: modifiedStops,
       },

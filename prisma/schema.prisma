@@ -458,6 +458,40 @@ model PricingConfiguration {
   orderProcessingFee  Float    @default(5.0)  
   updatedAt           DateTime @updatedAt
 }
+model CustomerAppUpdate {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  key               String   @unique
+  isUpdateAvailable Boolean  @default(false)
+  mustUpdate        Boolean  @default(false)
+  androidAppLink    String
+  iosAppLink        String
+  isAndroid         Boolean  @default(true)
+  isIos             Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+model RiderAppUpdate {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  key               String   @unique
+  isUpdateAvailable Boolean  @default(false)
+  mustUpdate        Boolean  @default(false)
+  androidAppLink    String
+  iosAppLink        String
+  isAndroid         Boolean  @default(true)
+  isIos             Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+model VendorAppUpdate {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  key               String   @unique
+  isUpdateAvailable Boolean  @default(false)
+  mustUpdate        Boolean  @default(false)
+  androidAppLink    String
+  iosAppLink        String
+  isAndroid         Boolean  @default(true)
+  isIos             Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
 
 enum WalletTransactionType {
   EARNING // Inflow from orders

@@ -25,6 +25,7 @@ import { parcelRouter } from "./routes/parcel.routes";
 import { notificationRouter } from "./routes/notification.routes";
 import { metricsRouter } from "./routes/rider.metrics.routes";
 import { pushNotificationRoutes } from "./routes/push-notification.routes";
+import { AppUpdateRouter } from "./routes/appUpdate.router";
 //Admin
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
 import adminAuthRoutes from "./routes/admin/adminAuth.routes";
@@ -41,6 +42,9 @@ import { logger } from "./utils/logger";
 import { adminPricingRouter } from "./routes/admin/admin.pricing.routes";
 import { adminFinanceRouter } from "./routes/admin/admin.finance.routes";
 import { adminParcelRouter } from "./routes/admin/admin.parcel.routes";
+import { adminCustomerAppUpdateRouter } from "./routes/admin/admincustomerAppUpdate.routes";
+import { adminVendorAppUpdateRouter } from "./routes/admin/adminVendorAppUpdate.router";
+import { adminRiderAppUpdateRouter } from "./routes/admin/adminRiderAppUpdate.router";
 const app: Express = express();
 
 // Swagger Setup
@@ -145,6 +149,7 @@ app.use(`${apiPrefix}/orders`, orderRoutes);
 app.use(`${apiPrefix}/dev`, fakerRoutes);
 app.use(`${apiPrefix}/messages`, messageRouter);
 app.use(`${apiPrefix}/global`, globalRoutes);
+app.use(`${apiPrefix}/app-update`, AppUpdateRouter);
 app.use(`${apiPrefix}`, paymentWebhookRouter);
 app.use(`${apiPrefix}/finance`, financeRouter);
 app.use(`${apiPrefix}/notifications`, notificationRouter);
@@ -163,6 +168,9 @@ app.use(`${apiPrefix}/admin/notifications`, adminNotificationRouter);
 app.use(`${apiPrefix}/admin/verification`, adminVerificationRouter);
 app.use(`${apiPrefix}/admin/finance`, adminFinanceRouter);
 app.use(`${apiPrefix}/admin`, adminParcelRouter);
+app.use(`${apiPrefix}/admin/app-update`, adminCustomerAppUpdateRouter);
+app.use(`${apiPrefix}/admin/app-update`, adminVendorAppUpdateRouter);
+app.use(`${apiPrefix}/admin/app-update`, adminRiderAppUpdateRouter);
 // ==================== 404 Handler ====================
 app.use((req: Request, res: Response, next: NextFunction) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
