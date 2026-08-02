@@ -59,30 +59,32 @@ export class NotificationService {
     const tokens = deviceTokens.map((t) => t.token);
 
     const message: MulticastMessage = {
-      tokens,
-      notification: {
-        title: payload.title,
-        body: payload.body,
-      },
-      data: {
-        ...payload.data,
-        click_action: "FLUTTER_NOTIFICATION_CLICK",
-      },
-      android: {
-        priority: "high",
-        notification: {
-          sound: "default",
+  tokens,
+
+  data: {
+    title: payload.title,
+    body: payload.body,
+    ...payload.data,
+    click_action: "FLUTTER_NOTIFICATION_CLICK",
+  },
+  android: {
+    priority: "high",
+
+  },
+  apns: {
+    payload: {
+      aps: {
+        alert: {
+          title: payload.title,
+          body: payload.body,
         },
+        sound: "default",
+        badge: 1,
+        "content-available": 1,
       },
-      apns: {
-        payload: {
-          aps: {
-            sound: "default",
-            badge: 1,
-          },
-        },
-      },
-    };
+    },
+  },
+};
 
     const messaging = getMessaging();
     const response = await messaging.sendEachForMulticast(message);
