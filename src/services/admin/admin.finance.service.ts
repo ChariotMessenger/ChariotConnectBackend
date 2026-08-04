@@ -112,7 +112,6 @@ export const adminFinanceService = {
           type: "WITHDRAWAL",
           status: PaymentStatus.SUCCESS,
           reference: `TX-${request.reference}`,
-          wallet: { connect: { id: wallet.id } },
         };
 
         if (request.vendorId) {
