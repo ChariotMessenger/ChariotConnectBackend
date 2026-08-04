@@ -112,7 +112,6 @@ export const adminFinanceService = {
           type: "WITHDRAWAL",
           status: PaymentStatus.SUCCESS,
           reference: request.reference,
-          currency: request.currency,
         };
 
         if (request.vendorId) {

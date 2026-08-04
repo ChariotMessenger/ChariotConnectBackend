@@ -13,53 +13,34 @@ import { comparePassword } from "../utils/password";
 export class VendorFinancialService {
   static async getWalletBalance(vendorId: string) {
     try {
-      let wallet = await prisma.wallet.findUnique({
-        where: { vendorId },
-        select: {
-          balance: true,
-          currency: true,
-          updatedAt: true,
-        },
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: vendorId },
+        select: { country: true },
       });
 
-      const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
-        where: {
-          vendorId,
-          status: WithdrawalStatus.PENDING,
-        },
-        _sum: {
-          amount: true,
-        },
-      });
+      if (!vendor) {
+        throw new CustomError(
+          "Vendor profile not found",
+          404,
+          "VENDOR_NOT_FOUND",
+        );
+      }
 
-      const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
+      const currencyMap: Record<string, string> = {
+        Nigeria: "NGN",
+        Rwanda: "RWF",
+        Ghana: "GHS",
+        Kenya: "KES",
+        Uganda: "UGX",
+      };
 
-      if (!wallet) {
-        const vendor = await prisma.vendor.findUnique({
-          where: { id: vendorId },
-          select: { country: true },
-        });
+      const defaultCurrency = currencyMap[vendor.country || ""] || "NGN";
 
-        if (!vendor) {
-          throw new CustomError(
-            "Vendor profile not found",
-            404,
-            "VENDOR_NOT_FOUND",
-          );
-        }
-
-        const currencyMap: Record<string, string> = {
-          Nigeria: "NGN",
-          Rwanda: "RWF",
-          Ghana: "GHS",
-          Kenya: "KES",
-          Uganda: "UGX",
-        };
-
-        const defaultCurrency = currencyMap[vendor.country || ""] || "NGN";
-
-        const newWallet = await prisma.wallet.create({
-          data: {
+      const [wallet, pendingWithdrawals] = await Promise.all([
+        prisma.wallet.upsert({
+          where: { vendorId },
+          update: {},
+          create: {
             vendorId,
             balance: 0,
             currency: defaultCurrency,
@@ -69,13 +50,19 @@ export class VendorFinancialService {
             currency: true,
             updatedAt: true,
           },
-        });
+        }),
+        prisma.withdrawalRequest.aggregate({
+          where: {
+            vendorId,
+            status: WithdrawalStatus.PENDING,
+          },
+          _sum: {
+            amount: true,
+          },
+        }),
+      ]);
 
-        return {
-          ...newWallet,
-          totalPendingWithdrawal,
-        };
-      }
+      const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
 
       return {
         ...wallet,
