@@ -2,6 +2,7 @@ import {
   PrismaClient,
   WithdrawalStatus,
   VerificationStatus,
+  PaymentStatus,
 } from "@prisma/client";
 import { emitWalletBalanceUpdate } from "../../config/socket";
 import { NotificationService } from "../notification.service";
@@ -109,7 +110,7 @@ export const adminFinanceService = {
         const transactionData: any = {
           amount: request.amount,
           type: "WITHDRAWAL",
-          status: "SUCCESSFUL",
+          status: PaymentStatus.SUCCESS,
           reference: request.reference,
           currency: request.currency,
         };
