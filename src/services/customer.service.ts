@@ -122,27 +122,21 @@ export class CustomerService {
         );
       }
 
-      const target = email || phoneNumber!;
-
-      const normalizedEmail = email?.trim().toLowerCase();
+      const target = email ? email.trim().toLowerCase() : phoneNumber!;
 
       const customer = await prisma.customer.findFirst({
         where: {
           OR: [
-            { email: normalizedEmail || undefined },
+            { email: email ? email.trim().toLowerCase() : undefined },
             { phone: phoneNumber || undefined },
           ],
         },
       });
 
-      if (!customer) {
-        throw new CustomError("Customer not found", 404, "CUSTOMER_NOT_FOUND");
-      }
-
       const otp = await createOTPVerification(
         target,
         UserRole.CUSTOMER,
-        customer.id,
+        customer?.id,
       );
 
       if (phoneNumber) {
@@ -154,8 +148,12 @@ export class CustomerService {
         });
         logger.info(`OTP resent to phone: ${phoneNumber}`);
       } else {
-        await EmailService.sendOTPEmail(email!, otp.code, customer.firstName);
-        logger.info(`OTP resent to email: ${email}`);
+        await EmailService.sendOTPEmail(
+          target,
+          otp.code,
+          customer?.firstName || "User",
+        );
+        logger.info(`OTP resent to email: ${target}`);
       }
 
       return {
