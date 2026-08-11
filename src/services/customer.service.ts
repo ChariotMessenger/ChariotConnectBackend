@@ -42,7 +42,7 @@ export class CustomerService {
       });
 
       if (existingUser) {
-        if (existingUser.email === data.email) {
+        if (existingUser.email === normalizedEmail) {
           throw new CustomError(
             "Email already registered",
             400,
