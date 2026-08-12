@@ -16,18 +16,6 @@ export class GlobalService {
       localCountryCode: 234,
     },
     {
-      countryName: "United States",
-      countryCode: "US",
-      countryIso: "USA",
-      localCountryCode: 1,
-    },
-    {
-      countryName: "United Kingdom",
-      countryCode: "GB",
-      countryIso: "GBR",
-      localCountryCode: 44,
-    },
-    {
       countryName: "Ghana",
       countryCode: "GH",
       countryIso: "GHA",
@@ -44,6 +32,12 @@ export class GlobalService {
       countryCode: "ZA",
       countryIso: "ZAF",
       localCountryCode: 27,
+    },
+    {
+      countryName: "Uganda",
+      countryCode: "UG",
+      countryIso: "UGA",
+      localCountryCode: 256,
     },
   ];
 
