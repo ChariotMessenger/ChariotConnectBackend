@@ -11,7 +11,7 @@ import crypto from "crypto";
 import { comparePassword } from "../utils/password";
 
 export class VendorFinancialService {
-  static async getVendorWalletBalance(vendorId: string) {
+  static async getWalletBalance(vendorId: string) {
     try {
       const vendor = await prisma.vendor.findUnique({
         where: { id: vendorId },
