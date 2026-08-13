@@ -82,10 +82,14 @@ export class VendorFinancialService {
 
       const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
 
-      return {
+      const response = {
         ...wallet,
         totalPendingWithdrawal,
       };
+
+      console.log("Vendor wallet balance response:", response);
+
+      return response;
     } catch (error) {
       logger.error(
         `Error retrieving wallet balance for vendor ${vendorId}:`,

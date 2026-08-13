@@ -82,10 +82,14 @@ export class RiderFinancialService {
 
       const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
 
-      return {
+      const response = {
         ...wallet,
         totalPendingWithdrawal,
       };
+
+      console.log("Rider wallet balance response:", response);
+
+      return response;
     } catch (error) {
       logger.error(
         `Error retrieving wallet balance for rider ${riderId}:`,
