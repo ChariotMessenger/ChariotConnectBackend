@@ -29,7 +29,7 @@ export class CatalogService {
           categoryName,
           name: data.name,
           description: data.description,
-          price: data.price,
+          price: Number(data.price),
           imageUrl: data.imageUrl,
         },
       });
@@ -67,13 +67,16 @@ export class CatalogService {
           categoryName = category ? category.name : null;
         }
       }
-
+      const parsedPrice =
+        data.price !== undefined && data.price !== null
+          ? Number(data.price)
+          : undefined;
       const item = await prisma.catalogItem.update({
         where: { id: itemId },
         data: {
           name: data.name ?? undefined,
           description: data.description ?? undefined,
-          price: data.price ?? undefined,
+          price: parsedPrice,
           imageUrl: data.imageUrl ?? undefined,
           available: data.available ?? undefined,
           categoryId: data.categoryId ?? undefined,
