@@ -11,6 +11,7 @@ export class CatalogService {
       price: number;
       imageUrl?: string;
       categoryId?: string;
+      available?: boolean | string;
     },
   ) {
     try {
@@ -22,6 +23,10 @@ export class CatalogService {
         if (category) categoryName = category.name;
       }
 
+      const parsedAvailable =
+        data.available !== undefined
+          ? String(data.available) === "true" || data.available === true
+          : undefined;
       const item = await prisma.catalogItem.create({
         data: {
           vendorId,
@@ -31,6 +36,7 @@ export class CatalogService {
           description: data.description,
           price: Number(data.price),
           imageUrl: data.imageUrl,
+          available: parsedAvailable,
         },
       });
 
@@ -71,6 +77,10 @@ export class CatalogService {
         data.price !== undefined && data.price !== null
           ? Number(data.price)
           : undefined;
+      const parsedAvailable =
+        data.available !== undefined
+          ? String(data.available) === "true" || data.available === true
+          : undefined;
       const item = await prisma.catalogItem.update({
         where: { id: itemId },
         data: {
@@ -78,7 +88,7 @@ export class CatalogService {
           description: data.description ?? undefined,
           price: parsedPrice,
           imageUrl: data.imageUrl ?? undefined,
-          available: data.available ?? undefined,
+          available: parsedAvailable,
           categoryId: data.categoryId ?? undefined,
           categoryName: categoryName,
         },
