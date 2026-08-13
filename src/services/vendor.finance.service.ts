@@ -61,6 +61,20 @@ export class VendorFinancialService {
           });
         } catch (createError: any) {
           if (createError.code === "P2002") {
+            const now = new Date();
+            await prisma.$runCommandRaw({
+              insert: "Wallet",
+              documents: [
+                {
+                  vendorId: { $oid: vendorId },
+                  balance: 0,
+                  currency: defaultCurrency,
+                  createdAt: { $date: now.toISOString() },
+                  updatedAt: { $date: now.toISOString() },
+                },
+              ],
+            });
+
             wallet = await prisma.wallet.findUnique({
               where: { vendorId },
               select: {
@@ -70,6 +84,7 @@ export class VendorFinancialService {
               },
             });
           }
+
           if (!wallet) throw createError;
         }
       }
@@ -98,7 +113,6 @@ export class VendorFinancialService {
       throw error;
     }
   }
-
   static async getTransactionHistory(options: {
     vendorId: string;
     filterStatus?: PaymentStatus;

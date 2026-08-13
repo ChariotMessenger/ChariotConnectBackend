@@ -11,8 +11,31 @@ import crypto from "crypto";
 import { comparePassword } from "../utils/password";
 
 export class RiderFinancialService {
-  static async getWalletBalance(riderId: string) {
+  static async getRiderWalletBalance(riderId: string) {
     try {
+      const rider = await prisma.rider.findUnique({
+        where: { id: riderId },
+        select: { country: true },
+      });
+
+      if (!rider) {
+        throw new CustomError(
+          "Rider profile not found",
+          404,
+          "RIDER_NOT_FOUND",
+        );
+      }
+
+      const currencyMap: Record<string, string> = {
+        Nigeria: "NGN",
+        Rwanda: "RWF",
+        Ghana: "GHS",
+        Kenya: "KES",
+        Uganda: "UGX",
+      };
+
+      const defaultCurrency = currencyMap[rider.country || ""] || "NGN";
+
       let wallet = await prisma.wallet.findUnique({
         where: { riderId },
         select: {
@@ -23,29 +46,6 @@ export class RiderFinancialService {
       });
 
       if (!wallet) {
-        const rider = await prisma.rider.findUnique({
-          where: { id: riderId },
-          select: { country: true },
-        });
-
-        if (!rider) {
-          throw new CustomError(
-            "Rider profile not found",
-            404,
-            "RIDER_NOT_FOUND",
-          );
-        }
-
-        const currencyMap: Record<string, string> = {
-          Nigeria: "NGN",
-          Rwanda: "RWF",
-          Ghana: "GHS",
-          Kenya: "KES",
-          Uganda: "UGX",
-        };
-
-        const defaultCurrency = currencyMap[rider.country || ""] || "NGN";
-
         try {
           wallet = await prisma.wallet.create({
             data: {
@@ -61,6 +61,20 @@ export class RiderFinancialService {
           });
         } catch (createError: any) {
           if (createError.code === "P2002") {
+            const now = new Date();
+            await prisma.$runCommandRaw({
+              insert: "Wallet",
+              documents: [
+                {
+                  riderId: { $oid: riderId },
+                  balance: 0,
+                  currency: defaultCurrency,
+                  createdAt: { $date: now.toISOString() },
+                  updatedAt: { $date: now.toISOString() },
+                },
+              ],
+            });
+
             wallet = await prisma.wallet.findUnique({
               where: { riderId },
               select: {
@@ -70,6 +84,7 @@ export class RiderFinancialService {
               },
             });
           }
+
           if (!wallet) throw createError;
         }
       }
