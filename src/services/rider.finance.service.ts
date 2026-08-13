@@ -13,7 +13,7 @@ import { comparePassword } from "../utils/password";
 export class RiderFinancialService {
   static async getWalletBalance(riderId: string) {
     try {
-      const wallet = await prisma.wallet.findUnique({
+      let wallet = await prisma.wallet.findUnique({
         where: { riderId },
         select: {
           balance: true,
@@ -21,18 +21,6 @@ export class RiderFinancialService {
           updatedAt: true,
         },
       });
-
-      const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
-        where: {
-          riderId,
-          status: WithdrawalStatus.PENDING,
-        },
-        _sum: {
-          amount: true,
-        },
-      });
-
-      const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
 
       if (!wallet) {
         const rider = await prisma.rider.findUnique({
@@ -58,24 +46,45 @@ export class RiderFinancialService {
 
         const defaultCurrency = currencyMap[rider.country || ""] || "NGN";
 
-        const newWallet = await prisma.wallet.create({
-          data: {
-            riderId,
-            balance: 0,
-            currency: defaultCurrency,
-          },
-          select: {
-            balance: true,
-            currency: true,
-            updatedAt: true,
-          },
-        });
-
-        return {
-          ...newWallet,
-          totalPendingWithdrawal,
-        };
+        try {
+          wallet = await prisma.wallet.create({
+            data: {
+              riderId,
+              balance: 0,
+              currency: defaultCurrency,
+            },
+            select: {
+              balance: true,
+              currency: true,
+              updatedAt: true,
+            },
+          });
+        } catch (createError: any) {
+          if (createError.code === "P2002") {
+            wallet = await prisma.wallet.findUnique({
+              where: { riderId },
+              select: {
+                balance: true,
+                currency: true,
+                updatedAt: true,
+              },
+            });
+          }
+          if (!wallet) throw createError;
+        }
       }
+
+      const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
+        where: {
+          riderId,
+          status: WithdrawalStatus.PENDING,
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+
+      const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
 
       return {
         ...wallet,
@@ -89,7 +98,6 @@ export class RiderFinancialService {
       throw error;
     }
   }
-
   static async hasPendingBankDetailsChange(riderId: string): Promise<boolean> {
     try {
       const pendingRequest = await prisma.bankDetailsChangeRequest.findFirst({

@@ -36,31 +36,53 @@ export class VendorFinancialService {
 
       const defaultCurrency = currencyMap[vendor.country || ""] || "NGN";
 
-      const [wallet, pendingWithdrawals] = await Promise.all([
-        prisma.wallet.upsert({
-          where: { vendorId },
-          update: {},
-          create: {
-            vendorId,
-            balance: 0,
-            currency: defaultCurrency,
-          },
-          select: {
-            balance: true,
-            currency: true,
-            updatedAt: true,
-          },
-        }),
-        prisma.withdrawalRequest.aggregate({
-          where: {
-            vendorId,
-            status: WithdrawalStatus.PENDING,
-          },
-          _sum: {
-            amount: true,
-          },
-        }),
-      ]);
+      let wallet = await prisma.wallet.findUnique({
+        where: { vendorId },
+        select: {
+          balance: true,
+          currency: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!wallet) {
+        try {
+          wallet = await prisma.wallet.create({
+            data: {
+              vendorId,
+              balance: 0,
+              currency: defaultCurrency,
+            },
+            select: {
+              balance: true,
+              currency: true,
+              updatedAt: true,
+            },
+          });
+        } catch (createError: any) {
+          if (createError.code === "P2002") {
+            wallet = await prisma.wallet.findUnique({
+              where: { vendorId },
+              select: {
+                balance: true,
+                currency: true,
+                updatedAt: true,
+              },
+            });
+          }
+          if (!wallet) throw createError;
+        }
+      }
+
+      const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
+        where: {
+          vendorId,
+          status: WithdrawalStatus.PENDING,
+        },
+        _sum: {
+          amount: true,
+        },
+      });
 
       const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
 
