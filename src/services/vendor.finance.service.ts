@@ -60,14 +60,11 @@ export class VendorFinancialService {
           ],
         });
 
-        wallet = await prisma.wallet.findUnique({
-          where: { vendorId },
-          select: {
-            balance: true,
-            currency: true,
-            updatedAt: true,
-          },
-        });
+        wallet = {
+          balance: 0,
+          currency: defaultCurrency,
+          updatedAt: now,
+        };
       }
 
       const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
@@ -93,6 +90,91 @@ export class VendorFinancialService {
     } catch (error) {
       logger.error(
         `Error retrieving wallet balance for vendor ${vendorId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  static async getRiderWalletBalance(riderId: string) {
+    try {
+      const rider = await prisma.rider.findUnique({
+        where: { id: riderId },
+        select: { country: true },
+      });
+
+      if (!rider) {
+        throw new CustomError(
+          "Rider profile not found",
+          404,
+          "RIDER_NOT_FOUND",
+        );
+      }
+
+      const currencyMap: Record<string, string> = {
+        Nigeria: "NGN",
+        Rwanda: "RWF",
+        Ghana: "GHS",
+        Kenya: "KES",
+        Uganda: "UGX",
+      };
+
+      const defaultCurrency = currencyMap[rider.country || ""] || "NGN";
+
+      let wallet = await prisma.wallet.findUnique({
+        where: { riderId },
+        select: {
+          balance: true,
+          currency: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!wallet) {
+        const now = new Date();
+        await prisma.$runCommandRaw({
+          insert: "Wallet",
+          documents: [
+            {
+              riderId: { $oid: riderId },
+              balance: 0,
+              currency: defaultCurrency,
+              createdAt: { $date: now.toISOString() },
+              updatedAt: { $date: now.toISOString() },
+            },
+          ],
+        });
+
+        wallet = {
+          balance: 0,
+          currency: defaultCurrency,
+          updatedAt: now,
+        };
+      }
+
+      const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
+        where: {
+          riderId,
+          status: WithdrawalStatus.PENDING,
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+
+      const totalPendingWithdrawal = pendingWithdrawals._sum.amount || 0;
+
+      const response = {
+        ...wallet,
+        totalPendingWithdrawal,
+      };
+
+      console.log("Rider wallet balance response:", response);
+
+      return response;
+    } catch (error) {
+      logger.error(
+        `Error retrieving wallet balance for rider ${riderId}:`,
         error,
       );
       throw error;

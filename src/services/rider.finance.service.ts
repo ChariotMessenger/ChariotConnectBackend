@@ -60,14 +60,11 @@ export class RiderFinancialService {
           ],
         });
 
-        wallet = await prisma.wallet.findUnique({
-          where: { riderId },
-          select: {
-            balance: true,
-            currency: true,
-            updatedAt: true,
-          },
-        });
+        wallet = {
+          balance: 0,
+          currency: defaultCurrency,
+          updatedAt: now,
+        };
       }
 
       const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
