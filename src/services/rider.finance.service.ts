@@ -11,7 +11,7 @@ import crypto from "crypto";
 import { comparePassword } from "../utils/password";
 
 export class RiderFinancialService {
-  static async getRiderWalletBalance(riderId: string) {
+  static async getWalletBalance(riderId: string) {
     try {
       const rider = await prisma.rider.findUnique({
         where: { id: riderId },
