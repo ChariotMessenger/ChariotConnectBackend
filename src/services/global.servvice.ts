@@ -28,10 +28,10 @@ export class GlobalService {
       localCountryCode: 254,
     },
     {
-      countryName: "South Africa",
-      countryCode: "ZA",
-      countryIso: "ZAF",
-      localCountryCode: 27,
+      countryName: "Rwanda",
+      countryCode: "RW",
+      countryIso: "RWA",
+      localCountryCode: 250,
     },
     {
       countryName: "Uganda",
