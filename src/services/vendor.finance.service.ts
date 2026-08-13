@@ -11,7 +11,7 @@ import crypto from "crypto";
 import { comparePassword } from "../utils/password";
 
 export class VendorFinancialService {
-  static async getWalletBalance(vendorId: string) {
+  static async getVendorWalletBalance(vendorId: string) {
     try {
       const vendor = await prisma.vendor.findUnique({
         where: { id: vendorId },
@@ -46,47 +46,28 @@ export class VendorFinancialService {
       });
 
       if (!wallet) {
-        try {
-          wallet = await prisma.wallet.create({
-            data: {
-              vendorId,
+        const now = new Date();
+        await prisma.$runCommandRaw({
+          insert: "Wallet",
+          documents: [
+            {
+              vendorId: { $oid: vendorId },
               balance: 0,
               currency: defaultCurrency,
+              createdAt: { $date: now.toISOString() },
+              updatedAt: { $date: now.toISOString() },
             },
-            select: {
-              balance: true,
-              currency: true,
-              updatedAt: true,
-            },
-          });
-        } catch (createError: any) {
-          if (createError.code === "P2002") {
-            const now = new Date();
-            await prisma.$runCommandRaw({
-              insert: "Wallet",
-              documents: [
-                {
-                  vendorId: { $oid: vendorId },
-                  balance: 0,
-                  currency: defaultCurrency,
-                  createdAt: { $date: now.toISOString() },
-                  updatedAt: { $date: now.toISOString() },
-                },
-              ],
-            });
+          ],
+        });
 
-            wallet = await prisma.wallet.findUnique({
-              where: { vendorId },
-              select: {
-                balance: true,
-                currency: true,
-                updatedAt: true,
-              },
-            });
-          }
-
-          if (!wallet) throw createError;
-        }
+        wallet = await prisma.wallet.findUnique({
+          where: { vendorId },
+          select: {
+            balance: true,
+            currency: true,
+            updatedAt: true,
+          },
+        });
       }
 
       const pendingWithdrawals = await prisma.withdrawalRequest.aggregate({
