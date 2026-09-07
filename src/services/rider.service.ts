@@ -680,6 +680,7 @@ export class RiderService {
           profilePhotoUrl: true,
           onlineStatus: true,
           verificationStatus: true,
+          verifyIdentityUrl: true,
           createdAt: true,
         },
       });
