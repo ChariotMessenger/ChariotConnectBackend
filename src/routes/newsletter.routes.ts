@@ -5,7 +5,7 @@ const router = Router();
 
 /**
  * @swagger
- * /api/v1/newsletter:
+ * /newsletter:
  *   post:
  *     summary: Subscribe to Newsletter
  *     description: Registers a new email address for the newsletter.
