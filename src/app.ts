@@ -26,6 +26,7 @@ import { notificationRouter } from "./routes/notification.routes";
 import { metricsRouter } from "./routes/rider.metrics.routes";
 import { pushNotificationRoutes } from "./routes/push-notification.routes";
 import { AppUpdateRouter } from "./routes/appUpdate.router";
+import { newsletterRoutes } from "./routes/newsletter.routes";
 //Admin
 import adminManagementRoutes from "./routes/admin/adminManagement.routes";
 import adminAuthRoutes from "./routes/admin/adminAuth.routes";
@@ -152,6 +153,7 @@ app.use(`${apiPrefix}/global`, globalRoutes);
 app.use(`${apiPrefix}/app-update`, AppUpdateRouter);
 app.use(`${apiPrefix}`, paymentWebhookRouter);
 app.use(`${apiPrefix}/finance`, financeRouter);
+app.use(`${apiPrefix}/newsletter`, newsletterRoutes);
 app.use(`${apiPrefix}/notifications`, notificationRouter);
 app.use(`${apiPrefix}/metrics`, metricsRouter);
 app.use(`${apiPrefix}/push-notifications`, pushNotificationRoutes);
