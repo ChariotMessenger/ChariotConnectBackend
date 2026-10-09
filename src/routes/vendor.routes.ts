@@ -17,8 +17,8 @@ const router = Router();
  *         longitude:
  *           type: number
  *           format: float
- *        locationName:
- *          type: string
+ *         locationName:
+ *           type: string
  */
 
 /**
