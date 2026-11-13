@@ -46,26 +46,84 @@ export class VendorService {
     }
   }
 
-  static async deleteAccount(vendorId: string) {
+  static async deleteAccount(vendorId: string, passwordInput: string) {
     try {
       const vendor = await prisma.vendor.findUnique({
         where: { id: vendorId },
+        include: {
+          wallet: true,
+          withdrawalRequests: true,
+          orders: {
+            where: {
+              status: {
+                notIn: ["DELIVERED", "CANCELLED", "REJECTED"],
+              },
+            },
+          },
+        },
       });
 
       if (!vendor) {
         throw new CustomError("Vendor account not found", 404, "NOT_FOUND");
       }
 
-      await prisma.vendor.delete({
+      const isPasswordValid = await comparePassword(
+        passwordInput,
+        vendor.password,
+      );
+      if (!isPasswordValid) {
+        throw new CustomError("Invalid password", 400, "INVALID_PASSWORD");
+      }
+
+      if (vendor.wallet && vendor.wallet.balance > 0) {
+        throw new CustomError(
+          "Cannot delete account with a positive wallet balance",
+          400,
+          "WALLET_BALANCE_EXISTS",
+        );
+      }
+
+      const pendingWithdrawals = vendor.withdrawalRequests.some(
+        (req) => req.status === "PENDING",
+      );
+      if (pendingWithdrawals) {
+        throw new CustomError(
+          "Cannot delete account with pending withdrawal requests",
+          400,
+          "PENDING_WITHDRAWALS_EXIST",
+        );
+      }
+
+      if (vendor.orders && vendor.orders.length > 0) {
+        throw new CustomError(
+          "Cannot delete account with active or ongoing orders",
+          400,
+          "ACTIVE_ORDERS_EXISTS",
+        );
+      }
+
+      const timestamp = Date.now();
+      const updatedEmail = `deleted_${timestamp}_${vendor.email}`;
+      const updatedPhone = `deleted_${timestamp}_${vendor.phone}`;
+
+      const deletedVendor = await prisma.vendor.update({
         where: { id: vendorId },
+        data: {
+          deletedAt: new Date(),
+          email: updatedEmail,
+          phone: updatedPhone,
+          status: "DELETED",
+          verified: false,
+        },
       });
 
-      logger.info(`Vendor account and associated data deleted: ${vendorId}`);
+      logger.info(`Vendor account soft-deleted: ${vendorId}`);
 
       return {
         success: true,
         message:
-          "Your business account and all associated data have been permanently removed.",
+          "Your business account and all associated data have been successfully deleted.",
+        vendorId: deletedVendor.id,
       };
     } catch (error) {
       logger.error("Error in vendor account deletion:", error);

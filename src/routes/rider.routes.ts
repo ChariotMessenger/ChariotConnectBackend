@@ -449,16 +449,32 @@ router.post(
  * /riders/me:
  *   delete:
  *     summary: Delete Rider Account
- *     description: Permanently delete the authenticated rider's account and documents
+ *     description: Soft delete the authenticated rider's account after verifying password, checking wallet balance, pending withdrawals, and active deliveries.
  *     tags:
  *       - Rider Management
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - password
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 example: "SecurePassword123!"
  *     responses:
  *       200:
- *         description: Account deleted successfully
+ *         description: Account successfully deleted
+ *       400:
+ *         description: Invalid password, positive wallet balance, pending withdrawals, or active deliveries exist
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: Rider not found
  */
 router.delete(
   "/me",

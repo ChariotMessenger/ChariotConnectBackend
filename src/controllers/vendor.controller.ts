@@ -22,7 +22,17 @@ export class VendorController {
         });
       }
 
-      const result = await vendorService.deleteAccount(vendorId);
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: "Password is required",
+          code: "PASSWORD_REQUIRED",
+        });
+      }
+
+      const result = await vendorService.deleteAccount(vendorId, password);
 
       res.status(200).json(result);
     } catch (error) {

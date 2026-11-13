@@ -17,8 +17,8 @@ const router = Router();
  *         longitude:
  *           type: number
  *           format: float
- *         locationName:
- *           type: string
+ *        locationName:
+ *          type: string
  */
 
 /**
@@ -76,14 +76,28 @@ router.post(
  * /vendors/me:
  *   delete:
  *     summary: Delete Vendor Account
- *     description: Permanently delete the authenticated vendor's account, catalog, and associated data
+ *     description: Soft delete the authenticated vendor's account after verifying password, checking wallet balance, pending withdrawals, and active orders.
  *     tags:
  *       - Vendor Management
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - password
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 example: "SecurePassword123!"
  *     responses:
  *       200:
- *         description: Account deleted successfully
+ *         description: Account successfully deleted
+ *       400:
+ *         description: Invalid password, positive wallet balance, pending withdrawals, or active orders exist
  *       401:
  *         description: Unauthorized
  *       404:

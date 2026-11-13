@@ -104,36 +104,38 @@ enum UserType {
   VENDOR
   RIDER
 }
-
 model Customer {
-  id                     String            @id @default(auto()) @map("_id") @db.ObjectId
+  id                     String             @id @default(auto()) @map("_id") @db.ObjectId
   firstName              String
   lastName               String
-  email                  String            @unique
-  phone                  String       @unique 
+  email                  String             @unique
+  phone                  String             @unique
   birthday               DateTime
   gender                 String
   country                String
-  currency               String            @default("NGN")
-  isEmailVerified        Boolean           @default(false)
+  currency               String             @default("NGN")
+  isEmailVerified        Boolean            @default(false)
   profilePhotoUrl        String?
   password               String
   currentLocation        Point?
-  receiveMarketingEmails Boolean           @default(false)
-  createdAt              DateTime          @default(now())
-  status  String  @default("ACTIVE")
-  updatedAt              DateTime          @updatedAt
+  receiveMarketingEmails Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  status                 String             @default("ACTIVE")
+  updatedAt              DateTime           @updatedAt
+  deletedAt              DateTime?          @map("deleted_at")
   otpVerifications       OTPVerification[]
   favorites              FavoriteVendor[]
-  customerReviews        Review[]          @relation("CustomerReviews")
-  messages               Message[]         @relation("CustomerMessages")
-  messageRooms           MessageRoom[]     @relation("CustomerRooms")
-  orders                 Order[]           @relation("CustomerOrders")
-locationHistory        LocationHistory[] @relation("CustomerLocationHistory")
-savedLocations         SavedLocation[]   @relation("CustomerSavedLocations")
-packages DeliverPackageData[] @relation("CustomerPackages")
-notifications Notification[]
+  customerReviews        Review[]           @relation("CustomerReviews")
+  messages               Message[]          @relation("CustomerMessages")
+  messageRooms           MessageRoom[]      @relation("CustomerRooms")
+  orders                 Order[]            @relation("CustomerOrders")
+  locationHistory        LocationHistory[]  @relation("CustomerLocationHistory")
+  savedLocations         SavedLocation[]    @relation("CustomerSavedLocations")
+  packages               DeliverPackageData[] @relation("CustomerPackages")
+  notifications          Notification[]
+
   @@index([country])
+  @@index([deletedAt])
 }
 
 model Vendor {
@@ -152,39 +154,41 @@ model Vendor {
   businessOwnerName      String?
   isBusinessRegistered   Boolean
   profilePhotoUrl        String?
-  brandLogoUrl           String?           
+  brandLogoUrl           String?            
   coverPhotoUrl          String?
   bio                    String?
-  rank                   Float            @default(0)
-  vendorWorkPeriod       Json?             
+  rank                   Float              @default(0)
+  vendorWorkPeriod       Json?              
   vendorServiceType      String?
   password               String
   receiveMarketingEmails Boolean            @default(false)
   verificationStatus     VerificationStatus @default(PENDING)
   verified               Boolean            @default(false)
   createdAt              DateTime           @default(now())
-  status  String  @default("ACTIVE")
+  status                 String             @default("ACTIVE")
   updatedAt              DateTime           @updatedAt
+  deletedAt              DateTime?          @map("deleted_at")
   otpVerifications       OTPVerification[]
   favoritedBy            FavoriteVendor[]
   catalogItems           CatalogItem[]
-  productCategories     ProductCategory[]
+  productCategories      ProductCategory[]
   vendorReviews          Review[]           @relation("VendorReviews")
   orders                 Order[]            @relation("VendorOrders")
   messages               Message[]          @relation("VendorMessages")
   messageRooms           MessageRoom[]      @relation("VendorRooms")
-  bankName              String?
-  accountNumber         String?
-  accountName           String?
+  bankName               String?
+  accountNumber          String?
+  accountName            String?
 
-  wallet                   Wallet?
-walletTransactions       WalletTransaction[]
-withdrawalRequests       WithdrawalRequest[]
-notifications Notification[]
-bankDetailsChanges       BankDetailsChangeRequest[]
+  wallet                 Wallet?
+  walletTransactions     WalletTransaction[]
+  withdrawalRequests     WithdrawalRequest[]
+  notifications          Notification[]
+  bankDetailsChanges     BankDetailsChangeRequest[]
 
   @@index([country])
   @@index([businessType])
+  @@index([deletedAt])
 }
 
 model Rider {
@@ -192,13 +196,13 @@ model Rider {
   firstName             String
   lastName              String
   email                 String             @unique
-  phone                 String            @unique
+  phone                 String             @unique
   birthday              DateTime
   gender                String
   country               String
   currency              String             @default("NGN")
   isEmailVerified       Boolean            @default(false)
-  riderHomeAddress       Point?
+  riderHomeAddress      Point?
   state                 String?
   areaOfWork            String
   drivingLicenseUrl     String
@@ -218,24 +222,27 @@ model Rider {
   accountName           String
   verifyIdentityUrl     String
   onlineStatus          OnlineStatus       @default(OFFLINE)
-  status  String  @default("ACTIVE")
+  status                String             @default("ACTIVE")
   verificationStatus    VerificationStatus @default(PENDING)
   verified              Boolean            @default(false)
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
+  deletedAt             DateTime?          @map("deleted_at")
   otpVerifications      OTPVerification[]
   deliveries            Order[]            @relation("RiderOrders")
   locationHistory       LocationHistory[]  @relation("RiderLocationHistory")
-  packages DeliverPackageData[] @relation("RiderPackages")
+  packages              DeliverPackageData[] @relation("RiderPackages")
 
-  wallet                   Wallet?
-walletTransactions       WalletTransaction[]
-withdrawalRequests       WithdrawalRequest[]
-notifications Notification[]
-bankDetailsChanges       BankDetailsChangeRequest[]
+  wallet                Wallet?
+  walletTransactions    WalletTransaction[]
+  withdrawalRequests    WithdrawalRequest[]
+  notifications         Notification[]
+  bankDetailsChanges    BankDetailsChangeRequest[]
+  
   @@index([country])
   @@index([state])
   @@index([onlineStatus])
+  @@index([deletedAt])
 }
 model PendingRider {
    id               String      @id @default(auto()) @map("_id") @db.ObjectId

@@ -81,20 +81,33 @@ router.post(
     }
   },
 );
-
 /**
  * @swagger
  * /customers/me:
  *   delete:
  *     summary: Delete Customer Account
- *     description: Permanently delete the authenticated customer's account and all associated data
+ *     description: Soft delete the authenticated customer's account after verifying password and checking for active orders.
  *     tags:
  *       - Customer Management
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - password
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 example: "SecurePassword123!"
  *     responses:
  *       200:
- *         description: Account deleted successfully
+ *         description: Account successfully deleted
+ *       400:
+ *         description: Invalid password or active/ongoing orders exist
  *       401:
  *         description: Unauthorized
  *       404:
@@ -111,7 +124,6 @@ router.delete(
     }
   },
 );
-
 /**
  * @swagger
  * /customers/resend-otp:

@@ -84,26 +84,62 @@ export class CustomerService {
       throw error;
     }
   }
-  static async deleteAccount(customerId: string) {
+  static async deleteAccount(customerId: string, passwordInput: string) {
     try {
       const customer = await prisma.customer.findUnique({
         where: { id: customerId },
+        include: {
+          orders: {
+            where: {
+              status: {
+                notIn: ["DELIVERED", "CANCELLED", "REJECTED"],
+              },
+            },
+          },
+        },
       });
 
       if (!customer) {
         throw new CustomError("Customer account not found", 404, "NOT_FOUND");
       }
 
-      await prisma.customer.delete({
+      const isPasswordValid = await comparePassword(
+        passwordInput,
+        customer.password,
+      );
+      if (!isPasswordValid) {
+        throw new CustomError("Invalid password", 400, "INVALID_PASSWORD");
+      }
+
+      if (customer.orders && customer.orders.length > 0) {
+        throw new CustomError(
+          "Cannot delete account with active or ongoing orders",
+          400,
+          "ACTIVE_ORDERS_EXISTS",
+        );
+      }
+
+      const timestamp = Date.now();
+      const updatedEmail = `deleted_${timestamp}_${customer.email}`;
+      const updatedPhone = `deleted_${timestamp}_${customer.phone}`;
+
+      const deletedCustomer = await prisma.customer.update({
         where: { id: customerId },
+        data: {
+          deletedAt: new Date(),
+          email: updatedEmail,
+          phone: updatedPhone,
+          status: "DELETED",
+        },
       });
 
-      logger.info(`Customer account deleted: ${customerId}`);
+      logger.info(`Customer account soft-deleted: ${customerId}`);
 
       return {
         success: true,
         message:
-          "Your account and all associated data have been permanently deleted.",
+          "Your account and all associated data have been successfully deleted.",
+        customerId: deletedCustomer.id,
       };
     } catch (error) {
       logger.error("Error in customer account deletion:", error);

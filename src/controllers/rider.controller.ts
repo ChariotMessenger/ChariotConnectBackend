@@ -207,11 +207,31 @@ export class RiderController {
 
   static async deleteAccount(req: AuthRequest, res: Response) {
     try {
-      const riderId = req.user!.id;
-      const result = await riderService.deleteAccount(riderId);
-      res.status(200).json(result);
+      const riderId = req.user?.id;
+      if (!riderId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+          code: "UNAUTHORIZED",
+        });
+      }
+
+      const { password } = req.body;
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: "Password is required",
+          code: "PASSWORD_REQUIRED",
+        });
+      }
+
+      const result = await riderService.deleteAccount(riderId, password);
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
     } catch (error) {
-      logger.error("Error in deleteAccount:", error);
+      logger.error("Error in deleteAccount controller:", error);
       if (error instanceof CustomError) {
         return res.status(error.status).json({
           success: false,

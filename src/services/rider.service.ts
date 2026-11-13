@@ -512,6 +512,88 @@ export class RiderService {
     }
   }
 
+  static async deleteAccount(riderId: string, passwordInput: string) {
+    try {
+      const rider = await prisma.rider.findUnique({
+        where: { id: riderId },
+        include: {
+          wallet: true,
+          walletTransactions: true,
+          withdrawalRequests: true,
+          deliveries: {
+            where: {
+              status: {
+                notIn: ["DELIVERED", "CANCELLED", "REJECTED"],
+              },
+            },
+          },
+        },
+      });
+
+      if (!rider) {
+        throw new CustomError("Rider not found", 404, "RIDER_NOT_FOUND");
+      }
+
+      const isPasswordValid = await comparePassword(
+        passwordInput,
+        rider.password,
+      );
+      if (!isPasswordValid) {
+        throw new CustomError("Invalid password", 400, "INVALID_PASSWORD");
+      }
+
+      if (rider.wallet && rider.wallet.balance > 0) {
+        throw new CustomError(
+          "Cannot delete account with a positive wallet balance",
+          400,
+          "WALLET_BALANCE_EXISTS",
+        );
+      }
+
+      const pendingWithdrawals = rider.withdrawalRequests.some(
+        (req) => req.status === "PENDING",
+      );
+      if (pendingWithdrawals) {
+        throw new CustomError(
+          "Cannot delete account with pending withdrawal requests",
+          400,
+          "PENDING_WITHDRAWALS_EXIST",
+        );
+      }
+
+      if (rider.deliveries && rider.deliveries.length > 0) {
+        throw new CustomError(
+          "Cannot delete account with active or ongoing deliveries",
+          400,
+          "ACTIVE_DELIVERIES_EXISTS",
+        );
+      }
+
+      const timestamp = Date.now();
+      const updatedEmail = `deleted_${timestamp}_${rider.email}`;
+      const updatedPhone = `deleted_${timestamp}_${rider.phone}`;
+
+      const deletedRider = await prisma.rider.update({
+        where: { id: riderId },
+        data: {
+          deletedAt: new Date(),
+          email: updatedEmail,
+          phone: updatedPhone,
+          status: "DELETED",
+          onlineStatus: "OFFLINE",
+        },
+      });
+
+      logger.info(`Rider account soft-deleted: ${riderId}`);
+      return {
+        message: "Account successfully deleted",
+        riderId: deletedRider.id,
+      };
+    } catch (error) {
+      logger.error("Error deleting rider account:", error);
+      throw error;
+    }
+  }
   static async forgotPasswordStep1(data: {
     email?: string;
     phoneNumber?: string;
@@ -625,33 +707,6 @@ export class RiderService {
       };
     } catch (error) {
       logger.error("Error in rider forgotPasswordStep2:", error);
-      throw error;
-    }
-  }
-
-  static async deleteAccount(riderId: string) {
-    try {
-      const rider = await prisma.rider.findUnique({
-        where: { id: riderId },
-      });
-
-      if (!rider) {
-        throw new CustomError("Rider account not found", 404, "NOT_FOUND");
-      }
-
-      await prisma.rider.delete({
-        where: { id: riderId },
-      });
-
-      logger.info(`Rider account deleted: ${riderId}`);
-
-      return {
-        success: true,
-        message:
-          "Your rider account and documents have been permanently deleted.",
-      };
-    } catch (error) {
-      logger.error("Error in rider account deletion:", error);
       throw error;
     }
   }
